@@ -220,7 +220,6 @@ Planned improvements include:
 - Power-ups and special abilities (rapid fire, explosive shots)
 - Difficulty levels with adaptive AI
 - High score tracking and leaderboards
-- Multiplayer support (co-op and versus)
 - Custom hand gesture training for different weapons
 - More stage themes and environmental hazards
 - Weapon upgrades and progression system
@@ -228,5 +227,3 @@ Planned improvements include:
 ---
 
 Have fun shooting targets with your finger gun! 🔫
-
-For issues or suggestions, please create an issue in the repository.
