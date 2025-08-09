@@ -33,7 +33,7 @@ class SettingsScreen(BaseScreen):
         # Back button
         self.back_button = Button(
             50, 50, 120, 50,
-            "← BACK", self.button_font
+            "BACK", self.button_font
         )
         
         # Camera selection buttons

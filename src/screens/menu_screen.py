@@ -229,37 +229,6 @@ class MenuScreen(BaseScreen):
         subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, 140))
         self.screen.blit(subtitle_text, subtitle_rect)
         
-        # Draw enemy names under showcase (matching new order)
-        enemy_info = [
-            ("ZOMBIE", "The Undead"),
-            ("GIANT", "The Destroyer"),
-            ("SKULL", "Ghost Warrior"),
-            ("DEMON", "Hell's Fury")
-        ]
-        
-        for enemy, (name, desc) in zip(self.showcase_enemies, enemy_info):
-            x, y = enemy.get_screen_position(SCREEN_WIDTH, SCREEN_HEIGHT)
-            
-            # Position labels above enemies to avoid button overlap
-            label_y = y - enemy.get_size() - 40
-            
-            # Enemy name with color based on type
-            name_colors = {
-                "ZOMBIE": (100, 150, 100),
-                "GIANT": (150, 100, 200),
-                "SKULL": (200, 200, 255),
-                "DEMON": (255, 100, 100)
-            }
-            name_color = name_colors.get(name, (255, 100, 100))
-            
-            name_text = self.info_font.render(name, True, name_color)
-            name_rect = name_text.get_rect(center=(x, label_y))
-            self.screen.blit(name_text, name_rect)
-            
-            # Description
-            desc_text = self.info_font.render(desc, True, (150, 150, 150))
-            desc_rect = desc_text.get_rect(center=(x, label_y + 20))
-            self.screen.blit(desc_text, desc_rect)
         
         # Draw buttons
         for button in self.buttons:
