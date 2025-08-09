@@ -64,6 +64,12 @@ class ArcadeScreen:
         # Debug mode
         self.debug_mode = False
         
+        # Debug console
+        self.console_active = False
+        self.console_input = ""
+        self.console_message = ""
+        self.console_message_time = 0
+        
         # Background gradient for doom-like atmosphere
         self.current_stage_theme = 1
         self.create_background()
@@ -143,6 +149,24 @@ class ArcadeScreen:
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
         if event.type == pygame.KEYDOWN:
+            # Handle console input when active
+            if self.console_active:
+                if event.key == pygame.K_RETURN:
+                    self._execute_console_command()
+                    self.console_input = ""
+                    self.console_active = False
+                elif event.key == pygame.K_ESCAPE:
+                    self.console_active = False
+                    self.console_input = ""
+                elif event.key == pygame.K_BACKSPACE:
+                    self.console_input = self.console_input[:-1]
+                else:
+                    # Add character to input
+                    if event.unicode and len(self.console_input) < 30:
+                        self.console_input += event.unicode
+                return None
+            
+            # Normal key handling
             if event.key == pygame.K_ESCAPE:
                 return GAME_STATE_MENU
             elif event.key == pygame.K_p or event.key == pygame.K_SPACE:
@@ -154,6 +178,9 @@ class ArcadeScreen:
                 self.reset_game()
             elif event.key == pygame.K_d:
                 self.debug_mode = not self.debug_mode
+            elif event.key == pygame.K_SLASH and self.paused:  # Open console with /
+                self.console_active = True
+                self.console_input = "/"
         
         return None
     
@@ -411,12 +438,60 @@ class ArcadeScreen:
             surface.blit(mist_surface, (0, 0))
         
         elif self.current_stage_theme == 4:
-            # Apocalypse - add lightning flashes occasionally
-            if random.random() < 0.02:  # 2% chance per frame
+            # FINAL APOCALYPSE - Intense effects
+            
+            # 1. Falling meteors/debris
+            for i in range(8):
+                x = random.randint(0, SCREEN_WIDTH)
+                y = random.randint(0, int(SCREEN_HEIGHT * 0.6))
+                # Create fiery meteor effect
+                meteor_size = random.randint(3, 8)
+                # Meteor core
+                pygame.draw.circle(surface, (255, 100, 0), (x, y), meteor_size)
+                # Fiery trail
+                for j in range(5):
+                    trail_x = x - j * 3
+                    trail_y = y - j * 5
+                    trail_size = meteor_size - j
+                    if trail_size > 0:
+                        color = (255 - j * 30, 50 + j * 20, 0)
+                        pygame.draw.circle(surface, color, (trail_x, trail_y), trail_size)
+            
+            # 2. Ash particles falling (moved up from #3)
+            for i in range(15):
+                x = random.randint(0, SCREEN_WIDTH)
+                y = random.randint(0, SCREEN_HEIGHT)
+                pygame.draw.circle(surface, (150, 150, 150), (x, y), 1)
+            
+            # 3. Intense lightning with screen flash
+            if random.random() < 0.04:  # 4% chance (more frequent)
+                # Draw actual lightning bolt
+                lightning_x = random.randint(100, SCREEN_WIDTH - 100)
+                current_x = lightning_x
+                current_y = 0
+                for i in range(10):
+                    next_x = current_x + random.randint(-30, 30)
+                    next_y = current_y + SCREEN_HEIGHT // 10
+                    pygame.draw.line(surface, (255, 255, 255), 
+                                   (current_x, current_y), (next_x, next_y), 3)
+                    pygame.draw.line(surface, (200, 200, 255), 
+                                   (current_x, current_y), (next_x, next_y), 1)
+                    current_x, current_y = next_x, next_y
+                
+                # Screen flash
                 flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-                flash_surface.set_alpha(30)
-                flash_surface.fill((255, 200, 100))
+                flash_surface.set_alpha(60)
+                flash_surface.fill((255, 200, 150))
                 surface.blit(flash_surface, (0, 0))
+            
+            # 4. Dark smoke clouds at top
+            smoke_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            for i in range(4):
+                x = random.randint(0, SCREEN_WIDTH)
+                y = random.randint(0, int(SCREEN_HEIGHT * 0.3))
+                radius = random.randint(40, 100)
+                smoke_surface.fill((50, 30, 20, 30), (x - radius, y - radius, radius * 2, radius * 2))
+            surface.blit(smoke_surface, (0, 0))
     
     def _draw_floor_grid(self, surface: pygame.Surface):
         """Draw 3D floor grid for perspective"""
@@ -633,6 +708,67 @@ class ArcadeScreen:
         # Draw camera feed
         self.screen.blit(camera_surface, (CAMERA_X, CAMERA_Y))
     
+    def _execute_console_command(self):
+        """Execute debug console command"""
+        command = self.console_input.strip().lower()
+        
+        if command.startswith("/stage "):
+            try:
+                stage_num = int(command.split()[1])
+                # Calculate wave number from stage (2 waves per stage)
+                wave_num = (stage_num - 1) * 2 + 1
+                self._jump_to_wave(wave_num)
+                self.console_message = f"Jumped to Stage {stage_num} (Wave {wave_num})"
+            except:
+                self.console_message = "Invalid stage number"
+        
+        elif command.startswith("/wave "):
+            try:
+                wave_num = int(command.split()[1])
+                self._jump_to_wave(wave_num)
+                self.console_message = f"Jumped to Wave {wave_num}"
+            except:
+                self.console_message = "Invalid wave number"
+        
+        elif command == "/heal":
+            self.player_health = self.max_health
+            self.console_message = "Health restored to full"
+        
+        elif command == "/kill":
+            # Kill all enemies on screen
+            for enemy in self.enemy_manager.enemies:
+                enemy.alive = False
+                enemy.death_time = time.time()
+            self.console_message = "All enemies killed"
+        
+        elif command == "/god":
+            # Toggle god mode (would need to implement)
+            self.console_message = "God mode not yet implemented"
+        
+        else:
+            self.console_message = "Unknown command. Try: /stage #, /wave #, /heal, /kill"
+        
+        self.console_message_time = time.time()
+    
+    def _jump_to_wave(self, wave_num: int):
+        """Jump directly to a specific wave"""
+        # Clear current enemies
+        self.enemy_manager.enemies.clear()
+        
+        # Set wave number
+        self.enemy_manager.wave_number = wave_num
+        self.enemy_manager.wave_complete = False
+        self.enemy_manager.enemies_spawned_this_wave = 0
+        self.enemy_manager.enemies_per_wave = 5 + wave_num * 2
+        self.enemy_manager.time_between_spawns = max(1.5, 3.0 - wave_num * 0.15)
+        self.enemy_manager.difficulty_multiplier = 1.0 + (wave_num - 1) * 0.10
+        
+        # Update stage theme
+        new_theme = min(4, (wave_num - 1) // 2 + 1)
+        if new_theme != self.current_stage_theme:
+            self.current_stage_theme = new_theme
+            self.create_background()
+    
     def _draw_pause_screen(self) -> None:
         """Draw pause overlay"""
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -641,19 +777,42 @@ class ArcadeScreen:
         self.screen.blit(overlay, (0, 0))
         
         pause_text = self.big_font.render("PAUSED", True, WHITE)
-        pause_rect = pause_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+        pause_rect = pause_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
         self.screen.blit(pause_text, pause_rect)
         
-        instructions = [
-            "Press P or SPACE to resume",
-            "Press ESC to return to menu",
-            "Press R to reset game"
-        ]
+        # Draw console if active
+        if self.console_active:
+            # Console background
+            console_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 20, 400, 40)
+            pygame.draw.rect(self.screen, (40, 40, 40), console_rect)
+            pygame.draw.rect(self.screen, WHITE, console_rect, 2)
+            
+            # Console text
+            console_text = self.font.render(self.console_input, True, WHITE)
+            self.screen.blit(console_text, (console_rect.x + 10, console_rect.y + 10))
+            
+            # Console hint
+            hint_text = self.small_font.render("Commands: /stage #, /wave #, /heal, /kill | ESC to cancel", True, (200, 200, 200))
+            hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, console_rect.bottom + 20))
+            self.screen.blit(hint_text, hint_rect)
+        else:
+            instructions = [
+                "Press P or SPACE to resume",
+                "Press / to open debug console",
+                "Press ESC to return to menu",
+                "Press R to reset game"
+            ]
+            
+            for i, instruction in enumerate(instructions):
+                text = self.font.render(instruction, True, WHITE)
+                text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + i * 40))
+                self.screen.blit(text, text_rect)
         
-        for i, instruction in enumerate(instructions):
-            text = self.font.render(instruction, True, WHITE)
-            text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + i * 40))
-            self.screen.blit(text, text_rect)
+        # Show console message if recent
+        if self.console_message and time.time() - self.console_message_time < 3:
+            msg_text = self.font.render(self.console_message, True, (0, 255, 0))
+            msg_rect = msg_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 150))
+            self.screen.blit(msg_text, msg_rect)
     
     def _draw_game_over_screen(self, surface: pygame.Surface):
         """Draw game over screen"""

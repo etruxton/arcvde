@@ -376,147 +376,464 @@ class Enemy:
             pygame.draw.rect(screen, (255, 0, 255), hitbox, 2)
     
     def _draw_zombie(self, screen: pygame.Surface, x: int, y: int, size: int, body_color: tuple):
-        """Draw zombie enemy"""
-        # Body
+        """Draw detailed zombie enemy with rotting features"""
+        # Tattered clothing body
         body_rect = pygame.Rect(x - size//3, y - size//2, size*2//3, size)
         pygame.draw.rect(screen, body_color, body_rect)
-        pygame.draw.rect(screen, self.color_scheme["detail"], body_rect, 2)
         
-        # Head
+        # Torn clothing details
+        for i in range(3):
+            tear_y = y - size//2 + random.randint(size//4, size*3//4)
+            tear_x = x - size//3 + random.randint(0, size*2//3)
+            pygame.draw.polygon(screen, (30, 40, 30), [
+                (tear_x, tear_y),
+                (tear_x - size//15, tear_y + size//10),
+                (tear_x + size//15, tear_y + size//10)
+            ])
+        
+        # Ribs showing through (lowered)
+        for i in range(-1, 2):
+            rib_y = y - size//8 + i * (size//8)  # Lowered from y - size//4
+            pygame.draw.arc(screen, (200, 200, 180),
+                          pygame.Rect(x - size//4, rib_y, size//2, size//8),
+                          0, math.pi, max(1, size//30))
+        
+        # Head with skull features
         head_size = size // 3
         pygame.draw.circle(screen, body_color, (x, y - size//2 - head_size//2), head_size)
         
-        # Eyes (glowing red)
-        eye_size = max(2, size // 15)
-        eye_y = y - size//2 - head_size//2
-        pygame.draw.circle(screen, self.color_scheme["eyes"], (x - head_size//3, eye_y), eye_size)
-        pygame.draw.circle(screen, self.color_scheme["eyes"], (x + head_size//3, eye_y), eye_size)
+        # Removed exposed skull patch (white dot)
         
-        # Arms (outstretched)
+        # Hollow eye sockets with pulsing red eyes
+        eye_y = y - size//2 - head_size//2
+        for eye_x in [x - head_size//3, x + head_size//3]:
+            # Dark socket
+            pygame.draw.circle(screen, (20, 20, 20), (eye_x, eye_y), max(3, size//12))
+            # Pulsing red glow (slower pulse)
+            pulse = (math.sin(self.animation_time * 2) + 1) / 2  # 0 to 1 pulse, slower
+            glow_size = max(2, size//20) + int(pulse * size//15)
+            pygame.draw.circle(screen, self.color_scheme["eyes"], (eye_x, eye_y), glow_size)
+            # Inner bright glow that also pulses
+            pygame.draw.circle(screen, (255, 100 + int(pulse * 100), 100), (eye_x, eye_y), max(1, glow_size//2))
+        
+        # Removed black mouth arc, just teeth (raised)
+        mouth_y = y - size//2 - head_size//4 + head_size//3  # Raised teeth
+        # Teeth
+        for i in range(-2, 3):
+            tooth_x = x + i * (head_size//6)
+            tooth_size = random.randint(size//30, size//20)
+            pygame.draw.polygon(screen, (255, 255, 230), [
+                (tooth_x, mouth_y),
+                (tooth_x - 2, mouth_y + tooth_size),
+                (tooth_x + 2, mouth_y + tooth_size)
+            ])
+        
+        # Arms with exposed bone
         arm_angle = math.sin(self.animation_time) * 0.2
-        pygame.draw.line(screen, body_color, 
-                        (x - size//3, y - size//4),
-                        (x - size//2 - size//4 * math.cos(arm_angle), 
-                         y - size//4 + size//4 * math.sin(arm_angle)), 
-                        max(2, size//20))
-        pygame.draw.line(screen, body_color,
-                        (x + size//3, y - size//4),
-                        (x + size//2 + size//4 * math.cos(-arm_angle),
-                         y - size//4 + size//4 * math.sin(-arm_angle)),
-                        max(2, size//20))
+        for arm_side, direction in [(-1, 1), (1, -1)]:
+            arm_start_x = x + arm_side * size//3
+            arm_end_x = x + arm_side * (size//2 + size//4 * math.cos(direction * arm_angle))
+            arm_end_y = y - size//4 + size//4 * math.sin(direction * arm_angle)
+            
+            # Arm flesh
+            pygame.draw.line(screen, body_color, 
+                           (arm_start_x, y - size//4),
+                           (arm_end_x, arm_end_y), 
+                           max(3, size//15))
+            # Exposed bone
+            pygame.draw.line(screen, (230, 230, 210),
+                           (arm_start_x, y - size//4),
+                           ((arm_start_x + arm_end_x)//2, (y - size//4 + arm_end_y)//2),
+                           max(1, size//30))
+            
+            # Clawed fingers
+            for finger in range(3):
+                finger_angle = direction * arm_angle + (finger - 1) * 0.2
+                finger_x = arm_end_x + math.cos(finger_angle) * size//15
+                finger_y = arm_end_y + math.sin(finger_angle) * size//15
+                pygame.draw.line(screen, (50, 50, 40),
+                               (arm_end_x, arm_end_y),
+                               (finger_x, finger_y),
+                               max(1, size//40))
+        
+        # Dripping decay effect
+        if random.random() < 0.3:
+            drip_x = x + random.randint(-size//3, size//3)
+            drip_y = y + size//2
+            pygame.draw.circle(screen, (100, 120, 80), (drip_x, drip_y), max(1, size//30))
     
     def _draw_demon(self, screen: pygame.Surface, x: int, y: int, size: int, body_color: tuple):
-        """Draw demon enemy"""
-        # Body (triangular/demonic shape)
+        """Draw terrifying demon with bat wings and flames"""
+        # Muscular body with scales
         body_points = [
             (x, y - size//2),
             (x - size//2, y + size//3),
             (x + size//2, y + size//3)
         ]
         pygame.draw.polygon(screen, body_color, body_points)
-        pygame.draw.polygon(screen, self.color_scheme["detail"], body_points, 2)
         
-        # Horns
-        horn_size = size // 4
-        pygame.draw.polygon(screen, (200, 50, 50), [
-            (x - size//4, y - size//2),
-            (x - size//3, y - size//2 - horn_size),
-            (x - size//5, y - size//2)
-        ])
-        pygame.draw.polygon(screen, (200, 50, 50), [
-            (x + size//4, y - size//2),
-            (x + size//3, y - size//2 - horn_size),
-            (x + size//5, y - size//2)
-        ])
+        # Scale texture (properly positioned within triangle body)
+        # Triangle body spans from (x, y - size//2) at top to base at (y + size//3)
+        # Width varies with height - narrower at top, wider at bottom
+        for j in range(3):  # Rows of scales
+            # Calculate Y position and width at this height
+            scale_y = y - size//3 + j * (size//4)
+            # Calculate triangle width at this Y position
+            # Triangle is narrowest at top (y - size//2) and widest at bottom (y + size//3)
+            height_ratio = (scale_y - (y - size//2)) / (size * 5/6)  # 0 at top, 1 at bottom
+            triangle_half_width = size//2 * max(0.2, height_ratio)  # Min width to avoid scales at tip
+            
+            # Place scales within the triangle width at this height
+            num_scales = 2 if j == 0 else 3  # Fewer scales at top
+            for i in range(num_scales):
+                if num_scales == 2:
+                    scale_x = x - triangle_half_width//2 + i * triangle_half_width
+                else:
+                    scale_x = x - triangle_half_width + i * triangle_half_width
+                
+                # Only draw if within reasonable bounds
+                if abs(scale_x - x) <= triangle_half_width:
+                    pygame.draw.arc(screen, (100, 20, 20),
+                                  pygame.Rect(scale_x - size//16, scale_y, size//8, size//8),
+                                  0, math.pi, 1)
         
-        # Eyes (glowing yellow)
-        eye_size = max(3, size // 12)
-        pygame.draw.circle(screen, self.color_scheme["eyes"], (x - size//5, y - size//3), eye_size)
-        pygame.draw.circle(screen, self.color_scheme["eyes"], (x + size//5, y - size//3), eye_size)
+        # Twisted horns with ridges
+        horn_size = size // 3
+        for horn_side in [-1, 1]:
+            # Main horn
+            horn_points = [
+                (x + horn_side * size//4, y - size//2),
+                (x + horn_side * size//3, y - size//2 - horn_size),
+                (x + horn_side * size//3 + horn_side * size//8, y - size//2 - horn_size + size//8),
+                (x + horn_side * size//5, y - size//2)
+            ]
+            pygame.draw.polygon(screen, (150, 30, 30), horn_points)
+            # Horn ridges
+            for ridge in range(3):
+                ridge_y = y - size//2 - (ridge * horn_size//3)
+                pygame.draw.line(screen, (100, 20, 20),
+                               (x + horn_side * size//4, ridge_y),
+                               (x + horn_side * size//3, ridge_y - horn_size//6),
+                               max(1, size//40))
         
-        # Wings (simplified)
+        # Burning eyes with fire effect
+        eye_size = max(4, size // 10)
+        for eye_x in [x - size//5, x + size//5]:
+            # Fire aura around eyes
+            for flame in range(3):
+                flame_size = eye_size + flame * 2
+                flame_alpha = 100 - flame * 30
+                flame_color = (255, 200 - flame * 50, 0)
+                pygame.draw.circle(screen, flame_color, (eye_x, y - size//3), flame_size, 1)
+            # Main eye
+            pygame.draw.circle(screen, self.color_scheme["eyes"], (eye_x, y - size//3), eye_size)
+            # Vertical slit pupil that moves side to side (looking around)
+            look_offset = math.sin(self.animation_time * 2) * eye_size//3
+            pygame.draw.line(screen, (0, 0, 0), 
+                           (eye_x + look_offset, y - size//3 - eye_size + 2),
+                           (eye_x + look_offset, y - size//3 + eye_size - 2), 2)
+        
+        # Large fangs (removed black mouth line)
+        mouth_y = y - size//5
+        for fang_x in [x - size//5, x + size//5]:
+            pygame.draw.polygon(screen, (255, 255, 200), [
+                (fang_x, mouth_y),
+                (fang_x - size//20, mouth_y + size//8),
+                (fang_x + size//20, mouth_y + size//8)
+            ])
+        
+        # Detailed bat wings
         wing_spread = math.sin(self.animation_time * 2) * 0.3
-        pygame.draw.arc(screen, body_color,
-                       pygame.Rect(x - size, y - size//2, size, size//2),
-                       -math.pi/4 + wing_spread, math.pi/4 + wing_spread, max(2, size//25))
-        pygame.draw.arc(screen, body_color,
-                       pygame.Rect(x, y - size//2, size, size//2),
-                       3*math.pi/4 - wing_spread, 5*math.pi/4 - wing_spread, max(2, size//25))
+        for wing_side in [-1, 1]:
+            # Wing membrane
+            wing_points = [
+                (x + wing_side * size//3, y - size//3),
+                (x + wing_side * size, y - size//2 + math.sin(self.animation_time * 2) * size//10),
+                (x + wing_side * (size + size//3), y),
+                (x + wing_side * size, y + size//4),
+                (x + wing_side * size//2, y)
+            ]
+            pygame.draw.polygon(screen, (80, 20, 20), wing_points)
+            # Wing bones
+            for bone in range(3):
+                bone_end_x = x + wing_side * (size + bone * size//6)
+                bone_end_y = y - size//3 + bone * size//4
+                pygame.draw.line(screen, (60, 15, 15),
+                               (x + wing_side * size//3, y - size//3),
+                               (bone_end_x, bone_end_y),
+                               max(1, size//30))
+        
+        # Flaming aura effect
+        if random.random() < 0.5:
+            for _ in range(3):
+                flame_x = x + random.randint(-size//2, size//2)
+                flame_y = y + size//3 + random.randint(0, size//6)
+                flame_size = random.randint(2, 4)
+                pygame.draw.circle(screen, (255, random.randint(100, 200), 0), 
+                                 (flame_x, flame_y), flame_size)
     
     def _draw_skull(self, screen: pygame.Surface, x: int, y: int, size: int, body_color: tuple):
-        """Draw floating skull enemy"""
-        # Floating animation
+        """Draw ghostly floating skull with ethereal effects"""
+        # Floating animation with rotation
         float_offset = math.sin(self.animation_time * 3) * size * 0.1
+        rotation = math.sin(self.animation_time * 2) * 0.1
         y = int(y + float_offset)
         
-        # Skull
+        # Ethereal aura (ghostly trail)
+        for trail in range(3):
+            trail_alpha = 30 - trail * 10
+            trail_y = y - trail * 3
+            trail_size = size // 2 + trail * 3
+            aura_surface = pygame.Surface((trail_size * 2, trail_size * 2), pygame.SRCALPHA)
+            pygame.draw.circle(aura_surface, (150, 150, 255, trail_alpha), 
+                             (trail_size, trail_size), trail_size)
+            screen.blit(aura_surface, (x - trail_size, trail_y - trail_size))
+        
+        # Cracked skull
         skull_size = size // 2
         pygame.draw.circle(screen, body_color, (x, y), skull_size)
-        pygame.draw.circle(screen, self.color_scheme["detail"], (x, y), skull_size, 2)
         
-        # Eye sockets (glowing)
-        eye_size = max(4, skull_size // 4)
-        pygame.draw.circle(screen, BLACK, (x - skull_size//3, y - skull_size//4), eye_size)
-        pygame.draw.circle(screen, self.color_scheme["eyes"], 
-                          (x - skull_size//3, y - skull_size//4), eye_size//2)
-        pygame.draw.circle(screen, BLACK, (x + skull_size//3, y - skull_size//4), eye_size)
-        pygame.draw.circle(screen, self.color_scheme["eyes"],
-                          (x + skull_size//3, y - skull_size//4), eye_size//2)
+        # Skull cracks
+        for crack in range(2):
+            crack_start_x = x + random.randint(-skull_size//2, skull_size//2)
+            crack_start_y = y - skull_size//2
+            crack_end_x = crack_start_x + random.randint(-skull_size//3, skull_size//3)
+            crack_end_y = y + random.randint(0, skull_size//2)
+            pygame.draw.line(screen, (180, 180, 180),
+                           (crack_start_x, crack_start_y),
+                           (crack_end_x, crack_end_y), 1)
         
-        # Jaw
+        # Deep eye sockets with swirling energy
+        eye_size = max(5, skull_size // 3)
+        for eye_x in [x - skull_size//3, x + skull_size//3]:
+            # Dark socket
+            pygame.draw.circle(screen, BLACK, (eye_x, y - skull_size//4), eye_size)
+            # Swirling ghostly energy
+            for swirl in range(3):
+                swirl_angle = self.animation_time * 4 + swirl * 2
+                swirl_x = eye_x + math.cos(swirl_angle) * eye_size//2
+                swirl_y = y - skull_size//4 + math.sin(swirl_angle) * eye_size//2
+                pygame.draw.circle(screen, self.color_scheme["eyes"], 
+                                 (int(swirl_x), int(swirl_y)), max(2, eye_size//4))
+            # Central glow
+            pygame.draw.circle(screen, (100, 255, 255), (eye_x, y - skull_size//4), max(1, eye_size//6))
+        
+        # Nasal cavity
+        nose_points = [
+            (x, y - skull_size//8),
+            (x - skull_size//8, y + skull_size//8),
+            (x + skull_size//8, y + skull_size//8)
+        ]
+        pygame.draw.polygon(screen, BLACK, nose_points)
+        
+        # Broken jaw with missing teeth
         jaw_points = [
             (x - skull_size//2, y + skull_size//4),
-            (x, y + skull_size//2),
+            (x - skull_size//4, y + skull_size//2),
+            (x + skull_size//4, y + skull_size//2),
             (x + skull_size//2, y + skull_size//4)
         ]
         pygame.draw.polygon(screen, body_color, jaw_points)
         
-        # Teeth
-        for i in range(-2, 3):
-            tooth_x = x + i * (skull_size // 5)
-            pygame.draw.line(screen, self.color_scheme["detail"],
-                           (tooth_x, y + skull_size//4),
-                           (tooth_x, y + skull_size//3),
-                           max(1, size//30))
+        # Uneven teeth (some missing)
+        teeth_positions = [-2, -1, 1, 2]  # Missing center tooth
+        for i in teeth_positions:
+            if random.random() < 0.8:  # 20% chance tooth is missing
+                tooth_x = x + i * (skull_size // 5)
+                tooth_height = random.randint(skull_size//10, skull_size//6)
+                pygame.draw.polygon(screen, (255, 255, 230), [
+                    (tooth_x - 2, y + skull_size//4),
+                    (tooth_x, y + skull_size//4 + tooth_height),
+                    (tooth_x + 2, y + skull_size//4)
+                ])
+        
+        # Ectoplasmic wisps
+        for wisp in range(2):
+            wisp_angle = self.animation_time * 3 + wisp * math.pi
+            wisp_x = x + math.cos(wisp_angle) * skull_size
+            wisp_y = y + math.sin(wisp_angle) * skull_size//2
+            wisp_size = random.randint(3, 6)
+            pygame.draw.circle(screen, (200, 200, 255), 
+                             (int(wisp_x), int(wisp_y)), wisp_size, 1)
     
     def _draw_giant(self, screen: pygame.Surface, x: int, y: int, size: int, body_color: tuple):
-        """Draw giant enemy"""
-        # Massive body
+        """Draw massive armored giant with battle scars"""
+        # Massive armored body
         body_width = size
         body_height = int(size * 1.5)
         body_rect = pygame.Rect(x - body_width//2, y - body_height//2, body_width, body_height)
         pygame.draw.rect(screen, body_color, body_rect, border_radius=size//8)
-        pygame.draw.rect(screen, self.color_scheme["detail"], body_rect, 3, border_radius=size//8)
         
-        # Head
+        # Armor plates
+        for plate_y in range(3):
+            plate_rect = pygame.Rect(x - body_width//3, 
+                                    y - body_height//2 + plate_y * body_height//3,
+                                    body_width*2//3, body_height//4)
+            pygame.draw.rect(screen, (60, 30, 90), plate_rect, border_radius=size//16)
+            pygame.draw.rect(screen, (40, 20, 60), plate_rect, 2, border_radius=size//16)
+            # Battle damage on armor
+            for _ in range(2):
+                scratch_x = plate_rect.x + random.randint(0, plate_rect.width)
+                scratch_y = plate_rect.y + random.randint(0, plate_rect.height)
+                pygame.draw.line(screen, (30, 15, 45),
+                               (scratch_x, scratch_y),
+                               (scratch_x + size//10, scratch_y + size//15), 1)
+        
+        # Scarred head with war paint
         head_size = size // 2
-        pygame.draw.circle(screen, body_color, (x, y - body_height//2 - head_size//3), head_size)
+        head_y = y - body_height//2 - head_size//3
+        pygame.draw.circle(screen, body_color, (x, head_y), head_size)
         
-        # Glowing eyes
-        eye_size = max(4, size // 10)
-        eye_y = y - body_height//2 - head_size//3
-        pygame.draw.circle(screen, self.color_scheme["eyes"], (x - head_size//3, eye_y), eye_size)
-        pygame.draw.circle(screen, self.color_scheme["eyes"], (x + head_size//3, eye_y), eye_size)
+        # War paint stripes
+        for stripe in range(3):
+            stripe_y = head_y - head_size//3 + stripe * head_size//3
+            pygame.draw.line(screen, (180, 0, 0),
+                           (x - head_size//2, stripe_y),
+                           (x + head_size//2, stripe_y),
+                           max(2, size//30))
         
-        # Massive arms
-        arm_width = max(4, size // 10)
-        pygame.draw.line(screen, body_color,
-                        (x - body_width//2, y - body_height//4),
-                        (x - body_width, y + body_height//4),
-                        arm_width)
-        pygame.draw.line(screen, body_color,
-                        (x + body_width//2, y - body_height//4),
-                        (x + body_width, y + body_height//4),
-                        arm_width)
+        # Battle scar across face
+        pygame.draw.line(screen, (150, 100, 100),
+                       (x - head_size//3, head_y - head_size//4),
+                       (x + head_size//4, head_y + head_size//3),
+                       max(2, size//25))
         
-        # Spikes on shoulders
-        spike_size = size // 6
-        for spike_x in [x - body_width//2, x + body_width//2]:
-            pygame.draw.polygon(screen, self.color_scheme["detail"], [
-                (spike_x, y - body_height//2),
-                (spike_x - spike_size//2, y - body_height//2 - spike_size),
-                (spike_x + spike_size//2, y - body_height//2 - spike_size)
+        # Glowing angry eyes with pulsing yellow
+        base_eye_size = max(5, size // 8)
+        eye_y = head_y
+        # Pulsing effect for yellow center (slower)
+        pulse = (math.sin(self.animation_time * 1.5) + 1) / 2  # 0 to 1, slower pulse
+        
+        for eye_x in [x - head_size//3, x + head_size//3]:
+            # Outer glow
+            for glow in range(3):
+                glow_size = base_eye_size + glow * 2
+                glow_alpha = 80 - glow * 25
+                pygame.draw.circle(screen, (255, 128, 0), (eye_x, eye_y), glow_size, 1)
+            # Main eye
+            pygame.draw.circle(screen, self.color_scheme["eyes"], (eye_x, eye_y), base_eye_size)
+            # Pulsing yellow pupil (grows and shrinks)
+            pupil_size = max(2, int(base_eye_size//3 + pulse * base_eye_size//3))
+            pygame.draw.circle(screen, (255, 255, 0), (eye_x, eye_y), pupil_size)
+        
+        # Roaring mouth with tusks
+        mouth_y = head_y + head_size//3
+        mouth_rect = pygame.Rect(x - head_size//2, mouth_y - head_size//6, head_size, head_size//3)
+        pygame.draw.ellipse(screen, (20, 20, 20), mouth_rect)
+        # Tusks (starting inside mouth)
+        for tusk_x in [x - head_size//3, x + head_size//3]:
+            pygame.draw.polygon(screen, (255, 255, 200), [
+                (tusk_x, mouth_y + size//20),  # Start inside mouth
+                (tusk_x - size//15, mouth_y - size//15),  # End point slightly lower
+                (tusk_x + size//15, mouth_y - size//15)
             ])
+        
+        # Massive spiked arms
+        arm_width = max(6, size // 8)
+        for arm_side in [-1, 1]:
+            arm_start_x = x + arm_side * body_width//2
+            arm_end_x = x + arm_side * body_width
+            arm_end_y = y + body_height//4
+            
+            # Main arm
+            pygame.draw.line(screen, body_color,
+                           (arm_start_x, y - body_height//4),
+                           (arm_end_x, arm_end_y),
+                           arm_width)
+            
+            # Arm spikes
+            for spike in range(2):
+                spike_pos = 0.3 + spike * 0.3
+                spike_x = arm_start_x + (arm_end_x - arm_start_x) * spike_pos
+                spike_y = y - body_height//4 + (arm_end_y - (y - body_height//4)) * spike_pos
+                pygame.draw.polygon(screen, (100, 50, 150), [
+                    (spike_x, spike_y),
+                    (spike_x + arm_side * size//10, spike_y - size//8),
+                    (spike_x + arm_side * size//15, spike_y + size//20)
+                ])
+            
+            # Clawed hand
+            for claw in range(3):
+                claw_angle = arm_side * 0.3 + (claw - 1) * 0.2
+                claw_x = arm_end_x + math.cos(claw_angle) * size//8
+                claw_y = arm_end_y + math.sin(claw_angle) * size//8
+                pygame.draw.line(screen, (200, 200, 200),
+                               (arm_end_x, arm_end_y),
+                               (claw_x, claw_y),
+                               max(2, size//30))
+        
+        # Shoulder spikes (positioned at body edges)
+        spike_size = size // 4
+        spike_positions = [
+            (x - body_width//2, -1),  # Left spike at body edge
+            (x + body_width//2, 1)  # Right spike at body edge
+        ]
+        for spike_base_x, side in spike_positions:
+            # Multiple spikes
+            for spike_num in range(2):
+                spike_offset = spike_num * size//8
+                spike_x = spike_base_x + spike_offset * side
+                pygame.draw.polygon(screen, (120, 60, 180), [
+                    (spike_x, y - body_height//2),
+                    (spike_x - spike_size//3, y - body_height//2 - spike_size),
+                    (spike_x + spike_size//3, y - body_height//2 - spike_size)
+                ])
+                # Spike highlight
+                pygame.draw.line(screen, (150, 80, 200),
+                               (spike_x, y - body_height//2),
+                               (spike_x, y - body_height//2 - spike_size),
+                               max(1, size//40))
+        
+        # Ground crack effect under giant
+        if random.random() < 0.3:
+            crack_y = y + body_height//2
+            for crack in range(2):
+                crack_x = x + random.randint(-body_width//2, body_width//2)
+                pygame.draw.line(screen, (50, 50, 50),
+                               (crack_x, crack_y),
+                               (crack_x + random.randint(-size//4, size//4), crack_y + size//6),
+                               max(1, size//30))
+        
+        # New special effect: Electric sparks on random body parts
+        if random.random() < 0.4:
+            # Choose random start and end points on the giant's body
+            # Possible positions: shoulders, arms, chest, head
+            body_positions = [
+                (x - body_width//2, y - body_height//2),  # Left shoulder
+                (x + body_width//2, y - body_height//2),  # Right shoulder
+                (x - body_width//2, y),  # Left side
+                (x + body_width//2, y),  # Right side
+                (x, y - body_height//2),  # Top center
+                (x, y + body_height//2),  # Bottom center
+                (x - body_width, y + body_height//4),  # Left arm end
+                (x + body_width, y + body_height//4),  # Right arm end
+            ]
+            
+            # Pick two random positions
+            start_pos = random.choice(body_positions)
+            end_pos = random.choice([p for p in body_positions if p != start_pos])
+            
+            spark_start_x, spark_start_y = start_pos
+            spark_end_x, spark_end_y = end_pos
+            
+            # Create jagged lightning path
+            points = [(spark_start_x, spark_start_y)]
+            for i in range(2 + random.randint(0, 2)):  # Variable number of segments
+                progress = (i + 1) / (3.0)
+                mid_x = spark_start_x + (spark_end_x - spark_start_x) * progress
+                mid_y = spark_start_y + (spark_end_y - spark_start_y) * progress
+                # Add random offset for jaggedness
+                mid_x += random.randint(-size//15, size//15)
+                mid_y += random.randint(-size//15, size//15)
+                points.append((mid_x, mid_y))
+            points.append((spark_end_x, spark_end_y))
+            
+            # Draw lightning
+            for i in range(len(points) - 1):
+                pygame.draw.line(screen, (200, 150, 255),
+                               points[i], points[i + 1], max(2, size//40))
+                pygame.draw.line(screen, (255, 255, 255),
+                               points[i], points[i + 1], max(1, size//60))
     
     def _draw_health_bar(self, screen: pygame.Surface, x: int, y: int, width: int):
         """Draw health bar above enemy"""
@@ -658,8 +975,11 @@ class EnemyManager:
             enemy_types.append("skull")
         if self.wave_number >= 5:
             enemy_types.append("demon")
-        if self.wave_number >= 7 and random.random() < 0.2:
-            enemy_types.append("giant")
+        if self.wave_number >= 7:
+            # Stage 4 - more giants and mixed enemy types
+            enemy_types.extend(["demon", "skull"])  # More variety
+            if random.random() < 0.2:  # 20% chance of giants
+                enemy_types.append("giant")
         
         enemy_type = random.choice(enemy_types)
         
