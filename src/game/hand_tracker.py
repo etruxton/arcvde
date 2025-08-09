@@ -31,6 +31,7 @@ class HandTracker:
         self.last_shoot_time = 0
         self.previous_thumb_y = None
         self.previous_time = 0
+        self.thumb_reset = True  # Track if thumb has been reset after shooting
     
     def calculate_distance(self, point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
         """Calculate 2D distance between two points"""
@@ -169,7 +170,7 @@ class HandTracker:
             return False, None, None, None, None, self.confidence_score
     
     def detect_shooting_gesture(self, thumb_tip, thumb_middle_dist: float) -> bool:
-        """Detect shooting gesture (thumb flick)"""
+        """Detect shooting gesture (thumb flick) - requires thumb reset between shots"""
         current_time = time.time()
         current_thumb_y = thumb_tip.y
         
@@ -184,15 +185,27 @@ class HandTracker:
             velocity_threshold = SHOOT_VELOCITY_THRESHOLD * (1.5 if self.detection_mode != "standard" else 1.0)
             distance_threshold = SHOOT_DISTANCE_THRESHOLD * (1.5 if self.detection_mode != "standard" else 1.0)
             
+            # Check for thumb reset - MUCH stricter thresholds
+            # Require significant upward movement OR significant distance from middle finger
+            reset_velocity_threshold = -velocity_threshold * 2.0  # Need strong upward movement
+            reset_distance_threshold = distance_threshold * 2.5   # Need thumb far from middle finger
+            
+            if thumb_velocity < reset_velocity_threshold or thumb_middle_dist > reset_distance_threshold:
+                # Only reset if we haven't just shot (prevents immediate reset from recoil)
+                if current_time - self.last_shoot_time > 0.1:
+                    self.thumb_reset = True
+                    self.shooting_detected = False
+            
+            # Detect shooting only if thumb was reset
+            # Also require minimum time between thumb movements to prevent hand shake triggering
             if thumb_velocity > velocity_threshold and thumb_middle_dist < distance_threshold:
-                if not self.shooting_detected and current_time - self.last_shoot_time > COOLDOWN_DURATION:
+                if self.thumb_reset and not self.shooting_detected and delta_time > 0.02:
                     self.shooting_detected = True
+                    self.thumb_reset = False  # Require reset for next shot
                     self.last_shoot_time = current_time
                     self.previous_thumb_y = current_thumb_y
                     self.previous_time = current_time
                     return True
-            else:
-                self.shooting_detected = False
         
         self.previous_thumb_y = current_thumb_y
         self.previous_time = current_time
@@ -220,3 +233,4 @@ class HandTracker:
         self.previous_time = 0
         self.detection_mode = "none"
         self.confidence_score = 0
+        self.thumb_reset = True

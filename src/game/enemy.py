@@ -19,9 +19,9 @@ class BloodParticle:
         self.vy = vy  # Velocity y
         self.size = size
         self.original_size = size
-        self.lifetime = 3.0  # Seconds
+        self.lifetime = 2.5  # Seconds - moderate lifetime
         self.age = 0
-        self.gravity = 500  # Pixels per second squared
+        self.gravity = 1500  # Pixels per second squared - fast but not too fast
         self.splattered = False
         
         # 3D perspective properties
@@ -50,9 +50,9 @@ class BloodParticle:
             gravity_scale = 0.5 + 0.5 * (1 - self.enemy_z)  # Less gravity when far
             self.vy += self.gravity * gravity_scale * dt
             
-            # Apply air resistance
-            self.vx *= 0.98
-            self.vy *= 0.99
+            # Apply air resistance (balanced for good spread with fast fall)
+            self.vx *= 0.96  # Moderate horizontal resistance
+            self.vy *= 0.98  # Less resistance vertically for faster fall
             
             # Check if hit ground at the correct perspective depth
             if self.y > self.ground_y:
@@ -145,7 +145,7 @@ class Enemy:
         """Get movement speed based on enemy type"""
         speed_map = {
             "zombie": 0.15,
-            "demon": 0.25,
+            "demon": 0.18,  # Reduced from 0.25 for better balance
             "skull": 0.35,
             "giant": 0.10
         }
@@ -262,18 +262,26 @@ class Enemy:
             num_particles = random.randint(3, 6) if self.health > 0 else random.randint(8, 15)
             for _ in range(num_particles):
                 # Create particle with velocity exploding outward
-                angle = random.uniform(0, math.pi * 2)
-                speed = random.uniform(100, 300) if self.health > 0 else random.uniform(200, 500)
+                angle = random.uniform(0, math.pi * 2)  # Full 360 degree spread
+                # Balanced speeds - not too far, not too close
+                if self.health > 0:
+                    speed = random.uniform(200, 400)  # Normal hit
+                else:
+                    speed = random.uniform(300, 600)  # Death - more dramatic but not excessive
                 
                 # Scale speed based on distance for perspective
                 perspective_scale = 1.0 / (self.z + 0.3)
                 speed = speed * perspective_scale * 0.7
                 
+                # Balanced horizontal/vertical movement
+                vx_multiplier = 0.85  # Good horizontal spread
+                vy_offset = -150  # Moderate upward burst
+                
                 particle = BloodParticle(
                     x=hit_pos[0],
                     y=hit_pos[1],
-                    vx=math.cos(angle) * speed,
-                    vy=math.sin(angle) * speed - 100,  # Negative for upward burst
+                    vx=math.cos(angle) * speed * vx_multiplier,
+                    vy=math.sin(angle) * speed * 0.7 + vy_offset,  # Slightly reduced vertical component
                     size=random.randint(3, 8) if self.health > 0 else random.randint(4, 10),
                     enemy_z=self.z  # Pass enemy's distance for perspective
                 )
@@ -657,10 +665,10 @@ class EnemyManager:
         
         enemy = Enemy(spawn_x, spawn_z, enemy_type)
         
-        # Apply difficulty scaling
+        # Apply difficulty scaling (reduced scaling for better balance)
         enemy.health = int(enemy.health * self.difficulty_multiplier)
         enemy.max_health = enemy.health
-        enemy.speed *= (1 + (self.wave_number - 1) * 0.1)
+        enemy.speed *= (1 + (self.wave_number - 1) * 0.05)  # Reduced from 0.1 to 0.05
         
         self.enemies.append(enemy)
         self.enemies_spawned_this_wave += 1
@@ -671,8 +679,8 @@ class EnemyManager:
         self.wave_complete = False
         self.enemies_spawned_this_wave = 0
         self.enemies_per_wave = 5 + self.wave_number * 2
-        self.time_between_spawns = max(1.0, 3.0 - self.wave_number * 0.2)
-        self.difficulty_multiplier = 1.0 + (self.wave_number - 1) * 0.15
+        self.time_between_spawns = max(1.5, 3.0 - self.wave_number * 0.15)  # Slower spawn rate
+        self.difficulty_multiplier = 1.0 + (self.wave_number - 1) * 0.10  # Reduced from 0.15
     
     def check_hit(self, x: int, y: int, damage: int = 10) -> Tuple[int, bool]:
         """Check if shot hit an enemy, returns (score_gained, killed)"""
