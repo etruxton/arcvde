@@ -1,5 +1,5 @@
 """
-Arcade mode game screen with doom-style enemy waves
+Doomsday mode game screen with doom-style enemy waves
 """
 
 import pygame
@@ -13,8 +13,8 @@ from utils.camera_manager import CameraManager
 from game.hand_tracker import HandTracker
 from game.enemy import EnemyManager
 
-class ArcadeScreen:
-    """Arcade mode gameplay screen with enemy waves"""
+class DoomsdayScreen:
+    """Doomsday mode gameplay screen with enemy waves"""
     
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
         self.screen = screen

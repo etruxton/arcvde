@@ -9,7 +9,7 @@ from utils.constants import *
 from utils.camera_manager import CameraManager
 from screens.menu_screen import MenuScreen
 from screens.game_screen import GameScreen
-from screens.arcade_screen import ArcadeScreen
+from screens.doomsday_screen import DoomsdayScreen
 from screens.settings_screen import SettingsScreen
 from screens.instructions_screen import InstructionsScreen
 
@@ -22,7 +22,7 @@ class GameManager:
         
         # Create screen
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Finger Gun Game")
+        pygame.display.set_caption("arCVde")
         
         # Initialize clock
         self.clock = pygame.time.Clock()
@@ -47,7 +47,7 @@ class GameManager:
         """Initialize all game screens"""
         self.screens[GAME_STATE_MENU] = MenuScreen(self.screen, self.camera_manager)
         self.screens[GAME_STATE_PLAYING] = GameScreen(self.screen, self.camera_manager)
-        self.screens[GAME_STATE_ARCADE] = ArcadeScreen(self.screen, self.camera_manager)
+        self.screens[GAME_STATE_ARCADE] = DoomsdayScreen(self.screen, self.camera_manager)
         self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
         self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
     
@@ -81,9 +81,9 @@ class GameManager:
                 if hasattr(game_screen, 'reset_game'):
                     game_screen.reset_game()
             elif new_state == GAME_STATE_ARCADE:
-                arcade_screen = self.screens[GAME_STATE_ARCADE]
-                if hasattr(arcade_screen, 'reset_game'):
-                    arcade_screen.reset_game()
+                doomsday_screen = self.screens[GAME_STATE_ARCADE]
+                if hasattr(doomsday_screen, 'reset_game'):
+                    doomsday_screen.reset_game()
         else:
             print(f"Unknown state: {new_state}")
     
@@ -110,7 +110,7 @@ class GameManager:
     
     def run(self) -> None:
         """Main game loop"""
-        print("Starting Finger Gun Game...")
+        print("Starting arCVde...")
         print(f"Screen resolution: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
         print(f"Camera info: {self.camera_manager.get_camera_info()}")
         

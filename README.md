@@ -1,4 +1,6 @@
-# Finger Gun Game
+# arCVde
+
+![arCVde Logo](assets/arCVde-2.png)
 
 A real-time hand gesture recognition game where you use your finger gun to shoot targets and battle waves of enemies! This project combines OpenCV hand tracking with Pygame to create interactive shooting games controlled by your hand movements.
 
@@ -6,7 +8,7 @@ A real-time hand gesture recognition game where you use your finger gun to shoot
 
 - **Two Game Modes:**
   - **Target Practice** - Classic target shooting with score tracking
-  - **Arcade Mode** - Battle waves of approaching enemies in a doom-style survival game
+  - **Doomsday** - Battle waves of approaching enemies in a doom-style survival game
 - **Real-time hand tracking** using MediaPipe with enhanced gesture detection
 - **Multi-mode detection system** that works even when pointing directly at the camera
 - **Four unique enemy types** with detailed animations and AI behaviors
@@ -27,7 +29,7 @@ Make a finger gun gesture (index finger extended, other fingers curled, thumb up
 #### Target Practice
 Classic shooting range experience where targets spawn randomly on screen. Test your accuracy and speed as you shoot down targets before they disappear.
 
-#### Arcade Mode
+#### Doomsday
 Face waves of approaching enemies in an apocalyptic survival game:
 - **4 Enemy Types:** Zombies, Demons, Skulls, and Giants
 - **4 Themed Stages:** Urban Decay, Hellscape, Ghostly Void, and Apocalypse
@@ -64,7 +66,7 @@ python main.py
 ```
 
 The game will start with a main menu where you can:
-- **ARCADE MODE** - Battle waves of enemies in survival mode
+- **DOOMSDAY** - Battle waves of enemies in survival mode
 - **TARGET PRACTICE** - Classic target shooting game
 - **HOW TO PLAY** - View detailed instructions
 - **SETTINGS** - Configure camera and other options
@@ -74,7 +76,7 @@ The game will start with a main menu where you can:
 
 **In Menu:**
 - Mouse clicks or shoot at buttons with finger gun
-- Keyboard shortcuts: 1 for Arcade, 2 for Target Practice
+- Keyboard shortcuts: 1 for Doomsday, 2 for Target Practice
 
 **In Target Practice:**
 - **Aim**: Make finger gun gesture and move your hand
@@ -83,13 +85,13 @@ The game will start with a main menu where you can:
 - **Reset**: Press R to restart
 - **Menu**: Press ESC to return to main menu
 
-**In Arcade Mode:**
+**In Doomsday:**
 - **Aim**: Make finger gun gesture and move your hand
 - **Shoot**: Flick your thumb down (requires thumb reset between shots)
 - **Pause**: Press P to pause and access debug console
 - **Menu**: Press ESC to return to main menu
 
-**Debug Console (Arcade Mode - when paused):**
+**Debug Console (Doomsday - when paused):**
 - Type `/stage [1-4]` - Jump to specific stage
 - Type `/wave [1-8]` - Jump to specific wave
 - Type `/heal` - Restore full health
@@ -98,7 +100,7 @@ The game will start with a main menu where you can:
 ## Project Structure
 
 ```
-finger-gun-pygame/
+arcvde/
 ├── main.py                 # Main entry point
 ├── src/
 │   ├── game/
@@ -109,7 +111,7 @@ finger-gun-pygame/
 │   ├── screens/
 │   │   ├── menu_screen.py  # Main menu with animated enemy showcase
 │   │   ├── game_screen.py  # Target practice gameplay
-│   │   ├── arcade_screen.py # Arcade mode with waves and stages
+│   │   ├── doomsday_screen.py # Doomsday mode with waves and stages
 │   │   ├── settings_screen.py # Camera and settings configuration
 │   │   └── instructions_screen.py # How-to tutorial
 │   └── utils/
@@ -131,7 +133,7 @@ finger-gun-pygame/
 - **camera_manager.py** - Handles camera device detection and switching
 - **menu_screen.py** - Main menu with animated enemy showcase
 - **game_screen.py** - Target practice mode with score tracking
-- **arcade_screen.py** - Wave-based survival mode with stages and bosses
+- **doomsday_screen.py** - Wave-based survival mode with stages and bosses
 - **settings_screen.py** - Camera selection and configuration
 - **instructions_screen.py** - Interactive tutorial with examples
 
@@ -167,7 +169,7 @@ All game constants can be modified in `src/utils/constants.py`:
 - **Adaptive Thresholds**: Adjusts sensitivity based on detection mode
 - **Real-time Feedback**: Shows confidence scores and detection mode
 
-### Arcade Mode Features
+### Doomsday Features
 - **Enemy Types**:
   - **Zombies**: Slow but persistent, with rotting appearance
   - **Demons**: Fast triangular demons with bat wings
@@ -186,7 +188,7 @@ All game constants can be modified in `src/utils/constants.py`:
 - **Smart Spawning**: Avoids camera area and existing targets
 - **Performance Monitoring**: FPS counter and optimization
 - **Pause/Resume**: Full game state management
-- **Combo System**: Chain kills for bonus points in arcade mode
+- **Combo System**: Chain kills for bonus points in Doomsday mode
 
 ## Requirements
 

@@ -1,4 +1,4 @@
-# Enhanced Finger Gun Tracking
+# Enhanced Hand Tracking for arCVde
 
 ## The Problem
 When pointing directly at the camera, MediaPipe struggles because:

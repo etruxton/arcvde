@@ -258,7 +258,7 @@ def main():
     
     # Initialize Pygame screen
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Enhanced Finger Gun Game")
+    pygame.display.set_caption("arCVde")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 36)
     small_font = pygame.font.Font(None, 24)

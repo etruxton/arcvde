@@ -6,6 +6,7 @@ import pygame
 import cv2
 import time
 import math
+import os
 from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
@@ -90,7 +91,7 @@ class MenuScreen(BaseScreen):
         
         self.arcade_button = Button(
             center_x, start_y, button_width, button_height,
-            "ARCADE MODE", self.button_font
+            "DOOMSDAY", self.button_font
         )
         
         self.play_button = Button(
@@ -122,6 +123,10 @@ class MenuScreen(BaseScreen):
         # Enemy showcase
         self.showcase_enemies = []
         self.init_enemy_showcase()
+        
+        # Load logo
+        self.logo = None
+        self.load_logo()
     
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
@@ -179,6 +184,24 @@ class MenuScreen(BaseScreen):
         demon.animation_time = math.pi * 1.5
         self.showcase_enemies.append(demon)
     
+    def load_logo(self):
+        """Load the game logo image"""
+        try:
+            # Get the path relative to the main project directory
+            logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "arCVde-2.png")
+            if os.path.exists(logo_path):
+                self.logo = pygame.image.load(logo_path).convert_alpha()
+                # Scale the logo to a reasonable size (adjust as needed)
+                logo_width = 500  # Adjust this value to fit your design
+                logo_height = int(self.logo.get_height() * (logo_width / self.logo.get_width()))
+                self.logo = pygame.transform.scale(self.logo, (logo_width, logo_height))
+                print(f"Logo loaded successfully from {logo_path}")
+            else:
+                print(f"Logo file not found at {logo_path}")
+        except Exception as e:
+            print(f"Error loading logo: {e}")
+            self.logo = None
+    
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update menu state"""
         # Process hand tracking
@@ -214,20 +237,21 @@ class MenuScreen(BaseScreen):
         overlay.fill((0, 0, 0))
         self.screen.blit(overlay, (0, 0))
         
-        # Draw title with glow effect
-        title_text = self.title_font.render("FINGER GUN GAME", True, UI_ACCENT)
-        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
-        # Glow effect
-        glow_surf = self.title_font.render("FINGER GUN GAME", True, (0, 100, 200))
-        for offset in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
-            glow_rect = glow_surf.get_rect(center=(SCREEN_WIDTH // 2 + offset[0], 100 + offset[1]))
-            self.screen.blit(glow_surf, glow_rect)
-        self.screen.blit(title_text, title_rect)
-        
-        # Draw subtitle
-        subtitle_text = self.info_font.render("Face the Apocalypse with Your Finger Gun!", True, (200, 200, 200))
-        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, 140))
-        self.screen.blit(subtitle_text, subtitle_rect)
+        # Draw logo or fallback to text title
+        if self.logo:
+            # Draw logo
+            logo_rect = self.logo.get_rect(center=(SCREEN_WIDTH // 2, 100))
+            self.screen.blit(self.logo, logo_rect)
+        else:
+            # Fallback to text title with glow effect
+            title_text = self.title_font.render("arCVde", True, UI_ACCENT)
+            title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
+            # Glow effect
+            glow_surf = self.title_font.render("arCVde", True, (0, 100, 200))
+            for offset in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
+                glow_rect = glow_surf.get_rect(center=(SCREEN_WIDTH // 2 + offset[0], 100 + offset[1]))
+                self.screen.blit(glow_surf, glow_rect)
+            self.screen.blit(title_text, title_rect)
         
         
         # Draw buttons
