@@ -148,7 +148,7 @@ class HandTracker:
                 self.detection_mode = "none"
                 self.confidence_score = standard_score
                 is_gun = False
-        elif pointing_forward and index_extended_alt:  # Removed finger curl requirement
+        elif pointing_forward and index_extended_alt:
             # Hand detected, try depth mode even without partial standard detection
             self.detection_mode = "depth"
             self.confidence_score = 0.6

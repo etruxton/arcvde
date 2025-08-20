@@ -161,7 +161,6 @@ class DoomsdayScreen:
                 elif event.key == pygame.K_BACKSPACE:
                     self.console_input = self.console_input[:-1]
                 else:
-                    # Add character to input
                     if event.unicode and len(self.console_input) < 30:
                         self.console_input += event.unicode
                 return None
@@ -277,7 +276,6 @@ class DoomsdayScreen:
                     )
                 
                 if is_gun and index_coords:
-                    # Draw green dot on index finger in camera feed
                     cv2.circle(processed_frame, index_coords, 15, (0, 255, 0), -1)
                     
                     # Map finger position to game screen
@@ -336,7 +334,6 @@ class DoomsdayScreen:
                 self.screen_shake_intensity = 8
                 self.rapid_fire_count = 0
         
-        # Add screen shake for shooting
         self.screen_shake_time = 0.05
         self.screen_shake_intensity = 3
         

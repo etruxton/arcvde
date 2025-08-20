@@ -402,8 +402,6 @@ class Enemy:
         head_size = size // 3
         pygame.draw.circle(screen, body_color, (x, y - size//2 - head_size//2), head_size)
         
-        # Removed exposed skull patch (white dot)
-        
         # Hollow eye sockets with pulsing red eyes
         eye_y = y - size//2 - head_size//2
         for eye_x in [x - head_size//3, x + head_size//3]:
@@ -415,9 +413,7 @@ class Enemy:
             pygame.draw.circle(screen, self.color_scheme["eyes"], (eye_x, eye_y), glow_size)
             # Inner bright glow that also pulses
             pygame.draw.circle(screen, (255, 100 + int(pulse * 100), 100), (eye_x, eye_y), max(1, glow_size//2))
-        
-        # Removed black mouth arc, just teeth (raised)
-        mouth_y = y - size//2 - head_size//4 + head_size//3  # Raised teeth
+        mouth_y = y - size//2 - head_size//4 + head_size//3
         # Teeth
         for i in range(-2, 3):
             tooth_x = x + i * (head_size//6)

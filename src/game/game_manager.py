@@ -17,21 +17,16 @@ class GameManager:
     """Main game manager that coordinates all screens and game flow"""
     
     def __init__(self):
-        # Initialize pygame
         pygame.init()
         
-        # Create screen
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("arCVde")
         
-        # Initialize clock
         self.clock = pygame.time.Clock()
         
-        # Initialize camera manager
         self.camera_manager = CameraManager()
         self.camera_manager.initialize_camera(DEFAULT_CAMERA_ID)
         
-        # Initialize screens
         self.screens: Dict[str, object] = {}
         self._initialize_screens()
         
@@ -92,7 +87,6 @@ class GameManager:
         current_screen = self.screens.get(self.current_state)
         if current_screen and hasattr(current_screen, 'update'):
             result = current_screen.update(dt, pygame.time.get_ticks())
-            # Handle state changes from update method (e.g., finger gun shooting)
             if result:
                 if result == "quit":
                     self.running = False
@@ -105,7 +99,6 @@ class GameManager:
         if current_screen and hasattr(current_screen, 'draw'):
             current_screen.draw()
         
-        # Update display
         pygame.display.flip()
     
     def run(self) -> None:
@@ -123,16 +116,12 @@ class GameManager:
                 dt = (current_time - last_time) / 1000.0  # Convert to seconds
                 last_time = current_time
                 
-                # Handle events
                 self.handle_events()
                 
                 if not self.running:
                     break
                 
-                # Update
                 self.update(dt)
-                
-                # Draw
                 self.draw()
                 
                 # Control frame rate

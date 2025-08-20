@@ -124,7 +124,6 @@ class MenuScreen(BaseScreen):
         self.showcase_enemies = []
         self.init_enemy_showcase()
         
-        # Load logo
         self.logo = None
         self.load_logo()
     
@@ -187,12 +186,10 @@ class MenuScreen(BaseScreen):
     def load_logo(self):
         """Load the game logo image"""
         try:
-            # Get the path relative to the main project directory
             logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "arCVde-2.png")
             if os.path.exists(logo_path):
                 self.logo = pygame.image.load(logo_path).convert_alpha()
-                # Scale the logo to a reasonable size (adjust as needed)
-                logo_width = 500  # Adjust this value to fit your design
+                logo_width = 500
                 logo_height = int(self.logo.get_height() * (logo_width / self.logo.get_width()))
                 self.logo = pygame.transform.scale(self.logo, (logo_width, logo_height))
                 print(f"Logo loaded successfully from {logo_path}")
@@ -237,13 +234,10 @@ class MenuScreen(BaseScreen):
         overlay.fill((0, 0, 0))
         self.screen.blit(overlay, (0, 0))
         
-        # Draw logo or fallback to text title
         if self.logo:
-            # Draw logo
             logo_rect = self.logo.get_rect(center=(SCREEN_WIDTH // 2, 100))
             self.screen.blit(self.logo, logo_rect)
         else:
-            # Fallback to text title with glow effect
             title_text = self.title_font.render("arCVde", True, UI_ACCENT)
             title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
             # Glow effect
