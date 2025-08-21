@@ -15,14 +15,9 @@ A real-time hand gesture recognition game where you use your finger gun to shoot
   - **Doomsday** - Battle waves of approaching enemies in a doom-style survival game
 - **Real-time hand tracking** using MediaPipe with enhanced gesture detection
 - **Multi-mode detection system** that works even when pointing directly at the camera
-- **Four unique enemy types** with detailed animations and AI behaviors
-- **Dynamic difficulty** with 8 waves across 4 apocalyptic stages
-- **Physics-based blood effects** with realistic particle simulation
-- **Professional game structure** with multiple screens and settings
-- **Camera selection** - switch between multiple cameras
 - **Interactive tutorial** showing how to play
 - **Visual feedback** showing detection mode and confidence
-- **Debug console** for testing (accessible in arcade mode when paused)
+- **Debug console** for testing (accessible in Doomsday mode when paused)
 
 ## How It Works
 
@@ -101,46 +96,6 @@ The game will start with a main menu where you can:
 - Type `/heal` - Restore full health
 - Type `/kill` - Kill all enemies on screen
 
-## Project Structure
-
-```
-arcvde/
-├── main.py                 # Main entry point
-├── src/
-│   ├── game/
-│   │   ├── game_manager.py # Main game coordinator
-│   │   ├── hand_tracker.py # Enhanced hand tracking with thumb reset
-│   │   ├── target.py       # Target management and rendering
-│   │   └── enemy.py        # Enemy system with 4 types and blood physics
-│   ├── screens/
-│   │   ├── menu_screen.py  # Main menu with animated enemy showcase
-│   │   ├── game_screen.py  # Target practice gameplay
-│   │   ├── doomsday_screen.py # Doomsday mode with waves and stages
-│   │   ├── settings_screen.py # Camera and settings configuration
-│   │   └── instructions_screen.py # How-to tutorial
-│   └── utils/
-│       ├── constants.py    # Game constants and configuration
-│       └── camera_manager.py # Camera device management
-├── assets/                 # Game assets (empty for now)
-├── old_finger_gun_examples/ # Previous iterations
-├── requirements.txt        # Python dependencies
-└── README.md              # This file
-```
-
-## Files Description
-
-- **main.py** - Entry point that initializes and runs the game
-- **game_manager.py** - Coordinates different screens and game flow
-- **hand_tracker.py** - Enhanced finger gun detection with thumb reset mechanism
-- **target.py** - Target spawning, animation, and hit detection
-- **enemy.py** - Enemy AI, rendering, and physics-based blood effects
-- **camera_manager.py** - Handles camera device detection and switching
-- **menu_screen.py** - Main menu with animated enemy showcase
-- **game_screen.py** - Target practice mode with score tracking
-- **doomsday_screen.py** - Wave-based survival mode with stages and bosses
-- **settings_screen.py** - Camera selection and configuration
-- **instructions_screen.py** - Interactive tutorial with examples
-
 ## Settings & Configuration
 
 ### Camera Settings
@@ -163,36 +118,6 @@ All game constants can be modified in `src/utils/constants.py`:
 3. **Hand Position**: For standard mode, hold hand at slight angle to camera
 4. **Pointing at Camera**: The enhanced version automatically switches to depth mode
 5. **Camera Selection**: Try different cameras in Settings if tracking is poor
-
-## Advanced Features
-
-### Enhanced Hand Tracking
-- **Thumb Reset Mechanism**: Requires deliberate thumb movement between shots
-- **Cascading Detection**: Falls back through multiple detection methods
-- **3D Coordinate Analysis**: Uses depth information when available
-- **Adaptive Thresholds**: Adjusts sensitivity based on detection mode
-- **Real-time Feedback**: Shows confidence scores and detection mode
-
-### Doomsday Features
-- **Enemy Types**:
-  - **Zombies**: Slow but persistent, with rotting appearance
-  - **Demons**: Fast triangular demons with bat wings
-  - **Skulls**: Fragile floating skulls that die in one shot
-  - **Giants**: Massive armored enemies with electric effects
-- **Stage Themes**:
-  - **Urban Decay**: Abandoned city with green atmosphere
-  - **Hellscape**: Fiery environment with lava effects
-  - **Ghostly Void**: Ethereal blue stage with mist
-  - **Apocalypse**: Final stage with meteors and lightning
-- **Physics System**: Realistic blood particles with gravity and splattering
-- **Dynamic Difficulty**: Enemy speed and spawn rates increase with waves
-
-### Game Features
-- **Animated Targets**: Pulsing targets with hit animations
-- **Smart Spawning**: Avoids camera area and existing targets
-- **Performance Monitoring**: FPS counter and optimization
-- **Pause/Resume**: Full game state management
-- **Combo System**: Chain kills for bonus points in Doomsday mode
 
 ## Requirements
 
@@ -234,7 +159,3 @@ Planned additions to arCVde:
 - galaga style game where you control the character with where you point
 - pacman or snake style game where you control player with where you point ?
 - maybe moreeeee
-
----
-
-Have fun shooting targets with your finger gun! 🔫
