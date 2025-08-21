@@ -1,6 +1,6 @@
 # arcvde
 
-![arcvde Logo](assets/arcvde-2.png)
+![arcvde Logo](assets/arCVde-2.png)
 
 > **About the name**: "arcvde" is a playful pun on "arcade" - because this project will host a collection of arcade-style games powered by **CV** (Computer Vision)! 🎮👀
 
