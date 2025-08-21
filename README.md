@@ -2,7 +2,7 @@
 
 ![arCVde Logo](assets/arCVde-2.png)
 
-> **About the name**: "arCVde" is a playful pun on "arcade" - because this project will host a collection of arcade-style games powered by **CV** (Computer Vision)! 🎮👁️
+> **About the name**: "arCVde" is a playful pun on "arcade" - because this project will host a collection of arcade-style games powered by **CV** (Computer Vision)! 🎮👀
 
 A real-time hand gesture recognition game where you use your finger gun to shoot targets and battle waves of enemies! This project combines OpenCV hand tracking with Pygame to create interactive shooting games controlled by your hand movements.
 

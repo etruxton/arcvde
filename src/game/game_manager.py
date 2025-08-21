@@ -4,9 +4,11 @@ Main game manager that handles different screens and game flow
 
 import pygame
 import sys
+import threading
 from typing import Dict, Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
+from screens.loading_screen import LoadingScreen
 from screens.menu_screen import MenuScreen
 from screens.game_screen import GameScreen
 from screens.doomsday_screen import DoomsdayScreen
@@ -22,29 +24,53 @@ class GameManager:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("arCVde")
         
+        # Set window icon
+        icon = pygame.image.load("assets/CV.png")
+        pygame.display.set_icon(icon)
+        
         self.clock = pygame.time.Clock()
         
-        self.camera_manager = CameraManager()
-        self.camera_manager.initialize_camera(DEFAULT_CAMERA_ID)
-        
+        # Initialize loading screen immediately
         self.screens: Dict[str, object] = {}
-        self._initialize_screens()
+        self.screens[GAME_STATE_LOADING] = LoadingScreen(self.screen)
         
-        # Game state
-        self.current_state = GAME_STATE_MENU
+        # Game state - start with loading screen
+        self.current_state = GAME_STATE_LOADING
         self.running = True
+        
+        # Loading state tracking
+        self.loading_complete = False
+        self.camera_manager = None
+        self.initialization_started = False
         
         # Performance tracking
         self.frame_count = 0
         self.last_fps_update = 0
     
-    def _initialize_screens(self) -> None:
-        """Initialize all game screens"""
-        self.screens[GAME_STATE_MENU] = MenuScreen(self.screen, self.camera_manager)
-        self.screens[GAME_STATE_PLAYING] = GameScreen(self.screen, self.camera_manager)
-        self.screens[GAME_STATE_ARCADE] = DoomsdayScreen(self.screen, self.camera_manager)
-        self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
-        self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
+    def _start_initialization(self) -> None:
+        """Start initialization in a separate thread"""
+        init_thread = threading.Thread(target=self._initialize_remaining_screens, daemon=True)
+        init_thread.start()
+    
+    def _initialize_remaining_screens(self) -> None:
+        """Initialize remaining game screens after camera is ready"""
+        try:
+            print("Initializing camera...")
+            self.camera_manager = CameraManager()
+            self.camera_manager.initialize_camera(DEFAULT_CAMERA_ID)
+            
+            print("Initializing game screens...")
+            self.screens[GAME_STATE_MENU] = MenuScreen(self.screen, self.camera_manager)
+            self.screens[GAME_STATE_PLAYING] = GameScreen(self.screen, self.camera_manager)
+            self.screens[GAME_STATE_ARCADE] = DoomsdayScreen(self.screen, self.camera_manager)
+            self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
+            self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
+            
+            self.loading_complete = True
+            print("Loading complete!")
+        except Exception as e:
+            print(f"Error during initialization: {e}")
+            self.loading_complete = True  # Mark as complete even if failed to prevent infinite loop
     
     def handle_events(self) -> None:
         """Handle pygame events"""
@@ -84,14 +110,42 @@ class GameManager:
     
     def update(self, dt: float) -> None:
         """Update current screen"""
-        current_screen = self.screens.get(self.current_state)
-        if current_screen and hasattr(current_screen, 'update'):
-            result = current_screen.update(dt, pygame.time.get_ticks())
-            if result:
-                if result == "quit":
-                    self.running = False
-                else:
-                    self.change_state(result)
+        # Handle loading state specially
+        if self.current_state == GAME_STATE_LOADING:
+            # Initialize remaining screens if not done yet
+            if not self.loading_complete and not self.initialization_started:
+                # Check if we've shown the loading screen for at least a moment
+                loading_screen = self.screens.get(GAME_STATE_LOADING)
+                if loading_screen and hasattr(loading_screen, 'animation_time'):
+                    # Start loading other resources after loading screen has been visible for 0.2 seconds
+                    if loading_screen.animation_time > 0.2:
+                        self.initialization_started = True
+                        # Start initialization in a way that allows rendering between steps
+                        self._start_initialization()
+            
+            # Update loading screen and check if it wants to transition
+            current_screen = self.screens.get(self.current_state)
+            if current_screen and hasattr(current_screen, 'update'):
+                # Pass loading status to loading screen
+                if hasattr(current_screen, 'set_loading_complete'):
+                    current_screen.set_loading_complete(self.loading_complete)
+                
+                result = current_screen.update(dt, pygame.time.get_ticks())
+                if result:
+                    if result == "quit":
+                        self.running = False
+                    elif self.loading_complete:  # Only allow transition if loading is complete
+                        self.change_state(result)
+        else:
+            # Normal screen updates
+            current_screen = self.screens.get(self.current_state)
+            if current_screen and hasattr(current_screen, 'update'):
+                result = current_screen.update(dt, pygame.time.get_ticks())
+                if result:
+                    if result == "quit":
+                        self.running = False
+                    else:
+                        self.change_state(result)
     
     def draw(self) -> None:
         """Draw current screen"""
@@ -105,7 +159,7 @@ class GameManager:
         """Main game loop"""
         print("Starting arCVde...")
         print(f"Screen resolution: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
-        print(f"Camera info: {self.camera_manager.get_camera_info()}")
+        print("Camera will be initialized during loading...")
         
         last_time = pygame.time.get_ticks()
         
@@ -149,7 +203,7 @@ class GameManager:
         """Clean up resources"""
         print("Cleaning up resources...")
         
-        # Release camera
+        # Release camera (only if it was initialized)
         if self.camera_manager:
             self.camera_manager.release()
         
@@ -162,5 +216,5 @@ class GameManager:
         return {
             'current_state': self.current_state,
             'available_states': list(self.screens.keys()),
-            'camera_info': self.camera_manager.get_camera_info() if self.camera_manager else None
+            'camera_info': self.camera_manager.get_camera_info() if self.camera_manager else "Camera not initialized yet"
         }

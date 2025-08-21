@@ -49,6 +49,7 @@ SHOOT_DISTANCE_THRESHOLD = 0.1
 COOLDOWN_DURATION = 0.1  # Reduced - now using thumb reset mechanism instead
 
 # Game states
+GAME_STATE_LOADING = "loading"
 GAME_STATE_MENU = "menu"
 GAME_STATE_PLAYING = "playing"
 GAME_STATE_ARCADE = "arcade"
