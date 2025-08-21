@@ -22,10 +22,11 @@ class InstructionsScreen(BaseScreen):
         self.text_font = pygame.font.Font(None, 32)
         self.small_font = pygame.font.Font(None, 24)
         
+        
         # Create back button
         self.back_button = Button(
             50, 50, 120, 50,
-            "← BACK", self.text_font
+            "BACK", self.text_font
         )
         
         # Initialize target manager for practice area
@@ -127,6 +128,7 @@ class InstructionsScreen(BaseScreen):
         title_text = self.title_font.render("HOW TO PLAY", True, UI_ACCENT)
         title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(title_text, title_rect)
+        
         
         # Draw back button
         self.highlight_button_if_aimed(self.back_button)
