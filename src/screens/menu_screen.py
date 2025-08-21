@@ -10,6 +10,7 @@ import os
 from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
+from utils.sound_manager import get_sound_manager
 from screens.base_screen import BaseScreen
 from game.enemy import Enemy
 
@@ -76,6 +77,9 @@ class MenuScreen(BaseScreen):
     
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
         super().__init__(screen, camera_manager)
+        
+        # Initialize sound manager
+        self.sound_manager = get_sound_manager()
         
         # Fonts
         self.title_font = pygame.font.Font(None, 72)
@@ -147,17 +151,23 @@ class MenuScreen(BaseScreen):
     
     def _handle_button_action(self, button) -> str:
         """Handle button action - centralized logic"""
+        # Play sound effect when button is clicked
+        self.sound_manager.play('shoot')
+        
+        result = None
         if button == self.play_button:
-            return GAME_STATE_PLAYING
+            result = GAME_STATE_PLAYING
         elif button == self.arcade_button:
-            return GAME_STATE_ARCADE
+            result = GAME_STATE_ARCADE
         elif button == self.settings_button:
-            return GAME_STATE_SETTINGS
+            result = GAME_STATE_SETTINGS
         elif button == self.instructions_button:
-            return GAME_STATE_INSTRUCTIONS
+            result = GAME_STATE_INSTRUCTIONS
         elif button == self.quit_button:
-            return "quit"
-        return None
+            result = "quit"
+        
+        
+        return result
     
     def init_enemy_showcase(self):
         """Initialize enemies for showcase display"""

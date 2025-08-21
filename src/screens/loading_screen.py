@@ -97,8 +97,11 @@ class LoadingScreen:
         # Update particles
         self._update_particles(dt)
         
-        # Add new particles occasionally
-        if self.phase == "loading" and len(self.particles) < 20 and self.animation_time % 0.1 < dt:
+        # Add new particles more frequently and allow more particles
+        if self.phase == "loading" and len(self.particles) < 50 and self.animation_time % 0.05 < dt:
+            self._add_particle()
+        # Also add particles during logo grow phase
+        elif self.phase == "logo_grow" and len(self.particles) < 30 and self.animation_time % 0.08 < dt:
             self._add_particle()
         
         return None
@@ -122,19 +125,13 @@ class LoadingScreen:
         """Add a new sparkle particle"""
         import random
         
-        # Create particles around the logo area
-        center_x = SCREEN_WIDTH // 2
-        center_y = SCREEN_HEIGHT // 2 - 50
-        
-        angle = random.uniform(0, 2 * math.pi)
-        distance = random.uniform(100, 200)
-        
+        # Create particles anywhere on the screen
         particle = {
-            'x': center_x + math.cos(angle) * distance,
-            'y': center_y + math.sin(angle) * distance,
-            'vx': random.uniform(-50, 50),
-            'vy': random.uniform(-50, 50),
-            'life': random.uniform(1.0, 2.0),
+            'x': random.uniform(0, SCREEN_WIDTH),
+            'y': random.uniform(0, SCREEN_HEIGHT),
+            'vx': random.uniform(-30, 30),  # Slower movement for better visibility
+            'vy': random.uniform(-30, 30),
+            'life': random.uniform(1.5, 3.0),  # Longer life for more visible particles
             'alpha': 255,
             'color': random.choice([UI_ACCENT, WHITE, YELLOW])
         }

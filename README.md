@@ -159,3 +159,18 @@ Planned additions to arCVde:
 - galaga style game where you control the character with where you point
 - pacman or snake style game where you control player with where you point ?
 - maybe moreeeee
+
+## Credits
+
+### Music
+- **Menu/Target Practice Music**: "Somewhere in the Elevator" by Peachtea
+  - Source: https://opengameart.org/content/somewhere-in-the-elevator
+  - License: CC-BY 3.0
+
+- **Doomsday Mode Music**: "Boss Battle #8 Metal" 
+  - Source: https://opengameart.org/content/boss-battle-8-metal
+  - License: CC0 (Public Domain)
+
+---
+
+Have fun shooting targets with your finger gun! 🔫

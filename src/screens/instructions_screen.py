@@ -6,15 +6,18 @@ import pygame
 from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
+from utils.sound_manager import get_sound_manager
 from screens.menu_screen import Button
 from screens.base_screen import BaseScreen
-from game.target import TargetManager
 
 class InstructionsScreen(BaseScreen):
     """Instructions screen showing how to play"""
     
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
         super().__init__(screen, camera_manager)
+        
+        # Initialize sound manager
+        self.sound_manager = get_sound_manager()
         
         # Fonts
         self.title_font = pygame.font.Font(None, 64)
@@ -29,17 +32,10 @@ class InstructionsScreen(BaseScreen):
             "BACK", self.text_font
         )
         
-        # Initialize target manager for practice area
-        self.target_manager = TargetManager(
-            SCREEN_WIDTH, SCREEN_HEIGHT, 
-            (CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT)
-        )
-        
-        # Shooting state for practice area
+        # Shooting state for visual feedback
         self.shoot_pos = None
         self.shoot_animation_time = 0
         self.shoot_animation_duration = 200  # milliseconds
-        self.practice_score = 0
         
         # Instructions content
         self.instructions = [
@@ -53,22 +49,12 @@ class InstructionsScreen(BaseScreen):
                 ]
             },
             {
-                "title": "How to Aim",
-                "steps": [
-                    "• Make the finger gun gesture",
-                    "• Move your hand to aim the crosshair",
-                    "• Green crosshair = Standard mode (best)",
-                    "• Yellow crosshair = Depth mode (pointing at camera)",
-                    "• Purple crosshair = Wrist angle mode (fallback)"
-                ]
-            },
-            {
                 "title": "How to Shoot",
                 "steps": [
                     "• While aiming, quickly flick your thumb down",
                     "• Keep the finger gun pose while shooting",
                     "• Wait for cooldown between shots",
-                    "• Hit targets to score points!"
+                    "• Practice in the camera demo area!"
                 ]
             },
             {
@@ -87,6 +73,7 @@ class InstructionsScreen(BaseScreen):
         """Handle events, return next state if applicable"""
         # Handle back button
         if self.back_button.handle_event(event):
+            self.sound_manager.play('shoot')
             return GAME_STATE_MENU
         
         
@@ -104,15 +91,13 @@ class InstructionsScreen(BaseScreen):
         # Process hand tracking
         self.process_finger_gun_tracking()
         
-        # Update target manager for practice area
-        self.target_manager.update(dt, current_time)
-        
         # Handle finger gun shooting
         shot_button = self.check_button_shoot([self.back_button])
         if shot_button:
+            self.sound_manager.play('shoot')
             return GAME_STATE_MENU
         
-        # Handle shooting at targets
+        # Handle shooting for visual feedback
         if self.shoot_detected and self.crosshair_pos:
             self._handle_shoot(self.crosshair_pos)
             self.shoot_detected = False  # Reset after handling shot
@@ -134,9 +119,6 @@ class InstructionsScreen(BaseScreen):
         self.highlight_button_if_aimed(self.back_button)
         self.back_button.draw(self.screen)
         
-        # Draw targets
-        self.target_manager.draw(self.screen)
-        
         # Draw crosshair if aiming
         if self.crosshair_pos:
             self.draw_crosshair(self.crosshair_pos, self.crosshair_color)
@@ -147,26 +129,28 @@ class InstructionsScreen(BaseScreen):
             current_time - self.shoot_animation_time < self.shoot_animation_duration):
             self._draw_shoot_animation(self.shoot_pos)
         
-        # Draw instructions in two columns
+        # Draw instructions - avoid top-right where camera is
         left_x = 100
-        right_x = SCREEN_WIDTH // 2 + 50
         start_y = 150
-        column_width = SCREEN_WIDTH // 2 - 150
+        # Make left column wider since right column needs to avoid camera
+        left_column_width = SCREEN_WIDTH // 2 - 120
         
-        for i, section in enumerate(self.instructions):
-            x = left_x if i % 2 == 0 else right_x
-            y = start_y + (i // 2) * 300
-            
-            self._draw_instruction_section(section, x, y, column_width)
+        # Draw first two sections on the left
+        for i in range(min(2, len(self.instructions))):
+            y = start_y + i * 250  # Reduced spacing
+            self._draw_instruction_section(self.instructions[i], left_x, y, left_column_width)
+        
+        # Draw remaining sections on the right, below the camera
+        right_x = SCREEN_WIDTH // 2 + 50
+        right_start_y = 300  # Start below camera (camera is at y=50, height=200)
+        right_column_width = 350  # Narrower to avoid camera
+        
+        for i in range(2, len(self.instructions)):
+            y = right_start_y + (i - 2) * 250
+            self._draw_instruction_section(self.instructions[i], right_x, y, right_column_width)
         
         # Draw camera demo
         self._draw_camera_demo()
-        
-        # Draw practice score
-        if self.practice_score > 0:
-            score_text = self.text_font.render(f"Practice Score: {self.practice_score}", True, GREEN)
-            score_rect = score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
-            self.screen.blit(score_text, score_rect)
         
         # Draw bottom text
         bottom_text = self.small_font.render("Press SPACE to start playing!", True, UI_ACCENT)
@@ -216,48 +200,18 @@ class InstructionsScreen(BaseScreen):
         demo_width = 300
         demo_height = 200
         demo_x = SCREEN_WIDTH - demo_width - 50
-        demo_y = 150
+        demo_y = 50  # Moved to top-right
         
         # Draw camera feed with tracking
         self.draw_camera_with_tracking(demo_x, demo_y, demo_width, demo_height)
-        
-        # Draw label
-        label_text = self.small_font.render("Practice your finger gun here!", True, UI_TEXT)
-        label_rect = label_text.get_rect(center=(demo_x + demo_width // 2, demo_y - 20))
-        self.screen.blit(label_text, label_rect)
-        
-        # Draw crosshair examples
-        examples_y = demo_y + demo_height + 30
-        
-        # Green crosshair example
-        pygame.draw.circle(self.screen, GREEN, (demo_x + 50, examples_y), 15, 2)
-        pygame.draw.line(self.screen, GREEN, (demo_x + 20, examples_y), (demo_x + 80, examples_y), 2)
-        pygame.draw.line(self.screen, GREEN, (demo_x + 50, examples_y - 30), (demo_x + 50, examples_y + 30), 2)
-        standard_text = self.small_font.render("Standard", True, GREEN)
-        self.screen.blit(standard_text, (demo_x + 90, examples_y - 10))
-        
-        # Yellow crosshair example
-        pygame.draw.circle(self.screen, YELLOW, (demo_x + 50, examples_y + 50), 15, 2)
-        pygame.draw.line(self.screen, YELLOW, (demo_x + 20, examples_y + 50), (demo_x + 80, examples_y + 50), 2)
-        pygame.draw.line(self.screen, YELLOW, (demo_x + 50, examples_y + 20), (demo_x + 50, examples_y + 80), 2)
-        depth_text = self.small_font.render("Depth", True, YELLOW)
-        self.screen.blit(depth_text, (demo_x + 90, examples_y + 40))
-        
-        # Purple crosshair example
-        pygame.draw.circle(self.screen, PURPLE, (demo_x + 50, examples_y + 100), 15, 2)
-        pygame.draw.line(self.screen, PURPLE, (demo_x + 20, examples_y + 100), (demo_x + 80, examples_y + 100), 2)
-        pygame.draw.line(self.screen, PURPLE, (demo_x + 50, examples_y + 70), (demo_x + 50, examples_y + 130), 2)
-        wrist_text = self.small_font.render("Wrist Angle", True, PURPLE)
-        self.screen.blit(wrist_text, (demo_x + 90, examples_y + 90))
     
     def _handle_shoot(self, shoot_position: tuple) -> None:
-        """Handle shooting action in practice area"""
+        """Handle shooting action for visual feedback"""
         self.shoot_pos = shoot_position
         self.shoot_animation_time = pygame.time.get_ticks()
         
-        # Check for target hits
-        score_gained = self.target_manager.check_hit(shoot_position[0], shoot_position[1])
-        self.practice_score += score_gained
+        # Play shoot sound
+        self.sound_manager.play('shoot')
     
     def _draw_shoot_animation(self, pos: tuple) -> None:
         """Draw shooting animation"""

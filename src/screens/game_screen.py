@@ -8,6 +8,7 @@ import time
 from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
+from utils.sound_manager import get_sound_manager
 from game.hand_tracker import HandTracker
 from game.target import TargetManager
 
@@ -20,6 +21,7 @@ class GameScreen:
         
         # Initialize game components
         self.hand_tracker = HandTracker()
+        self.sound_manager = get_sound_manager()
         self.target_manager = TargetManager(
             SCREEN_WIDTH, SCREEN_HEIGHT, 
             (CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT)
@@ -156,8 +158,13 @@ class GameScreen:
         self.shoot_pos = shoot_position
         self.shoot_animation_time = pygame.time.get_ticks()
         
+        # Play shoot sound
+        self.sound_manager.play('shoot')
+        
         # Check for target hits
         score_gained = self.target_manager.check_hit(shoot_position[0], shoot_position[1])
+        if score_gained > 0:
+            self.sound_manager.play('hit')
         self.score += score_gained
     
     def draw(self) -> None:

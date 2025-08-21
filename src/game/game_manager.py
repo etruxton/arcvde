@@ -21,12 +21,15 @@ class GameManager:
     def __init__(self):
         pygame.init()
         
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("arCVde")
-        
         # Set window icon
-        icon = pygame.image.load("assets/CV.png")
-        pygame.display.set_icon(icon)
+        try:
+            icon = pygame.image.load("assets/CV.png")
+            pygame.display.set_icon(icon)
+        except Exception as e:
+            print(f"Could not load icon: {e}")
+        
+        pygame.display.set_caption("arCVde")
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         
         self.clock = pygame.time.Clock()
         
@@ -94,7 +97,25 @@ class GameManager:
         """Change the current game state"""
         if new_state in self.screens:
             print(f"Changing state from {self.current_state} to {new_state}")
+            old_state = self.current_state
             self.current_state = new_state
+            
+            # Handle music transitions
+            from utils.sound_manager import get_sound_manager
+            sound_manager = get_sound_manager()
+            
+            # When leaving game, stop the boss battle music immediately
+            if old_state == GAME_STATE_ARCADE:
+                sound_manager.stop_ambient(fade_ms=100)  # Quick fade
+            
+            # When entering menu, instructions, or target practice, start elevator music
+            if new_state in [GAME_STATE_MENU, GAME_STATE_INSTRUCTIONS, GAME_STATE_PLAYING, GAME_STATE_SETTINGS]:
+                if sound_manager.current_ambient != 'elevator':
+                    sound_manager.play_ambient('elevator')
+            
+            # When entering Doomsday, start boss battle music
+            elif new_state == GAME_STATE_ARCADE:
+                sound_manager.play_ambient('boss_battle')
             
             # Reset game screen when entering gameplay
             if new_state == GAME_STATE_PLAYING:

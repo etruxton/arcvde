@@ -10,6 +10,7 @@ import random
 from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
+from utils.sound_manager import get_sound_manager
 from game.hand_tracker import HandTracker
 from game.enemy import EnemyManager
 
@@ -23,6 +24,7 @@ class DoomsdayScreen:
         # Initialize game components
         self.hand_tracker = HandTracker()
         self.enemy_manager = EnemyManager(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.sound_manager = get_sound_manager()
         
         # Fonts
         self.font = pygame.font.Font(None, 36)
@@ -314,6 +316,9 @@ class DoomsdayScreen:
         self.shoot_animation_time = pygame.time.get_ticks()
         self.muzzle_flash_time = 0.1
         
+        # Play shoot sound
+        self.sound_manager.play('shoot')
+        
         # Check for rapid fire (panic mode)
         if current_time - self.last_shoot_time < 0.3:
             self.rapid_fire_count += 1
@@ -348,6 +353,9 @@ class DoomsdayScreen:
                 # Bigger shake for kills
                 self.screen_shake_time = 0.1
                 self.screen_shake_intensity = 5
+                self.sound_manager.play('enemy_death')
+            else:
+                self.sound_manager.play('enemy_hit')
     
     def draw(self) -> None:
         """Draw the game screen"""

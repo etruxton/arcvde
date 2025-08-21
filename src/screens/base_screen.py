@@ -7,6 +7,7 @@ import cv2
 from typing import Optional, Tuple
 from utils.constants import *
 from utils.camera_manager import CameraManager
+from utils.sound_manager import get_sound_manager
 from game.hand_tracker import HandTracker
 
 class BaseScreen:
@@ -16,8 +17,9 @@ class BaseScreen:
         self.screen = screen
         self.camera_manager = camera_manager
         
-        # Initialize hand tracker
+        # Initialize hand tracker and sound manager
         self.hand_tracker = HandTracker()
+        self.sound_manager = get_sound_manager()
         
         # Finger gun interaction state
         self.crosshair_pos = None
