@@ -248,10 +248,10 @@ class MenuScreen(BaseScreen):
             logo_rect = self.logo.get_rect(center=(SCREEN_WIDTH // 2, 100))
             self.screen.blit(self.logo, logo_rect)
         else:
-            title_text = self.title_font.render("arCVde", True, UI_ACCENT)
+            title_text = self.title_font.render("arcvde", True, UI_ACCENT)
             title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
             # Glow effect
-            glow_surf = self.title_font.render("arCVde", True, (0, 100, 200))
+            glow_surf = self.title_font.render("arcvde", True, (0, 100, 200))
             for offset in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
                 glow_rect = glow_surf.get_rect(center=(SCREEN_WIDTH // 2 + offset[0], 100 + offset[1]))
                 self.screen.blit(glow_surf, glow_rect)

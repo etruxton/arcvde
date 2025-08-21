@@ -28,7 +28,7 @@ class GameManager:
         except Exception as e:
             print(f"Could not load icon: {e}")
         
-        pygame.display.set_caption("arCVde")
+        pygame.display.set_caption("arcvde")
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         
         self.clock = pygame.time.Clock()
