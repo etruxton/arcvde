@@ -2,11 +2,11 @@
 
 # Code formatting and linting
 black==23.12.1
-flake8==7.0.0
+flake8==7.3.0
 isort==5.13.2
 
 # Security and vulnerability scanning
-bandit==1.7.6
+bandit==1.8.6
 safety==3.0.1
 pip-audit==2.6.3
 
@@ -15,7 +15,7 @@ pip-tools==7.3.0
 pip-licenses==4.3.4
 
 # Pre-commit hooks
-pre-commit==3.6.0
+pre-commit==3.8.0
 
 # Testing (for future use)
 pytest==7.4.4
