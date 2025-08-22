@@ -80,6 +80,7 @@ class DoomsdayScreen:
         self.current_music_track = None
         self.stage4_alternating_mode = False
         self.music_started = False
+        self.current_stage_ambient = None
     
     def create_background(self):
         """Create a doom-like background with gradient based on current stage"""
@@ -208,6 +209,8 @@ class DoomsdayScreen:
         self.current_stage_theme = 1
         self.stage4_alternating_mode = False
         self.music_started = False
+        self.current_stage_ambient = None
+        self.sound_manager.stop_stage_effect()  # Stop any ambient effects
         self.create_background()
     
     def update(self, dt: float, current_time: int) -> Optional[str]:
@@ -452,6 +455,10 @@ class DoomsdayScreen:
                 size = random.randint(2, 6)
                 color = random.choice([(255, 100, 0), (255, 150, 0), (255, 200, 0)])
                 pygame.draw.circle(surface, color, (x, y), size)
+                
+                # Occasionally play fire crackle sound for variety alongside ambient
+                if size >= 5 and random.random() < 0.003:  # 0.3% chance per frame for large particles
+                    self.sound_manager.play_one_shot_effect('stage2_fire_crackle', volume=0.1)
         
         elif self.current_stage_theme == 3:
             # Demon Realm - add purple mist
@@ -464,7 +471,7 @@ class DoomsdayScreen:
             surface.blit(mist_surface, (0, 0))
         
         elif self.current_stage_theme == 4:
-            # FINAL APOCALYPSE - Intense effects
+            # FINAL APOCALYPSE
             
             # 1. Falling meteors/debris
             for i in range(8):
@@ -483,14 +490,20 @@ class DoomsdayScreen:
                         color = (255 - j * 30, 50 + j * 20, 0)
                         pygame.draw.circle(surface, color, (trail_x, trail_y), trail_size)
             
-            # 2. Ash particles falling (moved up from #3)
+            # 2. Ash particles falling
             for i in range(15):
                 x = random.randint(0, SCREEN_WIDTH)
                 y = random.randint(0, SCREEN_HEIGHT)
                 pygame.draw.circle(surface, (150, 150, 150), (x, y), 1)
             
             # 3. Intense lightning with screen flash
-            if random.random() < 0.04:  # 4% chance (more frequent)
+            if random.random() < 0.04:  # 4% chance
+                # Play lightning sound effect
+                if random.random() < 0.7:  # 70% chance for lightning sound
+                    self.sound_manager.play_one_shot_effect('stage4_lightning', volume=0.4)
+                else:  # 30% chance for just thunder
+                    self.sound_manager.play_one_shot_effect('stage4_thunder', volume=0.3)
+                
                 # Draw actual lightning bolt
                 lightning_x = random.randint(100, SCREEN_WIDTH - 100)
                 current_x = lightning_x
@@ -768,7 +781,7 @@ class DoomsdayScreen:
             self.console_message = "All enemies killed"
         
         elif command == "/god":
-            # Toggle god mode (would need to implement)
+            # TODO god mode
             self.console_message = "God mode not yet implemented"
         
         else:
@@ -794,6 +807,8 @@ class DoomsdayScreen:
         if new_theme != self.current_stage_theme:
             self.current_stage_theme = new_theme
             self.create_background()
+            # Start the appropriate music and sound effects for the new stage
+            self._start_stage_music(new_theme)
     
     def _draw_pause_screen(self) -> None:
         """Draw pause overlay"""
@@ -883,6 +898,26 @@ class DoomsdayScreen:
             # Stages 1-3 use single tracks on loop
             self.stage4_alternating_mode = False
             self.current_music_track = self.sound_manager.play_stage_music(stage, loops=-1)
+        
+        # Start stage-specific ambient effects
+        if stage == 2:
+            # Play fire ambient loop for Stage 2
+            self.current_stage_ambient = 'stage2_fire_ambient'
+            self.sound_manager.play_stage_effect('stage2_fire_ambient', loops=-1, volume=0.25)
+            print(f"Starting Stage 2 fire ambient")
+        elif stage == 3:
+            # Play static/mist ambient for Stage 3
+            self.current_stage_ambient = 'stage3_static_mist'
+            self.sound_manager.play_stage_effect('stage3_static_mist', loops=-1, volume=0.2)
+            print(f"Starting Stage 3 static ambient")
+        elif stage >= 4:
+            # No continuous ambient for Stage 4, just one-shot lightning
+            self.current_stage_ambient = None
+            self.sound_manager.stop_stage_effect()
+        else:
+            # Stop any stage effects for Stage 1
+            self.current_stage_ambient = None
+            self.sound_manager.stop_stage_effect()
     
     def _handle_stage4_music_alternation(self):
         """Handle the alternating music logic for Stage 4+"""

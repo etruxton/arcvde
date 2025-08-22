@@ -6,7 +6,7 @@ import numpy as np
 import wave as wave_module
 import struct
 
-def generate_shoot_sound(filename="sounds/shoot.wav", duration=0.15, sample_rate=44100):
+def generate_shoot_sound(filename="../sounds/shoot.wav", duration=0.15, sample_rate=44100):
     """Generate a simple shooting sound effect"""
     
     # Generate time array
@@ -43,7 +43,7 @@ def generate_shoot_sound(filename="sounds/shoot.wav", duration=0.15, sample_rate
     
     print(f"Generated {filename}")
 
-def generate_hit_sound(filename="sounds/hit.wav", duration=0.2, sample_rate=44100):
+def generate_hit_sound(filename="../sounds/hit.wav", duration=0.2, sample_rate=44100):
     """Generate a hit/impact sound effect"""
     
     t = np.linspace(0, duration, int(sample_rate * duration))
@@ -70,7 +70,7 @@ def generate_hit_sound(filename="sounds/hit.wav", duration=0.2, sample_rate=4410
     
     print(f"Generated {filename}")
 
-def generate_ambient_menu_sound(filename="sounds/menu_ambient.wav", duration=30, sample_rate=44100):
+def generate_ambient_menu_sound(filename="../sounds/menu_ambient.wav", duration=30, sample_rate=44100):
     """Generate a calm, ambient menu background sound with random notes"""
     import random
     

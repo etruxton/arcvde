@@ -14,6 +14,8 @@ class SoundManager:
         self.sounds = {}
         self.ambient_channel = None
         self.current_ambient = None
+        self.effects_channel = None
+        self.current_effect = None
         
         # Initialize pygame mixer (with settings that work well for both WAV and OGG)
         pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
@@ -23,6 +25,8 @@ class SoundManager:
         
         # Reserve channel 0 for ambient music
         self.ambient_channel = pygame.mixer.Channel(0)
+        # Reserve channel 1 for stage ambient effects
+        self.effects_channel = pygame.mixer.Channel(1)
         
         # Load sound effects
         self._load_sounds()
@@ -45,6 +49,12 @@ class SoundManager:
             'stage3_music': 'Boss Battle 6 V1.ogg',  # Stage 3 music
             'stage4_music1': 'boss_battle_8_retro_01_loop.ogg',  # Stage 4+ first track
             'stage4_music2': 'boss_battle_8_retro_02_loop.ogg',  # Stage 4+ second track
+            # Stage atmospheric sound effects
+            'stage2_fire_crackle': 'stage2_fire_crackle.wav',
+            'stage2_fire_ambient': 'stage2_fire_ambient.wav',
+            'stage3_static_mist': 'stage3_static_mist.wav',
+            'stage4_lightning': 'stage4_lightning.wav',
+            'stage4_thunder': 'stage4_thunder.wav',
         }
         
         # Load each sound
@@ -56,6 +66,12 @@ class SoundManager:
                     # Set default volumes
                     if sound_name == 'shoot':
                         self.sounds[sound_name].set_volume(0.5)
+                    elif 'stage2_fire' in sound_name:
+                        self.sounds[sound_name].set_volume(0.6)  # Fire sounds at moderate volume
+                    elif 'stage3_static' in sound_name:
+                        self.sounds[sound_name].set_volume(0.5)  # Static at moderate volume
+                    elif 'stage4' in sound_name:
+                        self.sounds[sound_name].set_volume(0.6)  # Lightning/thunder
                     else:
                         self.sounds[sound_name].set_volume(0.7)
                     print(f"Successfully loaded: {filename}")
@@ -161,6 +177,45 @@ class SoundManager:
         track_name = self.get_stage_music(stage)
         self.play_ambient(track_name, loops=loops, fade_ms=fade_ms)
         return track_name
+    
+    def play_stage_effect(self, effect_name: str, loops: int = -1, volume: float = 0.3):
+        """Play a stage ambient effect on the effects channel"""
+        if not self.enabled:
+            return
+        
+        # Stop current effect if playing
+        self.stop_stage_effect()
+        
+        if effect_name in self.sounds and self.sounds[effect_name]:
+            try:
+                self.current_effect = effect_name
+                self.effects_channel.play(self.sounds[effect_name], loops=loops)
+                self.effects_channel.set_volume(volume)
+            except Exception as e:
+                print(f"Error playing stage effect {effect_name}: {e}")
+    
+    def stop_stage_effect(self, fade_ms: int = 500):
+        """Stop the current stage effect"""
+        if self.effects_channel and self.effects_channel.get_busy():
+            self.effects_channel.fadeout(fade_ms)
+            self.current_effect = None
+    
+    def play_one_shot_effect(self, effect_name: str, volume: float = 0.5):
+        """Play a one-shot sound effect (like lightning) on any available channel"""
+        if not self.enabled:
+            return
+        
+        if effect_name in self.sounds and self.sounds[effect_name]:
+            try:
+                # Find an available channel (skip 0 and 1 which are reserved)
+                for i in range(2, 8):
+                    channel = pygame.mixer.Channel(i)
+                    if not channel.get_busy():
+                        channel.play(self.sounds[effect_name])
+                        channel.set_volume(volume)
+                        break
+            except Exception as e:
+                print(f"Error playing one-shot effect {effect_name}: {e}")
 
 # Global sound manager instance
 _sound_manager = None

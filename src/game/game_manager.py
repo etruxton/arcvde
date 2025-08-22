@@ -104,9 +104,10 @@ class GameManager:
             from utils.sound_manager import get_sound_manager
             sound_manager = get_sound_manager()
             
-            # When leaving game, stop the boss battle music immediately
+            # When leaving Doomsday, stop the music and sound effects immediately
             if old_state == GAME_STATE_ARCADE:
                 sound_manager.stop_ambient(fade_ms=100)  # Quick fade
+                sound_manager.stop_stage_effect(fade_ms=100)  # Stop any stage effects
             
             # When entering menu, instructions, or target practice, start elevator music
             if new_state in [GAME_STATE_MENU, GAME_STATE_INSTRUCTIONS, GAME_STATE_PLAYING, GAME_STATE_SETTINGS]:
