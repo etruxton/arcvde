@@ -10,7 +10,7 @@ from utils.constants import *
 from utils.camera_manager import CameraManager
 from screens.loading_screen import LoadingScreen
 from screens.menu_screen import MenuScreen
-from screens.game_screen import GameScreen
+from screens.target_practice_screen import TargetPracticeScreen
 from screens.doomsday_screen import DoomsdayScreen
 from screens.settings_screen import SettingsScreen
 from screens.instructions_screen import InstructionsScreen
@@ -64,7 +64,7 @@ class GameManager:
             
             print("Initializing game screens...")
             self.screens[GAME_STATE_MENU] = MenuScreen(self.screen, self.camera_manager)
-            self.screens[GAME_STATE_PLAYING] = GameScreen(self.screen, self.camera_manager)
+            self.screens[GAME_STATE_PLAYING] = TargetPracticeScreen(self.screen, self.camera_manager)
             self.screens[GAME_STATE_ARCADE] = DoomsdayScreen(self.screen, self.camera_manager)
             self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
             self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
@@ -117,11 +117,11 @@ class GameManager:
             elif new_state == GAME_STATE_ARCADE:
                 pass  # Doomsday screen will manage its own stage-specific music
             
-            # Reset game screen when entering gameplay
+            # Reset target practice screen when entering gameplay
             if new_state == GAME_STATE_PLAYING:
-                game_screen = self.screens[GAME_STATE_PLAYING]
-                if hasattr(game_screen, 'reset_game'):
-                    game_screen.reset_game()
+                target_practice_screen = self.screens[GAME_STATE_PLAYING]
+                if hasattr(target_practice_screen, 'reset_game'):
+                    target_practice_screen.reset_game()
             elif new_state == GAME_STATE_ARCADE:
                 doomsday_screen = self.screens[GAME_STATE_ARCADE]
                 if hasattr(doomsday_screen, 'reset_game'):

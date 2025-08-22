@@ -1,5 +1,5 @@
 """
-Main game screen with hand tracking and shooting gameplay
+Target Practice screen with hand tracking and shooting gameplay
 """
 
 import pygame
@@ -12,8 +12,8 @@ from utils.sound_manager import get_sound_manager
 from game.hand_tracker import HandTracker
 from game.target import TargetManager
 
-class GameScreen:
-    """Main gameplay screen"""
+class TargetPracticeScreen:
+    """Target Practice gameplay screen"""
     
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
         self.screen = screen
