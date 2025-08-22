@@ -1,0 +1,23 @@
+# Development dependencies for linting, formatting, and security scanning
+
+# Code formatting and linting
+black==23.12.1
+flake8==7.0.0
+isort==5.13.2
+pylint==3.0.3
+
+# Security and vulnerability scanning
+bandit==1.7.6
+safety==3.0.1
+pip-audit==2.6.3
+
+# Dependency management
+pip-tools==7.3.0
+pip-licenses==4.3.4
+
+# Pre-commit hooks
+pre-commit==3.6.0
+
+# Testing (for future use)
+pytest==7.4.4
+pytest-cov==4.1.0
