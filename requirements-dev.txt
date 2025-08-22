@@ -16,7 +16,7 @@ pip-tools==7.3.0
 pip-licenses==4.3.4
 
 # Pre-commit hooks
-pre-commit==3.6.0
+pre-commit==3.8.0
 
 # Testing (for future use)
 pytest==7.4.4
