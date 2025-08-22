@@ -38,7 +38,13 @@ class SoundManager:
             'enemy_hit': 'hit.wav',  # Can use same or different sound
             'enemy_death': 'hit.wav',  # Can be customized later
             'elevator': 'Peachtea - Somewhere in the Elevator.ogg',  # Ambient music for menu
-            'boss_battle': 'boss_battle_8_metal_loop.ogg',  # Intense music for Doomsday mode
+            'boss_battle': 'boss_battle_8_metal_loop.ogg',  # Legacy - keep for compatibility
+            # Stage-specific music for Doomsday mode
+            'stage1_music': 'boss_battle_3_alternate.ogg',  # Stage 1 music
+            'stage2_music': 'Boss Battle 4 V1.ogg',  # Stage 2 music  
+            'stage3_music': 'Boss Battle 6 V1.ogg',  # Stage 3 music
+            'stage4_music1': 'boss_battle_8_retro_01_loop.ogg',  # Stage 4+ first track
+            'stage4_music2': 'boss_battle_8_retro_02_loop.ogg',  # Stage 4+ second track
         }
         
         # Load each sound
@@ -127,6 +133,34 @@ class SoundManager:
         """Resume ambient music"""
         if self.ambient_channel:
             self.ambient_channel.unpause()
+    
+    def get_stage_music(self, stage: int) -> str:
+        """Get the appropriate music track name for a given stage"""
+        if stage == 1:
+            return 'stage1_music'
+        elif stage == 2:
+            return 'stage2_music'
+        elif stage == 3:
+            return 'stage3_music'
+        else:  # Stage 4+
+            return 'stage4_music1'  # Start with first track for stage 4+
+    
+    def get_next_stage4_track(self, current_track: str) -> str:
+        """Get the next track in the Stage 4+ alternating sequence"""
+        if current_track == 'stage4_music1':
+            return 'stage4_music2'
+        else:
+            return 'stage4_music1'
+    
+    def is_ambient_finished(self) -> bool:
+        """Check if current ambient music has finished playing"""
+        return self.ambient_channel and not self.ambient_channel.get_busy()
+    
+    def play_stage_music(self, stage: int, loops: int = -1, fade_ms: int = 1000) -> str:
+        """Play appropriate music for a stage and return the track name"""
+        track_name = self.get_stage_music(stage)
+        self.play_ambient(track_name, loops=loops, fade_ms=fade_ms)
+        return track_name
 
 # Global sound manager instance
 _sound_manager = None

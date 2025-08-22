@@ -167,3 +167,12 @@ class BaseScreen:
             highlight_rect = pygame.Rect(button.rect.x - 3, button.rect.y - 3,
                                        button.rect.width + 6, button.rect.height + 6)
             pygame.draw.rect(self.screen, color, highlight_rect, 3)
+    
+    def update_button_finger_states(self, buttons: list) -> None:
+        """Update finger aiming state for all buttons in the list"""
+        for button in buttons:
+            if hasattr(button, 'set_finger_aimed'):
+                if self.crosshair_pos and button.rect.collidepoint(self.crosshair_pos):
+                    button.set_finger_aimed(True)
+                else:
+                    button.set_finger_aimed(False)

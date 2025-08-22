@@ -113,9 +113,9 @@ class GameManager:
                 if sound_manager.current_ambient != 'elevator':
                     sound_manager.play_ambient('elevator')
             
-            # When entering Doomsday, start boss battle music
+            # When entering Doomsday, let the doomsday screen handle its own music
             elif new_state == GAME_STATE_ARCADE:
-                sound_manager.play_ambient('boss_battle')
+                pass  # Doomsday screen will manage its own stage-specific music
             
             # Reset game screen when entering gameplay
             if new_state == GAME_STATE_PLAYING:

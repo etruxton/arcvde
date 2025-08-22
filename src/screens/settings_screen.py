@@ -6,7 +6,7 @@ import pygame
 from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
-from screens.menu_screen import Button
+from utils.ui_components import Button
 from screens.base_screen import BaseScreen
 
 class SettingsScreen(BaseScreen):
@@ -144,8 +144,8 @@ class SettingsScreen(BaseScreen):
         # Clear screen
         self.screen.fill(UI_BACKGROUND)
         
-        # Draw title
-        title_text = self.title_font.render("SETTINGS", True, UI_ACCENT)
+        # Draw title with vaporwave styling
+        title_text = self.title_font.render("SETTINGS", True, VAPORWAVE_CYAN)
         title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
         self.screen.blit(title_text, title_rect)
         
@@ -164,7 +164,9 @@ class SettingsScreen(BaseScreen):
         selected_surface = self.info_font.render(selected_text, True, selected_color)
         self.screen.blit(selected_surface, (200, 260))
         
-        # Draw buttons
+        # Update finger aiming states and draw buttons
+        self.update_button_finger_states(self.all_buttons)
+        
         for button in self.all_buttons:
             # Highlight selected camera button
             if button in self.camera_buttons and button.camera_id == self.selected_camera:
@@ -172,9 +174,6 @@ class SettingsScreen(BaseScreen):
                 highlight_rect = pygame.Rect(button.rect.x - 3, button.rect.y - 3, 
                                            button.rect.width + 6, button.rect.height + 6)
                 pygame.draw.rect(self.screen, UI_ACCENT, highlight_rect, 3)
-            
-            # Highlight button if crosshair is over it
-            self.highlight_button_if_aimed(button)
             
             button.draw(self.screen)
         

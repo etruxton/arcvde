@@ -75,6 +75,11 @@ class DoomsdayScreen:
         # Background gradient for doom-like atmosphere
         self.current_stage_theme = 1
         self.create_background()
+        
+        # Music management for stages
+        self.current_music_track = None
+        self.stage4_alternating_mode = False
+        self.music_started = False
     
     def create_background(self):
         """Create a doom-like background with gradient based on current stage"""
@@ -198,11 +203,22 @@ class DoomsdayScreen:
         self.crosshair_pos = None
         self.damage_flash_time = 0
         self.screen_shake_time = 0
+        
+        # Reset stage and music
+        self.current_stage_theme = 1
+        self.stage4_alternating_mode = False
+        self.music_started = False
+        self.create_background()
     
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update game state"""
         if self.paused or self.game_over:
             return None
+        
+        # Start music on first update when game is active
+        if not self.music_started:
+            self.music_started = True
+            self._start_stage_music(1)
         
         self.game_time += dt
         
@@ -217,6 +233,11 @@ class DoomsdayScreen:
         if new_theme != self.current_stage_theme:
             self.current_stage_theme = new_theme
             self.create_background()
+            self._start_stage_music(new_theme)
+        
+        # Handle Stage 4+ alternating music
+        if self.current_stage_theme >= 4 and self.stage4_alternating_mode:
+            self._handle_stage4_music_alternation()
         
         # Update screen effects
         if self.damage_flash_time > 0:
@@ -655,9 +676,9 @@ class DoomsdayScreen:
                 next_rect = next_wave_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
                 surface.blit(next_wave_text, next_rect)
         
-        # FPS counter
+        # FPS counter 
         fps_text = self.small_font.render(f"FPS: {self.current_fps}", True, GRAY)
-        fps_rect = fps_text.get_rect(topright=(SCREEN_WIDTH - CAMERA_WIDTH - 30, 10))
+        fps_rect = fps_text.get_rect(bottomright=(SCREEN_WIDTH - 10, SCREEN_HEIGHT - 10))
         surface.blit(fps_text, fps_rect)
         
         # Controls hint
@@ -849,3 +870,24 @@ class DoomsdayScreen:
         restart_text = self.font.render("Press ENTER or R to restart | ESC to return to menu", True, YELLOW)
         restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 200))
         surface.blit(restart_text, restart_rect)
+    
+    def _start_stage_music(self, stage: int):
+        """Start the appropriate music for a given stage"""
+        if stage >= 4:
+            # Stage 4+ uses alternating tracks
+            self.stage4_alternating_mode = True
+            # For stage 4+, play tracks without loops so we can detect when they finish
+            self.current_music_track = self.sound_manager.get_stage_music(stage)
+            self.sound_manager.play_ambient(self.current_music_track, loops=0)  # Play once
+        else:
+            # Stages 1-3 use single tracks on loop
+            self.stage4_alternating_mode = False
+            self.current_music_track = self.sound_manager.play_stage_music(stage, loops=-1)
+    
+    def _handle_stage4_music_alternation(self):
+        """Handle the alternating music logic for Stage 4+"""
+        # Check if current track has finished
+        if self.sound_manager.is_ambient_finished():
+            # Switch to the next track in the alternation
+            self.current_music_track = self.sound_manager.get_next_stage4_track(self.current_music_track)
+            self.sound_manager.play_ambient(self.current_music_track, loops=0)  # Play once

@@ -11,66 +11,10 @@ from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
 from utils.sound_manager import get_sound_manager
+from utils.ui_components import Button
 from screens.base_screen import BaseScreen
 from game.enemy import Enemy
 
-class Button:
-    """Simple button class for UI"""
-    
-    def __init__(self, x: int, y: int, width: int, height: int, text: str, font: pygame.font.Font):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.base_font = font
-        self.hovered = False
-        self.clicked = False
-        # Dynamically adjust font size to fit text within button
-        self.font = self._get_fitted_font(width, height)
-    
-    def _get_fitted_font(self, width: int, height: int) -> pygame.font.Font:
-        """Get a font size that fits the text within the button"""
-        # Start with base font size
-        font_size = 48  # Start with reasonable button text size
-        
-        # Leave some padding
-        max_width = width - 30  # More padding for better appearance
-        max_height = height - 10
-        
-        # Try progressively smaller fonts until text fits
-        while font_size > 10:
-            test_font = pygame.font.Font(None, font_size)
-            text_surface = test_font.render(self.text, True, (255, 255, 255))
-            
-            if text_surface.get_width() <= max_width and text_surface.get_height() <= max_height:
-                return test_font
-            
-            font_size -= 2
-        
-        # Return minimum size font if nothing else fits
-        return pygame.font.Font(None, 10)
-    
-    def handle_event(self, event: pygame.event.Event) -> bool:
-        """Handle mouse events, return True if clicked"""
-        if event.type == pygame.MOUSEMOTION:
-            self.hovered = self.rect.collidepoint(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1 and self.rect.collidepoint(event.pos):
-                self.clicked = True
-                return True
-        elif event.type == pygame.MOUSEBUTTONUP:
-            self.clicked = False
-        
-        return False
-    
-    def draw(self, screen: pygame.Surface) -> None:
-        """Draw the button"""
-        color = UI_BUTTON_ACTIVE if self.clicked else UI_BUTTON_HOVER if self.hovered else UI_BUTTON
-        pygame.draw.rect(screen, color, self.rect)
-        pygame.draw.rect(screen, UI_TEXT, self.rect, 2)
-        
-        # Draw text
-        text_surface = self.font.render(self.text, True, UI_TEXT)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        screen.blit(text_surface, text_rect)
 
 class MenuScreen(BaseScreen):
     """Main menu screen"""
@@ -229,8 +173,8 @@ class MenuScreen(BaseScreen):
     
     def draw(self) -> None:
         """Draw the menu screen"""
-        # Clear screen with darker background for enemy visibility
-        self.screen.fill((20, 20, 20))
+        # Clear screen with vaporwave background
+        self.screen.fill(UI_BACKGROUND)
         
         # Draw gradient background similar to game
         self._draw_menu_background()
@@ -238,9 +182,9 @@ class MenuScreen(BaseScreen):
         # Draw enemy showcase
         self._draw_enemy_showcase()
         
-        # Draw semi-transparent overlay for UI
+        # Draw semi-transparent overlay for UI readability (reduced opacity)
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(100)
+        overlay.set_alpha(40)  # Reduced from 100 to 40 for more vibrant enemies
         overlay.fill((0, 0, 0))
         self.screen.blit(overlay, (0, 0))
         
@@ -248,19 +192,39 @@ class MenuScreen(BaseScreen):
             logo_rect = self.logo.get_rect(center=(SCREEN_WIDTH // 2, 100))
             self.screen.blit(self.logo, logo_rect)
         else:
-            title_text = self.title_font.render("arcvde", True, UI_ACCENT)
-            title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
-            # Glow effect
-            glow_surf = self.title_font.render("arcvde", True, (0, 100, 200))
-            for offset in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
-                glow_rect = glow_surf.get_rect(center=(SCREEN_WIDTH // 2 + offset[0], 100 + offset[1]))
-                self.screen.blit(glow_surf, glow_rect)
+            # Draw title with vaporwave glow effect
+            title_y = 100
+            
+            # Multi-layer glow effect
+            glow_layers = [
+                (VAPORWAVE_PINK, 6, 30),     # Outer pink glow
+                (VAPORWAVE_CYAN, 4, 50),     # Mid cyan glow  
+                (VAPORWAVE_PURPLE, 2, 70),   # Inner purple glow
+            ]
+            
+            for glow_color, radius, alpha in glow_layers:
+                glow_text = self.title_font.render("arcvde", True, glow_color)
+                
+                for x_offset in range(-radius, radius + 1):
+                    for y_offset in range(-radius, radius + 1):
+                        if x_offset * x_offset + y_offset * y_offset <= radius * radius:
+                            glow_rect = glow_text.get_rect(center=(SCREEN_WIDTH // 2 + x_offset, title_y + y_offset))
+                            
+                            # Create alpha surface for this glow layer
+                            glow_surface = pygame.Surface(glow_text.get_size(), pygame.SRCALPHA)
+                            glow_surface.blit(glow_text, (0, 0))
+                            glow_surface.set_alpha(alpha)
+                            self.screen.blit(glow_surface, glow_rect)
+            
+            # Main title text
+            title_text = self.title_font.render("arcvde", True, VAPORWAVE_LIGHT)
+            title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, title_y))
             self.screen.blit(title_text, title_rect)
         
         
-        # Draw buttons
+        # Update finger aiming states and draw buttons
+        self.update_button_finger_states(self.buttons)
         for button in self.buttons:
-            self.highlight_button_if_aimed(button)
             button.draw(self.screen)
         
         # Draw crosshair if aiming
@@ -275,28 +239,49 @@ class MenuScreen(BaseScreen):
     
     
     def _draw_menu_background(self):
-        """Draw atmospheric background for menu"""
-        # Create gradient from dark at top to slightly lighter at bottom
+        """Draw vaporwave atmospheric background for menu"""
+        # Create vaporwave gradient from dark purple at top to dark cyan at bottom
         for y in range(SCREEN_HEIGHT):
             progress = y / SCREEN_HEIGHT
-            color = (
-                int(10 + progress * 20),
-                int(10 + progress * 15),
-                int(15 + progress * 15)
-            )
+            
+            # Interpolate between dark purple and dark cyan
+            r = int(VAPORWAVE_DARK[0] + progress * (10 - VAPORWAVE_DARK[0]))
+            g = int(VAPORWAVE_DARK[1] + progress * (40 - VAPORWAVE_DARK[1]))
+            b = int(VAPORWAVE_DARK[2] + progress * (60 - VAPORWAVE_DARK[2]))
+            
+            color = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
             pygame.draw.line(self.screen, color, (0, y), (SCREEN_WIDTH, y))
         
-        # Add floor grid for depth
-        horizon_y = int(SCREEN_HEIGHT * 0.5)
-        grid_color = (30, 30, 40)
+        # Add retro grid lines with vaporwave colors
+        horizon_y = int(SCREEN_HEIGHT * 0.6)
         
-        # Vertical lines (perspective)
-        for i in range(-10, 11):
-            x_start = SCREEN_WIDTH // 2 + i * 100
-            x_end = SCREEN_WIDTH // 2 + i * 30
-            pygame.draw.line(self.screen, grid_color,
-                           (x_start, SCREEN_HEIGHT),
-                           (x_end, horizon_y), 1)
+        # Horizontal grid lines
+        for i in range(10):
+            y = horizon_y + (SCREEN_HEIGHT - horizon_y) * (i / 10) ** 0.8
+            alpha = max(20, 60 - i * 5)
+            grid_color = (*VAPORWAVE_CYAN[:3], alpha)
+            
+            # Create surface for alpha blending
+            line_surface = pygame.Surface((SCREEN_WIDTH, 1), pygame.SRCALPHA)
+            line_surface.fill(grid_color)
+            self.screen.blit(line_surface, (0, int(y)))
+        
+        # Vertical perspective lines
+        for i in range(-8, 9):
+            x_start = SCREEN_WIDTH // 2 + i * 120
+            x_end = SCREEN_WIDTH // 2 + i * 40
+            alpha = max(15, 50 - abs(i) * 3)
+            grid_color = (*VAPORWAVE_PINK[:3], alpha)
+            
+            # Draw with alpha
+            line_surface = pygame.Surface((2, SCREEN_HEIGHT - horizon_y), pygame.SRCALPHA)
+            line_surface.fill(grid_color)
+            
+            # Calculate line positions
+            if 0 <= x_start < SCREEN_WIDTH or 0 <= x_end < SCREEN_WIDTH:
+                pygame.draw.line(self.screen, VAPORWAVE_PURPLE,
+                               (x_start, SCREEN_HEIGHT),
+                               (x_end, horizon_y), 1)
     
     def _draw_enemy_showcase(self):
         """Draw animated enemies in the background"""

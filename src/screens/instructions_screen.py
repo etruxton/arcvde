@@ -7,7 +7,7 @@ from typing import Optional
 from utils.constants import *
 from utils.camera_manager import CameraManager
 from utils.sound_manager import get_sound_manager
-from screens.menu_screen import Button
+from utils.ui_components import Button
 from screens.base_screen import BaseScreen
 
 class InstructionsScreen(BaseScreen):
@@ -109,14 +109,14 @@ class InstructionsScreen(BaseScreen):
         # Clear screen
         self.screen.fill(UI_BACKGROUND)
         
-        # Draw title
-        title_text = self.title_font.render("HOW TO PLAY", True, UI_ACCENT)
+        # Draw title with vaporwave styling
+        title_text = self.title_font.render("HOW TO PLAY", True, VAPORWAVE_CYAN)
         title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 80))
         self.screen.blit(title_text, title_rect)
         
         
-        # Draw back button
-        self.highlight_button_if_aimed(self.back_button)
+        # Update finger aiming state and draw back button
+        self.update_button_finger_states([self.back_button])
         self.back_button.draw(self.screen)
         
         # Draw crosshair if aiming

@@ -26,13 +26,24 @@ GRAY = (128, 128, 128)
 DARK_GRAY = (64, 64, 64)
 LIGHT_GRAY = (192, 192, 192)
 
-# UI Colors
-UI_BACKGROUND = (30, 30, 30)
-UI_BUTTON = (70, 70, 70)
-UI_BUTTON_HOVER = (90, 90, 90)
-UI_BUTTON_ACTIVE = (110, 110, 110)
-UI_TEXT = WHITE
-UI_ACCENT = (0, 150, 255)
+# Vaporwave/Retro Color Palette
+VAPORWAVE_PINK = (252, 17, 185)      # FC11B9 - Your brand pink
+VAPORWAVE_CYAN = (16, 231, 245)      # 10E7F5 - Your brand blue/cyan
+VAPORWAVE_PURPLE = (138, 43, 226)    # Deep purple for accents
+VAPORWAVE_MAGENTA = (255, 20, 147)   # Hot pink variant
+VAPORWAVE_MINT = (64, 224, 208)      # Mint green accent
+VAPORWAVE_DARK = (25, 25, 35)        # Dark navy background
+VAPORWAVE_MID_DARK = (45, 45, 65)    # Mid-tone dark
+VAPORWAVE_LIGHT = (240, 240, 250)    # Off-white text
+
+# UI Colors - Vaporwave Theme
+UI_BACKGROUND = VAPORWAVE_DARK
+UI_BUTTON = (60, 30, 80)             # Dark purple base
+UI_BUTTON_HOVER = VAPORWAVE_PINK     # Your brand pink on hover
+UI_BUTTON_ACTIVE = VAPORWAVE_CYAN    # Your brand cyan when clicked
+UI_TEXT = VAPORWAVE_LIGHT
+UI_ACCENT = VAPORWAVE_CYAN
+UI_SECONDARY_ACCENT = VAPORWAVE_PINK
 
 # Target settings
 TARGET_SIZE = 50

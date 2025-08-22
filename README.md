@@ -46,6 +46,11 @@ The game uses three intelligent detection modes:
 
 ## Installation
 
+### Prerequisites
+- **Python 3.7+** - Download from [python.org](https://www.python.org/downloads/)
+- **pip** - Usually included with Python installation
+
+### Steps
 1. Clone this repository
 2. Create a virtual environment (recommended):
    ```bash
@@ -167,8 +172,21 @@ Planned additions to arcvde:
   - Source: https://opengameart.org/content/somewhere-in-the-elevator
   - License: CC-BY 3.0
 
-- **Doomsday Mode Music**: "Boss Battle #8 Metal" 
-  - Source: https://opengameart.org/content/boss-battle-8-metal
+#### Doomsday Mode Stage Music
+- **Stage 1**: "Boss Battle 3 Alternate (8-bit)" by nene
+  - Source: https://opengameart.org/content/boss-battle-3-alternate-8-bit
+  - License: CC0 (Public Domain)
+
+- **Stage 2**: "Boss Battle 4 (8-bit) - Re-upload" by nene
+  - Source: https://opengameart.org/content/boss-battle-4-8-bit-re-upload
+  - License: CC0 (Public Domain)
+
+- **Stage 3**: "Boss Battle 6 (8-bit)" by nene
+  - Source: https://opengameart.org/content/boss-battle-6-8-bit
+  - License: CC0 (Public Domain)
+
+- **Stage 4+**: "Boss Battle 8 Retro" by nene (alternating tracks)
+  - Source: https://opengameart.org/content/boss-battle-8-retro
   - License: CC0 (Public Domain)
 
 ---
