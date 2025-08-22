@@ -13,7 +13,14 @@ import mediapipe as mp
 import numpy as np
 
 # Local application imports
-from utils.constants import *
+from utils.constants import (
+    INDEX_WRIST_THRESHOLD,
+    MIDDLE_RING_THRESHOLD,
+    RING_PINKY_THRESHOLD,
+    SHOOT_DISTANCE_THRESHOLD,
+    SHOOT_VELOCITY_THRESHOLD,
+    THUMB_INDEX_THRESHOLD,
+)
 
 
 class HandTracker:
@@ -96,8 +103,6 @@ class HandTracker:
         pinky_tip = hand_landmarks.landmark[self.mp_hands.HandLandmark.PINKY_TIP]
         wrist = hand_landmarks.landmark[self.mp_hands.HandLandmark.WRIST]
         middle_pip = hand_landmarks.landmark[self.mp_hands.HandLandmark.MIDDLE_FINGER_PIP]
-        ring_pip = hand_landmarks.landmark[self.mp_hands.HandLandmark.RING_FINGER_PIP]
-        pinky_pip = hand_landmarks.landmark[self.mp_hands.HandLandmark.PINKY_PIP]
         index_mcp = hand_landmarks.landmark[self.mp_hands.HandLandmark.INDEX_FINGER_MCP]
 
         # Method 1: Standard detection
@@ -126,9 +131,9 @@ class HandTracker:
         pointing_forward = self.is_pointing_at_camera(hand_landmarks)
 
         # Method 3: Enhanced finger curl detection using 3D coordinates
-        middle_curl = middle_tip.z > middle_pip.z
-        ring_curl = ring_tip.z > ring_pip.z
-        pinky_curl = pinky_tip.z > pinky_pip.z
+        # middle_curl = middle_tip.z > middle_pip.z
+        # ring_curl = ring_tip.z > ring_pip.z
+        # pinky_curl = pinky_tip.z > pinky_pip.z
 
         # Method 4: Index finger extension check
         index_vector = np.array([index_tip.x - index_mcp.x, index_tip.y - index_mcp.y])

@@ -27,7 +27,9 @@ ignore =
     # E501: line too long (we use max-line-length)
     E501,
     # F401: imported but unused (pygame and cv2 have side effects)
-    F401
+    F401,
+    # C901: function is too complex
+    C901
 
 # Per-file ignores
 per-file-ignores =

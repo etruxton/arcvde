@@ -11,7 +11,18 @@ import pygame
 # Local application imports
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
-from utils.constants import *
+from utils.constants import (
+    GAME_STATE_MENU,
+    GAME_STATE_PLAYING,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    UI_ACCENT,
+    UI_BACKGROUND,
+    UI_TEXT,
+    VAPORWAVE_CYAN,
+    WHITE,
+    YELLOW,
+)
 from utils.sound_manager import get_sound_manager
 from utils.ui_components import Button
 

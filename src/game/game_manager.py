@@ -18,7 +18,18 @@ from screens.menu_screen import MenuScreen
 from screens.settings_screen import SettingsScreen
 from screens.target_practice_screen import TargetPracticeScreen
 from utils.camera_manager import CameraManager
-from utils.constants import *
+from utils.constants import (
+    DEFAULT_CAMERA_ID,
+    FPS,
+    GAME_STATE_ARCADE,
+    GAME_STATE_INSTRUCTIONS,
+    GAME_STATE_LOADING,
+    GAME_STATE_MENU,
+    GAME_STATE_PLAYING,
+    GAME_STATE_SETTINGS,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+)
 
 
 class GameManager:

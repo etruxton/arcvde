@@ -16,7 +16,22 @@ import pygame
 from game.enemy import EnemyManager
 from game.hand_tracker import HandTracker
 from utils.camera_manager import CameraManager
-from utils.constants import *
+from utils.constants import (
+    BLACK,
+    CAMERA_HEIGHT,
+    CAMERA_WIDTH,
+    CAMERA_X,
+    CAMERA_Y,
+    DARK_GRAY,
+    GAME_STATE_MENU,
+    GRAY,
+    GREEN,
+    PURPLE,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    WHITE,
+    YELLOW,
+)
 from utils.sound_manager import get_sound_manager
 
 
@@ -133,7 +148,7 @@ class DoomsdayScreen:
 
         # Create gradient from theme colors
         for y in range(SCREEN_HEIGHT):
-            progress = y / SCREEN_HEIGHT
+            # progress = y / SCREEN_HEIGHT
 
             if y < SCREEN_HEIGHT * 0.4:  # Sky
                 sky_progress = y / (SCREEN_HEIGHT * 0.4)
@@ -673,7 +688,7 @@ class DoomsdayScreen:
                     stage_rect = stage_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80))
                     surface.blit(stage_text, stage_rect)
             else:
-                next_wave_text = self.font.render(f"Next wave starting...", True, WHITE)
+                next_wave_text = self.font.render("Next wave starting...", True, WHITE)
                 next_rect = next_wave_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
                 surface.blit(next_wave_text, next_rect)
 
@@ -744,7 +759,7 @@ class DoomsdayScreen:
                 wave_num = (stage_num - 1) * 2 + 1
                 self._jump_to_wave(wave_num)
                 self.console_message = f"Jumped to Stage {stage_num} (Wave {wave_num})"
-            except:
+            except Exception:
                 self.console_message = "Invalid stage number"
 
         elif command.startswith("/wave "):
@@ -752,7 +767,7 @@ class DoomsdayScreen:
                 wave_num = int(command.split()[1])
                 self._jump_to_wave(wave_num)
                 self.console_message = f"Jumped to Wave {wave_num}"
-            except:
+            except Exception:
                 self.console_message = "Invalid wave number"
 
         elif command == "/heal":
@@ -892,12 +907,12 @@ class DoomsdayScreen:
             # Play fire ambient loop for Stage 2
             self.current_stage_ambient = "stage2_fire_ambient"
             self.sound_manager.play_stage_effect("stage2_fire_ambient", loops=-1, volume=0.25)
-            print(f"Starting Stage 2 fire ambient")
+            print("Starting Stage 2 fire ambient")
         elif stage == 3:
             # Play static/mist ambient for Stage 3
             self.current_stage_ambient = "stage3_static_mist"
             self.sound_manager.play_stage_effect("stage3_static_mist", loops=-1, volume=0.2)
-            print(f"Starting Stage 3 static ambient")
+            print("Starting Stage 3 static ambient")
         elif stage >= 4:
             # No continuous ambient for Stage 4, just one-shot lightning
             self.current_stage_ambient = None

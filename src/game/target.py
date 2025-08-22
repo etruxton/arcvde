@@ -11,7 +11,14 @@ import time
 import pygame
 
 # Local application imports
-from utils.constants import *
+from utils.constants import (
+    MAX_TARGETS,
+    RED,
+    TARGET_SIZE,
+    TARGET_SPAWN_TIME,
+    WHITE,
+    YELLOW,
+)
 
 
 class Target:

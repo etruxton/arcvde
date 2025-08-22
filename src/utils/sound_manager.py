@@ -81,7 +81,7 @@ class SoundManager:
                     print(f"Successfully loaded: {filename}")
                 except pygame.error as e:
                     print(f"Could not load sound {filename}: {e}")
-                    print(f"Make sure the file format is supported (WAV or OGG)")
+                    print("Make sure the file format is supported (WAV or OGG)")
                     self.sounds[sound_name] = None
                 except Exception as e:
                     print(f"Unexpected error loading {filename}: {e}")

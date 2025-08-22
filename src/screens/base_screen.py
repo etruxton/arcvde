@@ -12,7 +12,16 @@ import pygame
 # Local application imports
 from game.hand_tracker import HandTracker
 from utils.camera_manager import CameraManager
-from utils.constants import *
+from utils.constants import (
+    DARK_GRAY,
+    GREEN,
+    PURPLE,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    UI_ACCENT,
+    WHITE,
+    YELLOW,
+)
 from utils.sound_manager import get_sound_manager
 
 

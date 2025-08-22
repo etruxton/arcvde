@@ -16,7 +16,27 @@ import pygame
 from game.enemy import Enemy
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
-from utils.constants import *
+from utils.constants import (
+    CAMERA_HEIGHT,
+    CAMERA_WIDTH,
+    CAMERA_X,
+    CAMERA_Y,
+    DEFAULT_CAMERA_ID,
+    GAME_STATE_ARCADE,
+    GAME_STATE_INSTRUCTIONS,
+    GAME_STATE_PLAYING,
+    GAME_STATE_SETTINGS,
+    GRAY,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    UI_BACKGROUND,
+    UI_TEXT,
+    VAPORWAVE_CYAN,
+    VAPORWAVE_DARK,
+    VAPORWAVE_LIGHT,
+    VAPORWAVE_PINK,
+    VAPORWAVE_PURPLE,
+)
 from utils.sound_manager import get_sound_manager
 from utils.ui_components import Button
 

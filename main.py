@@ -15,7 +15,7 @@ import pygame
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 # Local application imports
-from game.game_manager import GameManager
+from game.game_manager import GameManager  # noqa: E402
 
 
 def main():

@@ -14,7 +14,22 @@ import pygame
 from game.hand_tracker import HandTracker
 from game.target import TargetManager
 from utils.camera_manager import CameraManager
-from utils.constants import *
+from utils.constants import (
+    BLACK,
+    CAMERA_HEIGHT,
+    CAMERA_WIDTH,
+    CAMERA_X,
+    CAMERA_Y,
+    DARK_GRAY,
+    GAME_STATE_MENU,
+    GRAY,
+    GREEN,
+    PURPLE,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    WHITE,
+    YELLOW,
+)
 from utils.sound_manager import get_sound_manager
 
 

@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 import pygame
 
 # Local application imports
-from utils.constants import *
+from utils.constants import BLACK, SCREEN_HEIGHT
 
 
 class BloodParticle:
@@ -477,7 +477,7 @@ class Enemy:
             # Fire aura around eyes
             for flame in range(3):
                 flame_size = eye_size + flame * 2
-                flame_alpha = 100 - flame * 30
+                # flame_alpha = 100 - flame * 30
                 flame_color = (255, 200 - flame * 50, 0)
                 pygame.draw.circle(screen, flame_color, (eye_x, y - size // 3), flame_size, 1)
             # Main eye
@@ -502,7 +502,7 @@ class Enemy:
             )
 
         # Detailed bat wings
-        wing_spread = math.sin(self.animation_time * 2) * 0.3
+        # wing_spread = math.sin(self.animation_time * 2) * 0.3
         for wing_side in [-1, 1]:
             # Wing membrane
             wing_points = [
@@ -537,7 +537,7 @@ class Enemy:
         """Draw ghostly floating skull with ethereal effects"""
         # Floating animation with rotation
         float_offset = math.sin(self.animation_time * 3) * size * 0.1
-        rotation = math.sin(self.animation_time * 2) * 0.1
+        # rotation = math.sin(self.animation_time * 2) * 0.1
         y = int(y + float_offset)
 
         # Ethereal aura (ghostly trail)
@@ -670,7 +670,7 @@ class Enemy:
             # Outer glow
             for glow in range(3):
                 glow_size = base_eye_size + glow * 2
-                glow_alpha = 80 - glow * 25
+                # glow_alpha = 80 - glow * 25
                 pygame.draw.circle(screen, (255, 128, 0), (eye_x, eye_y), glow_size, 1)
             # Main eye
             pygame.draw.circle(screen, self.color_scheme["eyes"], (eye_x, eye_y), base_eye_size)

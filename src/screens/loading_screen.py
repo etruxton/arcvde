@@ -10,7 +10,17 @@ from typing import Optional
 import pygame
 
 # Local application imports
-from utils.constants import *
+from utils.constants import (
+    DARK_GRAY,
+    GAME_STATE_MENU,
+    GREEN,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    UI_ACCENT,
+    UI_BACKGROUND,
+    WHITE,
+    YELLOW,
+)
 
 
 class LoadingScreen:
