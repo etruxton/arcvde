@@ -27,8 +27,6 @@ lint:
 	isort --check-only --diff src/ main.py sound_generation/
 	@echo "\nRunning Flake8 (linting)..."
 	flake8 .
-	@echo "\nRunning Pylint..."
-	pylint src/ main.py sound_generation/ --exit-zero
 
 format:
 	@echo "Formatting code with Black..."
