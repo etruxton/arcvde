@@ -4,20 +4,25 @@ arcvde - Main Entry Point
 A real-time hand gesture recognition shooting game.
 """
 
-import pygame
-import sys
+# Standard library imports
 import os
+import sys
+
+# Third-party imports
+import pygame
 
 # Add src directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
+# Local application imports
 from game.game_manager import GameManager
+
 
 def main():
     """Main entry point for arcvde."""
     # Initialize pygame
     pygame.init()
-    
+
     try:
         # Create and run the game
         game = GameManager()
@@ -29,6 +34,7 @@ def main():
     finally:
         pygame.quit()
         sys.exit()
+
 
 if __name__ == "__main__":
     main()
