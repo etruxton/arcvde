@@ -14,7 +14,7 @@ import pygame
 
 # Local application imports
 from game.enemy import EnemyManager
-from game.hand_tracker import HandTracker
+from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import (
     BLACK,
@@ -35,17 +35,15 @@ from utils.constants import (
 from utils.sound_manager import get_sound_manager
 
 
-class DoomsdayScreen:
+class DoomsdayScreen(BaseScreen):
     """Doomsday mode gameplay screen with enemy waves"""
 
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
-        self.screen = screen
-        self.camera_manager = camera_manager
+        # Initialize base class (handles camera, hand tracker, sound manager, settings)
+        super().__init__(screen, camera_manager)
 
-        # Initialize game components
-        self.hand_tracker = HandTracker()
+        # Initialize game-specific components
         self.enemy_manager = EnemyManager(SCREEN_WIDTH, SCREEN_HEIGHT)
-        self.sound_manager = get_sound_manager()
 
         # Fonts
         self.font = pygame.font.Font(None, 36)
@@ -70,9 +68,7 @@ class DoomsdayScreen:
         self.last_shoot_time = 0
         self.rapid_fire_count = 0
 
-        # Crosshair state
-        self.crosshair_pos = None
-        self.crosshair_color = GREEN
+        # Note: crosshair_pos and crosshair_color are inherited from BaseScreen
 
         # Screen effects
         self.damage_flash_time = 0
@@ -300,63 +296,13 @@ class DoomsdayScreen:
 
     def _process_hand_tracking(self) -> None:
         """Process hand tracking and shooting detection"""
-        ret, frame = self.camera_manager.read_frame()
-        if not ret or frame is None:
-            self.hand_tracker.reset_tracking_state()
-            self.crosshair_pos = None
-            return
+        # Use base class method for tracking
+        self.process_finger_gun_tracking()
 
-        # Process frame for hand detection
-        processed_frame, results = self.hand_tracker.process_frame(frame)
-
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                # Draw landmarks on camera frame
-                self.hand_tracker.draw_landmarks(processed_frame, hand_landmarks)
-
-                # Detect finger gun
-                (
-                    is_gun,
-                    index_coords,
-                    thumb_tip,
-                    middle_mcp,
-                    thumb_middle_dist,
-                    confidence,
-                ) = self.hand_tracker.detect_finger_gun(
-                    hand_landmarks, self.camera_manager.frame_width, self.camera_manager.frame_height
-                )
-
-                if is_gun and index_coords:
-                    cv2.circle(processed_frame, index_coords, 15, (0, 255, 0), -1)
-
-                    # Map finger position to game screen
-                    game_x = int((index_coords[0] / self.camera_manager.frame_width) * SCREEN_WIDTH)
-                    game_y = int((index_coords[1] / self.camera_manager.frame_height) * SCREEN_HEIGHT)
-                    self.crosshair_pos = (game_x, game_y)
-
-                    # Set crosshair color based on detection mode
-                    if self.hand_tracker.detection_mode == "standard":
-                        self.crosshair_color = GREEN
-                    elif self.hand_tracker.detection_mode == "depth":
-                        self.crosshair_color = YELLOW
-                    elif self.hand_tracker.detection_mode == "wrist_angle":
-                        self.crosshair_color = PURPLE
-                    else:
-                        self.crosshair_color = WHITE
-
-                    # Detect shooting gesture
-                    shoot_this_frame = self.hand_tracker.detect_shooting_gesture(thumb_tip, thumb_middle_dist)
-                    if shoot_this_frame:
-                        self._handle_shoot(self.crosshair_pos)
-                        cv2.putText(processed_frame, "SHOOT!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                else:
-                    self.crosshair_pos = None
-        else:
-            self.hand_tracker.reset_tracking_state()
-            self.crosshair_pos = None
-
-        # Store processed frame for display
-        self._processed_camera_frame = processed_frame
+        # Check if we should shoot
+        if self.shoot_detected:
+            self._handle_shoot(self.crosshair_pos)
+            self.shoot_detected = False  # Reset after handling
 
     def _handle_shoot(self, shoot_position: tuple) -> None:
         """Handle shooting action"""
@@ -440,7 +386,7 @@ class DoomsdayScreen:
 
         # Draw crosshair
         if self.crosshair_pos:
-            self._draw_crosshair(draw_surface, self.crosshair_pos, self.crosshair_color)
+            self.draw_crosshair_on_surface(draw_surface, self.crosshair_pos, self.crosshair_color)
 
         # Draw shooting animation
         current_time = pygame.time.get_ticks()
@@ -466,6 +412,10 @@ class DoomsdayScreen:
 
         # Draw camera feed (not affected by shake)
         self._draw_camera_feed()
+
+        # Draw debug overlay if enabled (using base class method)
+        if self.settings_manager.get("debug_mode", False):
+            self.draw_debug_overlay()
 
     def _draw_stage_effects(self, surface: pygame.Surface):
         """Draw atmospheric effects based on current stage"""
@@ -570,21 +520,14 @@ class DoomsdayScreen:
             y = horizon_y + (SCREEN_HEIGHT - horizon_y) * (i / 10) ** 0.7
             pygame.draw.line(surface, grid_color, (0, int(y)), (SCREEN_WIDTH, int(y)), 1)
 
-    def _draw_crosshair(self, surface: pygame.Surface, pos: tuple, color: tuple) -> None:
-        """Draw crosshair at given position"""
-        x, y = pos
-        size = 25
-        thickness = 3
-        gap = 8
-
-        # Outer circle
-        pygame.draw.circle(surface, color, pos, size, thickness)
-
-        # Cross lines with gap in center
-        pygame.draw.line(surface, color, (x - size - 10, y), (x - gap, y), thickness)
-        pygame.draw.line(surface, color, (x + gap, y), (x + size + 10, y), thickness)
-        pygame.draw.line(surface, color, (x, y - size - 10), (x, y - gap), thickness)
-        pygame.draw.line(surface, color, (x, y + gap), (x, y + size + 10), thickness)
+    # Note: _draw_crosshair removed - using base class draw_crosshair method
+    # If we need special drawing to a surface, we temporarily swap the screen
+    def draw_crosshair_on_surface(self, surface: pygame.Surface, pos: tuple, color: tuple) -> None:
+        """Draw crosshair on a specific surface"""
+        original_screen = self.screen
+        self.screen = surface
+        self.draw_crosshair(pos, color)
+        self.screen = original_screen
 
         # Center dot
         pygame.draw.circle(surface, color, pos, 2)
@@ -725,28 +668,8 @@ class DoomsdayScreen:
 
     def _draw_camera_feed(self) -> None:
         """Draw camera feed in corner"""
-        if hasattr(self, "_processed_camera_frame") and self._processed_camera_frame is not None:
-            camera_surface = self.camera_manager.frame_to_pygame_surface(
-                self._processed_camera_frame, (CAMERA_WIDTH, CAMERA_HEIGHT)
-            )
-        else:
-            ret, frame = self.camera_manager.read_frame()
-            if ret and frame is not None:
-                camera_surface = self.camera_manager.frame_to_pygame_surface(frame, (CAMERA_WIDTH, CAMERA_HEIGHT))
-            else:
-                camera_surface = pygame.Surface((CAMERA_WIDTH, CAMERA_HEIGHT))
-                camera_surface.fill(DARK_GRAY)
-                no_cam_text = self.small_font.render("No Camera", True, WHITE)
-                text_rect = no_cam_text.get_rect(center=(CAMERA_WIDTH // 2, CAMERA_HEIGHT // 2))
-                camera_surface.blit(no_cam_text, text_rect)
-
-        # Draw border
-        border_color = self.crosshair_color if self.crosshair_pos else WHITE
-        border_rect = pygame.Rect(CAMERA_X - 2, CAMERA_Y - 2, CAMERA_WIDTH + 4, CAMERA_HEIGHT + 4)
-        pygame.draw.rect(self.screen, border_color, border_rect, 2)
-
-        # Draw camera feed
-        self.screen.blit(camera_surface, (CAMERA_X, CAMERA_Y))
+        # Use base class method
+        self.draw_camera_with_tracking(CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT)
 
     def _execute_console_command(self):
         """Execute debug console command"""

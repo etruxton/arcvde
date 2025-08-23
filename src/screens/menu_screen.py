@@ -257,11 +257,15 @@ class MenuScreen(BaseScreen):
         if self.crosshair_pos:
             self.draw_crosshair(self.crosshair_pos, self.crosshair_color)
 
+        # Draw shooting animation
+        self.draw_shoot_animation()
+
         # Draw camera feed
         self.draw_camera_with_tracking(CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT)
 
-        # Draw camera info
-        self._draw_camera_info()
+        # Draw debug overlay if enabled
+        if self.settings_manager.get("debug_mode", False):
+            self.draw_debug_overlay()
 
     def _draw_menu_background(self):
         """Draw vaporwave atmospheric background for menu"""
@@ -332,17 +336,3 @@ class MenuScreen(BaseScreen):
 
             pygame.draw.circle(glow_surface, glow_color, (glow_size * 3 // 2, glow_size * 3 // 2), glow_size)
             self.screen.blit(glow_surface, (x - glow_size * 3 // 2, y - glow_size * 3 // 2))
-
-    def _draw_camera_info(self) -> None:
-        """Draw camera information"""
-        camera_info = self.camera_manager.get_camera_info()
-
-        info_text = f"Camera {camera_info['current_id']} - {camera_info['resolution'][0]}x{camera_info['resolution'][1]}"
-        info_surface = self.info_font.render(info_text, True, UI_TEXT)
-        self.screen.blit(info_surface, (CAMERA_X, CAMERA_Y + CAMERA_HEIGHT + 5))
-
-        # Show available cameras
-        if len(camera_info["available_cameras"]) > 1:
-            avail_text = f"Available: {', '.join(map(str, camera_info['available_cameras']))}"
-            avail_surface = self.info_font.render(avail_text, True, GRAY)
-            self.screen.blit(avail_surface, (CAMERA_X, CAMERA_Y + CAMERA_HEIGHT + 25))

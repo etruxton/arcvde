@@ -12,15 +12,24 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-# Local application imports
-from utils.constants import (
-    INDEX_WRIST_THRESHOLD,
-    MIDDLE_RING_THRESHOLD,
-    RING_PINKY_THRESHOLD,
-    SHOOT_DISTANCE_THRESHOLD,
-    SHOOT_VELOCITY_THRESHOLD,
-    THUMB_INDEX_THRESHOLD,
-)
+try:
+    # Local application imports
+    from utils.constants import (
+        INDEX_WRIST_THRESHOLD,
+        MIDDLE_RING_THRESHOLD,
+        RING_PINKY_THRESHOLD,
+        SHOOT_DISTANCE_THRESHOLD,
+        SHOOT_VELOCITY_THRESHOLD,
+        THUMB_INDEX_THRESHOLD,
+    )
+except ImportError:
+    # Fallback constants if not in proper package structure
+    INDEX_WRIST_THRESHOLD = 10
+    MIDDLE_RING_THRESHOLD = 8
+    RING_PINKY_THRESHOLD = 8
+    SHOOT_DISTANCE_THRESHOLD = 0.1
+    SHOOT_VELOCITY_THRESHOLD = 0.1
+    THUMB_INDEX_THRESHOLD = 35
 
 
 class HandTracker:

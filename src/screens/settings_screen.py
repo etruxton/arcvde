@@ -14,13 +14,17 @@ from utils.camera_manager import CameraManager
 from utils.constants import (
     GAME_STATE_MENU,
     GRAY,
+    GREEN,
+    RED,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     UI_ACCENT,
     UI_BACKGROUND,
     UI_TEXT,
     VAPORWAVE_CYAN,
+    VAPORWAVE_PINK,
 )
+from utils.settings_manager import get_settings_manager
 from utils.ui_components import Button
 
 
@@ -42,6 +46,10 @@ class SettingsScreen(BaseScreen):
         # Settings values
         self.selected_camera = self.camera_manager.camera_id
         self.settings_changed = False
+
+        # Settings manager
+        self.settings_manager = get_settings_manager()
+        self.debug_mode = self.settings_manager.get("debug_mode", False)
 
     def _create_ui_elements(self) -> None:
         """Create UI buttons and elements"""
@@ -72,7 +80,10 @@ class SettingsScreen(BaseScreen):
         # Apply/Save button
         self.apply_button = Button(start_x + 200, start_y + 150, 100, button_height, "APPLY", self.button_font)
 
-        self.all_buttons = [self.back_button] + self.camera_buttons + [self.test_button, self.apply_button]
+        # Debug mode toggle button
+        self.debug_button = Button(start_x, start_y + 220, 200, button_height, "DEBUG MODE", self.button_font)
+
+        self.all_buttons = [self.back_button] + self.camera_buttons + [self.test_button, self.apply_button, self.debug_button]
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
@@ -90,6 +101,8 @@ class SettingsScreen(BaseScreen):
                     self._test_camera()
                 elif button == self.apply_button:
                     self._apply_settings()
+                elif button == self.debug_button:
+                    self._toggle_debug_mode()
 
         # Handle keyboard
         if event.type == pygame.KEYDOWN:
@@ -119,6 +132,11 @@ class SettingsScreen(BaseScreen):
                 # Revert selection
                 self.selected_camera = self.camera_manager.camera_id
 
+    def _toggle_debug_mode(self) -> None:
+        """Toggle debug mode on/off"""
+        self.debug_mode = self.settings_manager.toggle("debug_mode")
+        print(f"Debug mode: {'ON' if self.debug_mode else 'OFF'}")
+
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update settings screen"""
         # Process hand tracking
@@ -138,6 +156,8 @@ class SettingsScreen(BaseScreen):
                 self._test_camera()
             elif shot_button == self.apply_button:
                 self._apply_settings()
+            elif shot_button == self.debug_button:
+                self._toggle_debug_mode()
 
         return None
 
@@ -180,11 +200,29 @@ class SettingsScreen(BaseScreen):
                 )
                 pygame.draw.rect(self.screen, UI_ACCENT, highlight_rect, 3)
 
+            # Highlight debug button if enabled
+            if button == self.debug_button:
+                if self.debug_mode:
+                    # Draw green highlight for enabled
+                    highlight_rect = pygame.Rect(
+                        button.rect.x - 3, button.rect.y - 3, button.rect.width + 6, button.rect.height + 6
+                    )
+                    pygame.draw.rect(self.screen, GREEN, highlight_rect, 3)
+
             button.draw(self.screen)
+
+        # Draw debug mode status
+        debug_status = "ON" if self.debug_mode else "OFF"
+        debug_color = GREEN if self.debug_mode else GRAY
+        status_text = self.button_font.render(f"Debug: {debug_status}", True, debug_color)
+        self.screen.blit(status_text, (self.debug_button.rect.x + 220, self.debug_button.rect.y + 5))
 
         # Draw crosshair if aiming
         if self.crosshair_pos:
             self.draw_crosshair(self.crosshair_pos, self.crosshair_color)
+
+        # Draw shooting animation
+        self.draw_shoot_animation()
 
         # Draw camera preview
         preview_width = 400

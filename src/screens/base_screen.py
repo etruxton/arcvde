@@ -9,10 +9,21 @@ from typing import Optional, Tuple
 import cv2
 import pygame
 
+# Use enhanced tracker for better performance
+try:
+    # Local application imports
+    from game.enhanced_hand_tracker import EnhancedHandTracker as HandTracker
+
+    print("[Hand Tracking] Using Enhanced Tracker with preprocessing, angles, and Kalman filter")
+except ImportError:
+    # Local application imports
+    from game.hand_tracker import HandTracker
+
+    print("[Hand Tracking] Using Original Tracker")
 # Local application imports
-from game.hand_tracker import HandTracker
 from utils.camera_manager import CameraManager
 from utils.constants import DARK_GRAY, GREEN, PURPLE, SCREEN_HEIGHT, SCREEN_WIDTH, UI_ACCENT, WHITE, YELLOW
+from utils.settings_manager import get_settings_manager
 from utils.sound_manager import get_sound_manager
 
 
@@ -23,9 +34,10 @@ class BaseScreen:
         self.screen = screen
         self.camera_manager = camera_manager
 
-        # Initialize hand tracker and sound manager
+        # Initialize hand tracker and managers
         self.hand_tracker = HandTracker()
         self.sound_manager = get_sound_manager()
+        self.settings_manager = get_settings_manager()
 
         # Finger gun interaction state
         self.crosshair_pos = None
@@ -34,6 +46,11 @@ class BaseScreen:
         self.last_shoot_check_time = 0
         self.shoot_detected_time = 0
         self._processed_camera_frame = None
+
+        # Shooting animation state
+        self.shoot_pos = None
+        self.shoot_animation_time = 0
+        self.shoot_animation_duration = 200  # milliseconds
 
     def process_finger_gun_tracking(self) -> None:
         """Process finger gun tracking - shared across all screens"""
@@ -45,7 +62,16 @@ class BaseScreen:
             return
 
         # Process frame for hand detection
-        processed_frame, results = self.hand_tracker.process_frame(frame)
+        # Check if debug mode is enabled
+        debug_mode = self.settings_manager.get("debug_mode", False)
+
+        # Handle both original (2 returns) and enhanced (3 returns) tracker
+        if hasattr(self.hand_tracker, "enable_preprocessing"):  # Enhanced tracker
+            processed_frame, results, stats = self.hand_tracker.process_frame(frame, debug_mode)
+            self.last_tracking_stats = stats  # Store for debug overlay
+        else:  # Original tracker
+            processed_frame, results = self.hand_tracker.process_frame(frame)
+            self.last_tracking_stats = None
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
@@ -73,15 +99,8 @@ class BaseScreen:
                     screen_y = int((index_coords[1] / self.camera_manager.frame_height) * SCREEN_HEIGHT)
                     self.crosshair_pos = (screen_x, screen_y)
 
-                    # Set crosshair color based on detection mode
-                    if self.hand_tracker.detection_mode == "standard":
-                        self.crosshair_color = GREEN
-                    elif self.hand_tracker.detection_mode == "depth":
-                        self.crosshair_color = YELLOW
-                    elif self.hand_tracker.detection_mode == "wrist_angle":
-                        self.crosshair_color = PURPLE
-                    else:
-                        self.crosshair_color = WHITE
+                    # Always use green for crosshair
+                    self.crosshair_color = GREEN
 
                     # Detect shooting gesture
                     shoot_this_frame = self.hand_tracker.detect_shooting_gesture(thumb_tip, thumb_middle_dist)
@@ -89,26 +108,20 @@ class BaseScreen:
                         # Standard library imports
                         import time
 
-                        self.shoot_detected = True
-                        self.shoot_detected_time = time.time()
+                        # Check if enough time has passed since last shot (prevents rapid fire)
+                        current_time = time.time()
+                        if current_time - self.shoot_detected_time > 0.3:  # 300ms cooldown between shots
+                            self.shoot_detected = True
+                            self.shoot_detected_time = current_time
 
-                    # Add detection mode text to camera feed
-                    cv2.putText(
-                        processed_frame,
-                        f"Mode: {self.hand_tracker.detection_mode}",
-                        (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2,
-                    )
-                    cv2.putText(
-                        processed_frame, f"Conf: {confidence:.2f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2
-                    )
+                            # Trigger shoot animation and sound
+                            self.shoot_pos = self.crosshair_pos
+                            self.shoot_animation_time = pygame.time.get_ticks()
+                            self.sound_manager.play("shoot")
 
                     # Show if shoot is detected on camera feed
                     if shoot_this_frame:  # Show SHOOT! when shooting happens, not when flag is set
-                        cv2.putText(processed_frame, "SHOOT!", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        cv2.putText(processed_frame, "SHOOT!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
                 else:
                     self.crosshair_pos = None
@@ -119,13 +132,6 @@ class BaseScreen:
 
         # Store processed frame for display
         self._processed_camera_frame = processed_frame
-
-        # Auto-reset shoot_detected after timeout (prevents getting stuck)
-        # Standard library imports
-        import time
-
-        if self.shoot_detected and time.time() - self.shoot_detected_time > 0.5:  # 500ms timeout
-            self.shoot_detected = False
 
     def draw_crosshair(self, pos: Tuple[int, int], color: Tuple[int, int, int]) -> None:
         """Draw crosshair at given position - shared across all screens"""
@@ -143,9 +149,11 @@ class BaseScreen:
     def check_button_shoot(self, buttons: list) -> Optional[object]:
         """Check if any button was shot at - returns the button if found"""
         if self.shoot_detected and self.crosshair_pos:
+            # Always reset the flag after checking
+            self.shoot_detected = False
+
             for button in buttons:
                 if hasattr(button, "rect") and button.rect.collidepoint(self.crosshair_pos):
-                    self.shoot_detected = False  # Reset after detecting a shot
                     return button
         return None
 
@@ -170,13 +178,46 @@ class BaseScreen:
                 text_rect = no_cam_text.get_rect(center=(width // 2, height // 2))
                 camera_surface.blit(no_cam_text, text_rect)
 
-        # Draw border with tracking color if active
-        border_color = self.crosshair_color if self.crosshair_pos else UI_ACCENT
+        # Draw border - green if tracking, accent color otherwise
+        border_color = GREEN if self.crosshair_pos else UI_ACCENT
         border_rect = pygame.Rect(x - 2, y - 2, width + 4, height + 4)
         pygame.draw.rect(self.screen, border_color, border_rect, 2)
 
         # Draw camera feed
         self.screen.blit(camera_surface, (x, y))
+
+        # Draw problem zone rectangle in debug mode
+        if self.settings_manager.get("debug_mode", False):
+            # Problem zone is bottom 160 pixels of camera (full width)
+            # Scale to camera display size
+            zone_height_ratio = 160 / self.camera_manager.frame_height  # 160/480 = 0.333
+            zone_height = int(height * zone_height_ratio)
+            zone_y = y + height - zone_height
+
+            # Determine color based on whether hand is in zone
+            zone_color = (
+                GREEN
+                if (
+                    hasattr(self.hand_tracker, "last_position_category")
+                    and self.hand_tracker.last_position_category == "problem_zone"
+                )
+                else (255, 100, 100)
+            )
+
+            # Draw semi-transparent overlay
+            zone_surface = pygame.Surface((width, zone_height))
+            zone_surface.set_alpha(50)
+            zone_surface.fill(zone_color)
+            self.screen.blit(zone_surface, (x, zone_y))
+
+            # Draw border
+            pygame.draw.rect(self.screen, zone_color, (x, zone_y, width, zone_height), 2)
+
+            # Add label
+            font = pygame.font.Font(None, 16)
+            label = font.render("PROBLEM ZONE", True, zone_color)
+            label_rect = label.get_rect(center=(x + width // 2, zone_y + 10))
+            self.screen.blit(label, label_rect)
 
     def highlight_button_if_aimed(self, button, highlight_color: Optional[Tuple[int, int, int]] = None) -> None:
         """Highlight button if crosshair is over it"""
@@ -193,3 +234,119 @@ class BaseScreen:
                     button.set_finger_aimed(True)
                 else:
                     button.set_finger_aimed(False)
+
+    def draw_debug_overlay(self) -> None:
+        """Draw debug information overlay when debug mode is enabled"""
+        if not hasattr(self, "last_tracking_stats") or not self.last_tracking_stats:
+            return
+
+        # Import camera constants
+        # Local application imports
+        from utils.constants import CAMERA_HEIGHT, CAMERA_WIDTH, CAMERA_X, CAMERA_Y
+
+        # Position debug info below the camera
+        debug_x = CAMERA_X
+        debug_y = CAMERA_Y + CAMERA_HEIGHT + 10  # 10px gap below camera
+
+        # Create semi-transparent background for debug info
+        debug_surface = pygame.Surface((CAMERA_WIDTH, 200))  # Match camera width
+        debug_surface.set_alpha(200)
+        debug_surface.fill((0, 0, 0))
+        self.screen.blit(debug_surface, (debug_x, debug_y))
+
+        # Font for debug text
+        debug_font = pygame.font.Font(None, 18)  # Slightly smaller font to fit
+
+        # Prepare debug information
+        stats = self.last_tracking_stats
+        y_offset = debug_y + 10  # Start 10px from top of debug area
+        x_offset = debug_x + 10  # 10px padding from left
+
+        # Title
+        title = debug_font.render("=== DEBUG MODE ===", True, (0, 255, 255))
+        self.screen.blit(title, (x_offset, y_offset))
+        y_offset += 25
+
+        # Performance stats
+        fps_text = f"FPS: {1000/stats['total_ms']:.1f}" if stats["total_ms"] > 0 else "FPS: --"
+        fps_surface = debug_font.render(fps_text, True, (0, 255, 0))
+        self.screen.blit(fps_surface, (x_offset, y_offset))
+        y_offset += 20
+
+        preprocess_text = f"Preprocessing: {stats['preprocessing_ms']:.1f}ms"
+        preprocess_surface = debug_font.render(preprocess_text, True, WHITE)
+        self.screen.blit(preprocess_surface, (x_offset, y_offset))
+        y_offset += 20
+
+        detection_text = f"Detection: {stats['detection_ms']:.1f}ms"
+        detection_surface = debug_font.render(detection_text, True, WHITE)
+        self.screen.blit(detection_surface, (x_offset, y_offset))
+        y_offset += 20
+
+        # Detection mode
+        mode_colors = {
+            "standard": (0, 255, 0),
+            "angles": (0, 255, 255),
+            "depth": (255, 0, 255),
+            "wrist_angle": (128, 128, 255),
+            "angles_only": (0, 200, 200),
+            "none": (255, 0, 0),
+        }
+        mode_color = mode_colors.get(stats["detection_mode"], WHITE)
+        mode_text = f"Mode: {stats['detection_mode']}"
+        mode_surface = debug_font.render(mode_text, True, mode_color)
+        self.screen.blit(mode_surface, (x_offset, y_offset))
+        y_offset += 20
+
+        # Confidence
+        conf_color = (0, 255, 0) if stats["confidence"] > 0.7 else (255, 255, 0) if stats["confidence"] > 0.4 else (255, 0, 0)
+        conf_text = f"Confidence: {stats['confidence']:.2f}"
+        conf_surface = debug_font.render(conf_text, True, conf_color)
+        self.screen.blit(conf_surface, (x_offset, y_offset))
+        y_offset += 20
+
+        # Kalman status
+        if stats.get("kalman_active"):
+            kalman_text = f"Kalman: {stats['kalman_tracking_confidence']:.2f}"
+            kalman_surface = debug_font.render(kalman_text, True, (255, 255, 0))
+            self.screen.blit(kalman_surface, (x_offset, y_offset))
+            y_offset += 20
+
+        # Feature status
+        if hasattr(self.hand_tracker, "enable_preprocessing"):
+            features = []
+            if self.hand_tracker.enable_preprocessing:
+                features.append("Preprocess")
+            if self.hand_tracker.enable_angles:
+                features.append("Angles")
+            if self.hand_tracker.enable_kalman:
+                features.append("Kalman")
+
+            feature_text = f"Features: {', '.join(features)}"
+            feature_surface = debug_font.render(feature_text, True, (200, 200, 200))
+            self.screen.blit(feature_surface, (x_offset, y_offset))
+
+    def draw_shoot_animation(self) -> None:
+        """Draw shooting animation if active"""
+        if not self.shoot_pos:
+            return
+
+        current_time = pygame.time.get_ticks()
+        if current_time - self.shoot_animation_time >= self.shoot_animation_duration:
+            self.shoot_pos = None  # Animation finished
+            return
+
+        time_since_shoot = current_time - self.shoot_animation_time
+        animation_progress = time_since_shoot / self.shoot_animation_duration
+
+        if animation_progress < 1.0:
+            # Expanding circle animation
+            radius = int(40 * animation_progress)
+            alpha = int(255 * (1 - animation_progress))
+
+            # Create surface for alpha blending
+            if alpha > 0:
+                shoot_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+                pygame.draw.circle(shoot_surface, (*YELLOW, alpha), (radius, radius), radius, 3)
+                pygame.draw.circle(shoot_surface, (*WHITE, alpha // 2), (radius, radius), radius // 2, 2)
+                self.screen.blit(shoot_surface, (self.shoot_pos[0] - radius, self.shoot_pos[1] - radius))

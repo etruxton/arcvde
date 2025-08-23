@@ -45,10 +45,7 @@ class InstructionsScreen(BaseScreen):
         # Create back button
         self.back_button = Button(50, 50, 120, 50, "BACK", self.text_font)
 
-        # Shooting state for visual feedback
-        self.shoot_pos = None
-        self.shoot_animation_time = 0
-        self.shoot_animation_duration = 200  # milliseconds
+        # Note: shoot_pos, shoot_animation_time, shoot_animation_duration inherited from BaseScreen
 
         # Instructions content
         self.instructions = [
@@ -106,13 +103,7 @@ class InstructionsScreen(BaseScreen):
         # Handle finger gun shooting
         shot_button = self.check_button_shoot([self.back_button])
         if shot_button:
-            self.sound_manager.play("shoot")
             return GAME_STATE_MENU
-
-        # Handle shooting for visual feedback
-        if self.shoot_detected and self.crosshair_pos:
-            self._handle_shoot(self.crosshair_pos)
-            self.shoot_detected = False  # Reset after handling shot
 
         return None
 
@@ -134,10 +125,8 @@ class InstructionsScreen(BaseScreen):
         if self.crosshair_pos:
             self.draw_crosshair(self.crosshair_pos, self.crosshair_color)
 
-        # Draw shooting animation
-        current_time = pygame.time.get_ticks()
-        if self.shoot_pos and current_time - self.shoot_animation_time < self.shoot_animation_duration:
-            self._draw_shoot_animation(self.shoot_pos)
+        # Draw shooting animation (using base class method)
+        self.draw_shoot_animation()
 
         # Draw instructions - avoid top-right where camera is
         left_x = 100
@@ -215,28 +204,4 @@ class InstructionsScreen(BaseScreen):
         # Draw camera feed with tracking
         self.draw_camera_with_tracking(demo_x, demo_y, demo_width, demo_height)
 
-    def _handle_shoot(self, shoot_position: tuple) -> None:
-        """Handle shooting action for visual feedback"""
-        self.shoot_pos = shoot_position
-        self.shoot_animation_time = pygame.time.get_ticks()
-
-        # Play shoot sound
-        self.sound_manager.play("shoot")
-
-    def _draw_shoot_animation(self, pos: tuple) -> None:
-        """Draw shooting animation"""
-        current_time = pygame.time.get_ticks()
-        time_since_shoot = current_time - self.shoot_animation_time
-        animation_progress = time_since_shoot / self.shoot_animation_duration
-
-        if animation_progress < 1.0:
-            # Expanding circle animation
-            radius = int(40 * animation_progress)
-            alpha = int(255 * (1 - animation_progress))
-
-            # Create surface for alpha blending
-            if alpha > 0:
-                shoot_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-                pygame.draw.circle(shoot_surface, (*YELLOW, alpha), (radius, radius), radius, 3)
-                pygame.draw.circle(shoot_surface, (*WHITE, alpha // 2), (radius, radius), radius // 2, 2)
-                self.screen.blit(shoot_surface, (pos[0] - radius, pos[1] - radius))
+    # Note: _handle_shoot and _draw_shoot_animation removed - using base class methods
