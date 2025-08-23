@@ -6,13 +6,7 @@ Shared UI components with vaporwave styling
 import pygame
 
 # Local application imports
-from utils.constants import (
-    UI_BUTTON,
-    UI_TEXT,
-    VAPORWAVE_CYAN,
-    VAPORWAVE_DARK,
-    VAPORWAVE_PURPLE,
-)
+from utils.constants import UI_BUTTON, UI_TEXT, VAPORWAVE_CYAN, VAPORWAVE_DARK, VAPORWAVE_PURPLE
 
 
 class Button:

@@ -207,8 +207,8 @@ class InstructionsScreen(BaseScreen):
 
     def _draw_camera_demo(self) -> None:
         """Draw camera demonstration"""
-        demo_width = 300
-        demo_height = 200
+        demo_width = 280
+        demo_height = 210
         demo_x = SCREEN_WIDTH - demo_width - 50
         demo_y = 50  # Moved to top-right
 
