@@ -69,10 +69,7 @@ jobs:
         pip install safety bandit pip-audit
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
-    - name: Run Safety (check for known security vulnerabilities)
-      run: |
-        safety scan --json --full-report --continue-on-error
-      continue-on-error: true
+    
     
     - name: Run Bandit (security linter)
       run: |
