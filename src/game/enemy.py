@@ -870,7 +870,7 @@ class EnemyManager:
         self.wave_number = 1
         self.enemies_spawned_this_wave = 0
         self.enemies_per_wave = 5
-        self.time_between_spawns = 3.0
+        self.time_between_spawns = 2.5
         self.last_spawn_time = 0
         self.wave_complete = False
         self.wave_complete_time = 0

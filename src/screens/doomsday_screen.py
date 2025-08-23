@@ -603,10 +603,7 @@ class DoomsdayScreen(BaseScreen):
         wave_text = self.font.render(f"Wave {self.enemy_manager.wave_number}: {stage_name}", True, WHITE)
         surface.blit(wave_text, (10, 50))
 
-        # Enemy count
-        enemy_count = len([e for e in self.enemy_manager.enemies if e.alive])
-        enemies_text = self.small_font.render(f"Enemies: {enemy_count}", True, WHITE)
-        surface.blit(enemies_text, (10, 90))
+        
 
         # Combo indicator
         if self.enemy_manager.current_combo > 1:
@@ -829,7 +826,7 @@ class DoomsdayScreen(BaseScreen):
         if stage == 2:
             # Play fire ambient loop for Stage 2
             self.current_stage_ambient = "stage2_fire_ambient"
-            self.sound_manager.play_stage_effect("stage2_fire_ambient", loops=-1, volume=0.25)
+            self.sound_manager.play_stage_effect("stage2_fire_ambient", loops=-1, volume=0.15)
             print("Starting Stage 2 fire ambient")
         elif stage == 3:
             # Play static/mist ambient for Stage 3
