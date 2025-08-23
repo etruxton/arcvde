@@ -1,4 +1,4 @@
-# Enhanced Hand Tracking for arCVde
+# Enhanced Hand Tracking for ARCVDE
 
 ## The Problem
 When pointing directly at the camera, MediaPipe struggles because:

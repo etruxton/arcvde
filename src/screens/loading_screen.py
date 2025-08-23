@@ -30,7 +30,7 @@ class LoadingScreen:
         self.screen = screen
 
         # Load assets
-        self.logo = pygame.image.load("assets/arCVde-2.png")
+        self.logo = pygame.image.load("assets/ARCVDE-3.png")
 
         # Scale logo to fit nicely on screen
         logo_width = min(600, SCREEN_WIDTH * 0.6)

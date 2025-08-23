@@ -167,7 +167,7 @@ class MenuScreen(BaseScreen):
     def load_logo(self):
         """Load the game logo image"""
         try:
-            logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "arCVde-2.png")
+            logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "ARCVDE-3.png")
             if os.path.exists(logo_path):
                 self.logo = pygame.image.load(logo_path).convert_alpha()
                 logo_width = 500
@@ -230,7 +230,7 @@ class MenuScreen(BaseScreen):
             ]
 
             for glow_color, radius, alpha in glow_layers:
-                glow_text = self.title_font.render("arcvde", True, glow_color)
+                glow_text = self.title_font.render("ARCVDE", True, glow_color)
 
                 for x_offset in range(-radius, radius + 1):
                     for y_offset in range(-radius, radius + 1):
@@ -244,7 +244,7 @@ class MenuScreen(BaseScreen):
                             self.screen.blit(glow_surface, glow_rect)
 
             # Main title text
-            title_text = self.title_font.render("arcvde", True, VAPORWAVE_LIGHT)
+            title_text = self.title_font.render("ARCVDE", True, VAPORWAVE_LIGHT)
             title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, title_y))
             self.screen.blit(title_text, title_rect)
 

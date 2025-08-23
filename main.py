@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-arcvde - Main Entry Point
+ARCVDE - Main Entry Point
 A real-time hand gesture recognition shooting game.
 """
 
@@ -19,7 +19,7 @@ from game.game_manager import GameManager  # noqa: E402
 
 
 def main():
-    """Main entry point for arcvde."""
+    """Main entry point for ARCVDE."""
     # Initialize pygame
     pygame.init()
 

@@ -1,12 +1,12 @@
-# arcvde
+# ARCVDE
 
-![arcvde Logo](assets/arCVde-2.png)
+![ARCVDE Logo](assets/arCVde-3.png)
 
-> **About the name**: "arcvde" is a playful pun on "arcade" - because this project will host a collection of arcade-style games powered by **CV** (Computer Vision)! 🎮👀
+> **About the name**: "ARCVDE" is a playful pun on "arcade" - because this project will host a collection of arcade-style games powered by **CV** (Computer Vision)! 🎮👀
 
 A real-time hand gesture recognition game where you use your finger gun to shoot targets and battle waves of enemies! This project combines OpenCV hand tracking with Pygame to create interactive shooting games controlled by your hand movements.
 
-**What is OpenCV?** OpenCV (Open Source Computer Vision Library) is a powerful library that provides tools for image processing, computer vision, and machine learning. In arcvde, we use OpenCV with MediaPipe to track your hand movements in real-time, turning your fingers into game controllers!
+**What is OpenCV?** OpenCV (Open Source Computer Vision Library) is a powerful library that provides tools for image processing, computer vision, and machine learning. In ARCVDE, we use OpenCV with MediaPipe to track your hand movements in real-time, turning your fingers into game controllers!
 
 ## Features
 
@@ -159,7 +159,7 @@ Planned improvements to Doomsday include:
 - More stage themes and environmental hazards
 - Weapon upgrades and progression system
 
-Planned additions to arcvde:
+Planned additions to ARCVDE:
 - game like deer hunter or duck hunt that uses capybaras instead. Uses same finger gun shooting physics.
 - galaga style game where you control the character with where you point
 - pacman or snake style game where you control player with where you point ?

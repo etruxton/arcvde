@@ -1,4 +1,4 @@
-# Makefile for arcvde development
+# Makefile for ARCVDE development
 
 .PHONY: help install install-dev lint format security clean run
 
