@@ -71,13 +71,13 @@ jobs:
     
     - name: Run Safety (check for known security vulnerabilities)
       run: |
-        safety scan --json --continue-on-error
+        safety scan --json --full-report --continue-on-error
       continue-on-error: true
     
     - name: Run Bandit (security linter)
       run: |
-        bandit -r src/ --exclude B311 -f json -o bandit-report.json || true
-        bandit -r src/ --exclude B311 -f screen || true
+        bandit --exclude B311 -r src/ -f json -o bandit-report.json || true
+        bandit --exclude B311 -r src/ -f screen || true
       continue-on-error: true
     
     - name: Run pip-audit (vulnerability scanner)
