@@ -11,6 +11,7 @@ from typing import Dict, Optional
 import pygame
 
 # Local application imports
+from screens.capybara_hunt_screen import CapybaraHuntScreen
 from screens.doomsday_screen import DoomsdayScreen
 from screens.instructions_screen import InstructionsScreen
 from screens.loading_screen import LoadingScreen
@@ -22,6 +23,7 @@ from utils.constants import (
     DEFAULT_CAMERA_ID,
     FPS,
     GAME_STATE_ARCADE,
+    GAME_STATE_CAPYBARA_HUNT,
     GAME_STATE_INSTRUCTIONS,
     GAME_STATE_LOADING,
     GAME_STATE_MENU,
@@ -83,6 +85,7 @@ class GameManager:
             self.screens[GAME_STATE_MENU] = MenuScreen(self.screen, self.camera_manager)
             self.screens[GAME_STATE_PLAYING] = TargetPracticeScreen(self.screen, self.camera_manager)
             self.screens[GAME_STATE_ARCADE] = DoomsdayScreen(self.screen, self.camera_manager)
+            self.screens[GAME_STATE_CAPYBARA_HUNT] = CapybaraHuntScreen(self.screen, self.camera_manager)
             self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
             self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
 
@@ -128,8 +131,8 @@ class GameManager:
                 sound_manager.stop_ambient(fade_ms=100)  # Quick fade
                 sound_manager.stop_stage_effect(fade_ms=100)  # Stop any stage effects
 
-            # When entering menu, instructions, or target practice, start elevator music
-            if new_state in [GAME_STATE_MENU, GAME_STATE_INSTRUCTIONS, GAME_STATE_PLAYING, GAME_STATE_SETTINGS]:
+            # When entering menu, instructions, or non-doomsday game modes, start elevator music
+            if new_state in [GAME_STATE_MENU, GAME_STATE_INSTRUCTIONS, GAME_STATE_PLAYING, GAME_STATE_SETTINGS, GAME_STATE_CAPYBARA_HUNT]:
                 if sound_manager.current_ambient != "elevator":
                     sound_manager.play_ambient("elevator")
 
@@ -137,7 +140,7 @@ class GameManager:
             elif new_state == GAME_STATE_ARCADE:
                 pass  # Doomsday screen will manage its own stage-specific music
 
-            # Reset target practice screen when entering gameplay
+            # Reset game screens when entering gameplay
             if new_state == GAME_STATE_PLAYING:
                 target_practice_screen = self.screens[GAME_STATE_PLAYING]
                 if hasattr(target_practice_screen, "reset_game"):
@@ -146,6 +149,10 @@ class GameManager:
                 doomsday_screen = self.screens[GAME_STATE_ARCADE]
                 if hasattr(doomsday_screen, "reset_game"):
                     doomsday_screen.reset_game()
+            elif new_state == GAME_STATE_CAPYBARA_HUNT:
+                capybara_screen = self.screens[GAME_STATE_CAPYBARA_HUNT]
+                if hasattr(capybara_screen, "reset_game"):
+                    capybara_screen.reset_game()
         else:
             print(f"Unknown state: {new_state}")
 

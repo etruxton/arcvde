@@ -23,6 +23,7 @@ from utils.constants import (
     CAMERA_Y,
     DEFAULT_CAMERA_ID,
     GAME_STATE_ARCADE,
+    GAME_STATE_CAPYBARA_HUNT,
     GAME_STATE_INSTRUCTIONS,
     GAME_STATE_PLAYING,
     GAME_STATE_SETTINGS,
@@ -57,9 +58,9 @@ class MenuScreen(BaseScreen):
 
         # Create buttons
         button_width = 250
-        button_height = 60
-        button_spacing = 20
-        start_y = SCREEN_HEIGHT // 2 - 100
+        button_height = 50  # Reduced height to fit more buttons
+        button_spacing = 15  # Reduced spacing
+        start_y = SCREEN_HEIGHT // 2 - 130  # Adjusted start position
         center_x = SCREEN_WIDTH // 2 - button_width // 2
 
         self.arcade_button = Button(center_x, start_y, button_width, button_height, "DOOMSDAY", self.button_font)
@@ -73,9 +74,18 @@ class MenuScreen(BaseScreen):
             self.button_font,
         )
 
-        self.instructions_button = Button(
+        self.capybara_button = Button(
             center_x,
             start_y + 2 * (button_height + button_spacing),
+            button_width,
+            button_height,
+            "CAPYBARA HUNT",
+            self.button_font,
+        )
+
+        self.instructions_button = Button(
+            center_x,
+            start_y + 3 * (button_height + button_spacing),
             button_width,
             button_height,
             "HOW TO PLAY",
@@ -83,14 +93,14 @@ class MenuScreen(BaseScreen):
         )
 
         self.settings_button = Button(
-            center_x, start_y + 3 * (button_height + button_spacing), button_width, button_height, "SETTINGS", self.button_font
+            center_x, start_y + 4 * (button_height + button_spacing), button_width, button_height, "SETTINGS", self.button_font
         )
 
         self.quit_button = Button(
-            center_x, start_y + 4 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
+            center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
         )
 
-        self.buttons = [self.arcade_button, self.play_button, self.instructions_button, self.settings_button, self.quit_button]
+        self.buttons = [self.arcade_button, self.play_button, self.capybara_button, self.instructions_button, self.settings_button, self.quit_button]
 
         # Camera setup
         if not self.camera_manager.current_camera:
@@ -116,6 +126,8 @@ class MenuScreen(BaseScreen):
                 return GAME_STATE_ARCADE
             elif event.key == pygame.K_2:
                 return GAME_STATE_PLAYING
+            elif event.key == pygame.K_3:
+                return GAME_STATE_CAPYBARA_HUNT
             elif event.key == pygame.K_ESCAPE:
                 return "quit"
 
@@ -131,6 +143,8 @@ class MenuScreen(BaseScreen):
             result = GAME_STATE_PLAYING
         elif button == self.arcade_button:
             result = GAME_STATE_ARCADE
+        elif button == self.capybara_button:
+            result = GAME_STATE_CAPYBARA_HUNT
         elif button == self.settings_button:
             result = GAME_STATE_SETTINGS
         elif button == self.instructions_button:
