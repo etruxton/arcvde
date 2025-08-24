@@ -44,6 +44,7 @@ class FlyingCapybara:
     laydown_sprite_frames = []  # Sprites for laying down animation
     sleeping_sprite_frames = []  # Sprites for sleeping animation (plays after laying down)
     sit_sprite_frames = []  # Sprites for sitting animation
+    chilling_sprite_frames = []  # Sprites for chilling animation (plays after sitting down)
     frontkick_sprite_frames = []  # Sprites for front kick animation
     standing_sprite_frames = []  # Sprites for standing animation
     sprite_size = (80, 80)  # Keep sprites square since originals are square
@@ -99,6 +100,12 @@ class FlyingCapybara:
         self.sit_animation_speed = 0.1  # Seconds per frame
         self.sit_animation_playing = False  # True when transitioning to/from sitting
         self.sit_animation_reverse = False  # True when standing up
+        
+        # Chilling state (plays after sitting down)
+        self.chilling = False
+        self.chilling_frame = 0
+        self.chilling_timer = 0
+        self.chilling_speed = 0.15  # Slightly slower for relaxed effect
 
         # Front kick state
         self.kicking = False
@@ -213,6 +220,17 @@ class FlyingCapybara:
                         cls.sit_sprite_frames.append(sprite)
                     else:
                         print(f"Warning: Sit sprite not found: {sprite_path}")
+
+                # Load chilling sprite frames (plays after sitting down)
+                for i in range(5):  # 0 to 4
+                    sprite_path = f"assets/chilling_capybara/frame_{i}_delay-0.1s.png"
+                    if os.path.exists(sprite_path):
+                        sprite = pygame.image.load(sprite_path)
+                        # Scale sprite to consistent size
+                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
+                        cls.chilling_sprite_frames.append(sprite)
+                    else:
+                        print(f"Warning: Chilling sprite not found: {sprite_path}")
 
                 # Load front kick sprite frames
                 for i in range(5):  # 0 to 4
@@ -348,7 +366,7 @@ class FlyingCapybara:
                             self.time_until_action = random.uniform(3.0, 6.0)  # Stay down longer
 
             # Handle sleeping animation (breathing loop)
-            elif self.sleeping and self.laying_down:
+            if self.sleeping and self.laying_down:
                 self.sleeping_timer += dt
                 if self.sleeping_timer > self.sleeping_speed:
                     self.sleeping_timer = 0
@@ -364,6 +382,14 @@ class FlyingCapybara:
                         if self.sleeping_frame <= 0:
                             self.sleeping_frame = 0
                             self.sleeping_forward = True
+            
+            # Handle chilling animation (simple loop)
+            if self.chilling and self.sitting:
+                self.chilling_timer += dt
+                if self.chilling_timer > self.chilling_speed:
+                    self.chilling_timer = 0
+                    # Simple loop: 0->1->2->3->4->0
+                    self.chilling_frame = (self.chilling_frame + 1) % len(self.chilling_sprite_frames)
             
             # Handle kicking animation
             elif self.kicking:
@@ -404,6 +430,7 @@ class FlyingCapybara:
                             # Finished standing up - choose to stand or walk
                             self.sit_animation_playing = False
                             self.sitting = False
+                            self.chilling = False  # Make sure chilling is stopped
                             if random.random() < 0.25:  # 25% chance to stand after sitting
                                 self.standing = True
                                 self.walking = False
@@ -416,13 +443,16 @@ class FlyingCapybara:
                         if self.sit_animation_frame < len(self.sit_sprite_frames) - 1:
                             self.sit_animation_frame += 1
                         else:
-                            # Finished sitting down
+                            # Finished sitting down - start chilling
                             self.sit_animation_playing = False
                             self.sitting = True
+                            self.chilling = True
+                            self.chilling_frame = 0
+                            self.chilling_timer = 0
                             self.time_until_action = random.uniform(2.0, 4.0)  # Sit for a moderate time
 
-            # Decide on next action
-            elif self.time_until_action <= 0:
+            # Decide on next action (only if not already animating)
+            if self.time_until_action <= 0 and not self.laying_animation_playing and not self.sit_animation_playing and not self.kicking:
                 if self.laying_down:
                     # Start getting up from laying
                     self.sleeping = False  # Stop sleeping when starting to get up
@@ -431,6 +461,7 @@ class FlyingCapybara:
                     self.laying_animation_frame = len(self.laydown_sprite_frames) - 1
                 elif self.sitting:
                     # Start standing up from sitting
+                    self.chilling = False  # Stop chilling when starting to get up
                     self.sit_animation_playing = True
                     self.sit_animation_reverse = True
                     self.sit_animation_frame = len(self.sit_sprite_frames) - 1
@@ -715,8 +746,13 @@ class FlyingCapybara:
                     if self.flip_sprite:
                         sprite = pygame.transform.flip(sprite, True, False)
             elif self.sitting or self.sit_animation_playing:
-                # Use sit sprite
-                if self.__class__.sit_sprite_frames:
+                # Use chilling sprite if chilling, otherwise sit sprite
+                if self.chilling and self.__class__.chilling_sprite_frames:
+                    sprite = self.__class__.chilling_sprite_frames[self.chilling_frame]
+                    # Chilling sprites face west by default, flip if facing east
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+                elif self.__class__.sit_sprite_frames:
                     sprite = self.__class__.sit_sprite_frames[self.sit_animation_frame]
                     # Sit sprites face west by default, flip if facing east
                     if self.flip_sprite:
