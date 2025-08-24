@@ -117,6 +117,9 @@ class MenuScreen(BaseScreen):
         self.showcase_enemies = []
         self.init_enemy_showcase()
 
+        # Capybara showcase
+        self.init_capybara_showcase()
+
         self.logo = None
         self.load_logo()
 
@@ -185,6 +188,36 @@ class MenuScreen(BaseScreen):
         demon.animation_time = math.pi * 1.5
         self.showcase_enemies.append(demon)
 
+    def init_capybara_showcase(self):
+        """Initialize capybara for showcase display"""
+        # Load capybara sprites
+        self.capybara_sprites = []
+        try:
+            sprite_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "running_capybara"
+            )
+            for i in range(5):  # Load frames 0-4
+                sprite_path = os.path.join(sprite_dir, f"running-capybara-{i}.png")
+                if os.path.exists(sprite_path):
+                    sprite = pygame.image.load(sprite_path).convert_alpha()
+                    # Scale to appropriate size for menu (same as in game)
+                    sprite = pygame.transform.scale(sprite, (80, 80))
+                    self.capybara_sprites.append(sprite)
+                    print(f"Loaded capybara sprite: {sprite_path}")
+                else:
+                    print(f"Capybara sprite not found: {sprite_path}")
+        except Exception as e:
+            print(f"Error loading capybara sprites: {e}")
+            self.capybara_sprites = []
+
+        # Capybara position and animation state
+        self.capybara_x = 150  # Top left area
+        self.capybara_y = 150
+        self.capybara_float_time = 0
+        self.capybara_animation_frame = 0
+        self.capybara_animation_time = 0
+        self.capybara_balloon_color = (255, 100, 100)  # Red balloon
+
     def load_logo(self):
         """Load the game logo image"""
         try:
@@ -212,6 +245,16 @@ class MenuScreen(BaseScreen):
             enemy.animation_time += dt * 2
             enemy.walk_cycle += dt * 4
 
+        # Update capybara animation
+        if self.capybara_sprites:
+            self.capybara_float_time += dt
+            self.capybara_animation_time += dt
+
+            # Update animation frame
+            if self.capybara_animation_time > 0.15:  # Change frame every 0.15 seconds
+                self.capybara_animation_time = 0
+                self.capybara_animation_frame = (self.capybara_animation_frame + 1) % len(self.capybara_sprites)
+
         # Handle finger gun shooting as clicks
         shot_button = self.check_button_shoot(self.buttons)
         if shot_button:
@@ -229,6 +272,9 @@ class MenuScreen(BaseScreen):
 
         # Draw enemy showcase
         self._draw_enemy_showcase()
+
+        # Draw capybara showcase
+        self._draw_capybara_showcase()
 
         # Draw semi-transparent overlay for UI readability (reduced opacity)
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -357,3 +403,49 @@ class MenuScreen(BaseScreen):
 
             pygame.draw.circle(glow_surface, glow_color, (glow_size * 3 // 2, glow_size * 3 // 2), glow_size)
             self.screen.blit(glow_surface, (x - glow_size * 3 // 2, y - glow_size * 3 // 2))
+
+    def _draw_capybara_showcase(self):
+        """Draw animated capybara with balloon in the background"""
+        if not self.capybara_sprites:
+            return
+
+        # Calculate floating motion
+        float_offset = math.sin(self.capybara_float_time * 2) * 10
+
+        # Draw balloon string
+        balloon_x = self.capybara_x
+        balloon_y = self.capybara_y - 60 + float_offset
+        capybara_center_x = self.capybara_x
+        capybara_center_y = self.capybara_y + 20 + float_offset
+
+        # Draw multiple string segments for curve effect
+        for i in range(5):
+            t = i / 4
+            # Bezier curve for string
+            control_x = capybara_center_x + math.sin(self.capybara_float_time * 3 + i) * 5
+            control_y = (balloon_y + capybara_center_y) / 2
+
+            x1 = capybara_center_x * (1 - t) + control_x * t
+            y1 = capybara_center_y * (1 - t) + control_y * t
+
+            x2 = control_x * (1 - t) + balloon_x * t
+            y2 = control_y * (1 - t) + balloon_y * t
+
+            x = x1 * (1 - t) + x2 * t
+            y = y1 * (1 - t) + y2 * t
+
+            if i > 0:
+                pygame.draw.line(self.screen, (100, 100, 100), (prev_x, prev_y), (x, y), 2)
+            prev_x, prev_y = x, y
+
+        # Draw balloon (bigger to match capybara)
+        pygame.draw.circle(self.screen, self.capybara_balloon_color, (int(balloon_x), int(balloon_y)), 35)
+        # Balloon highlight
+        highlight_x = balloon_x - 10
+        highlight_y = balloon_y - 10
+        pygame.draw.circle(self.screen, (255, 255, 255), (int(highlight_x), int(highlight_y)), 10)
+
+        # Draw capybara sprite
+        current_sprite = self.capybara_sprites[self.capybara_animation_frame]
+        capybara_rect = current_sprite.get_rect(center=(int(capybara_center_x), int(capybara_center_y)))
+        self.screen.blit(current_sprite, capybara_rect)
