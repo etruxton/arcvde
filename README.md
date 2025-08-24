@@ -10,14 +10,15 @@ A real-time hand gesture recognition game where you use your finger gun to shoot
 
 ## Features
 
-- **Two Game Modes:**
+- **Three Game Modes:**
   - **Target Practice** - Classic target shooting with score tracking
   - **Doomsday** - Battle waves of approaching enemies in a doom-style survival game
+  - **Capybara Hunt** - Save adorable capybaras by popping their balloons in this Duck Hunt-inspired mode
 - **Real-time hand tracking** using MediaPipe with enhanced gesture detection
 - **Multi-mode detection system** that works even when pointing directly at the camera
 - **Interactive tutorial** showing how to play
 - **Visual feedback** showing detection mode and confidence
-- **Debug console** for testing (accessible in Doomsday mode when paused)
+- **Debug console** for testing (accessible in Doomsday and Capybara Hunt modes when paused)
 
 ## How It Works
 
@@ -35,6 +36,14 @@ Face waves of approaching enemies in an apocalyptic survival game:
 - **Special Effects:** Dynamic weather, particles, and stage-specific atmospheres
 - **Combo System:** Chain kills for bonus points
 - **Health System:** Survive enemy attacks and heal between waves
+
+#### Capybara Hunt
+A wholesome twist on Duck Hunt where you save capybaras instead of hunting them:
+- **Balloon Rescue Mechanic:** Shoot balloons to safely drop capybaras to the ground
+- **Punishment System:** Lose points for accidentally shooting capybaras
+- **Progressive Difficulty:** More capybaras spawn as rounds advance
+- **Duck Hunt Rules:** 10 targets per round with increasing hit requirements
+- **Animated Sprites:** Capybaras walk around happily after being saved
 
 ### Detection Modes
 
@@ -71,6 +80,7 @@ python main.py
 
 The game will start with a main menu where you can:
 - **DOOMSDAY** - Battle waves of enemies in survival mode
+- **CAPYBARA HUNT** - Save capybaras by popping their balloons
 - **TARGET PRACTICE** - Classic target shooting game
 - **HOW TO PLAY** - View detailed instructions
 - **SETTINGS** - Configure camera and other options
@@ -80,7 +90,7 @@ The game will start with a main menu where you can:
 
 **In Menu:**
 - Mouse clicks or shoot at buttons with finger gun
-- Keyboard shortcuts: 1 for Doomsday, 2 for Target Practice
+- Keyboard shortcuts: 1 for Doomsday, 2 for Capybara Hunt, 3 for Target Practice
 
 **In Target Practice:**
 - **Aim**: Make finger gun gesture and move your hand
@@ -95,11 +105,12 @@ The game will start with a main menu where you can:
 - **Pause**: Press P to pause and access debug console
 - **Menu**: Press ESC to return to main menu
 
-**Debug Console (Doomsday - when paused):**
-- Type `/stage [1-4]` - Jump to specific stage
-- Type `/wave [1-8]` - Jump to specific wave
-- Type `/heal` - Restore full health
-- Type `/kill` - Kill all enemies on screen
+**In Capybara Hunt:**
+- **Aim**: Make finger gun gesture and move your hand
+- **Shoot**: Flick your thumb down to pop balloons (5 shots per wave)
+- **Objective**: Shoot balloons to save capybaras, avoid shooting capybaras directly
+- **Pause**: Press P to pause and access debug console
+- **Menu**: Press ESC to return to main menu
 
 ## Settings & Configuration
 
@@ -159,8 +170,10 @@ Planned improvements to Doomsday include:
 - More stage themes and environmental hazards
 - Weapon upgrades and progression system
 
+Recently added to ARCVDE:
+- **Capybara Hunt** - A Duck Hunt inspired game where you save capybaras by shooting their balloons!
+
 Planned additions to ARCVDE:
-- game like deer hunter or duck hunt that uses capybaras instead. Uses same finger gun shooting physics.
 - galaga style game where you control the character with where you point
 - pacman or snake style game where you control player with where you point ?
 - maybe moreeeee

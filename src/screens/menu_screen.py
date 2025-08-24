@@ -65,21 +65,21 @@ class MenuScreen(BaseScreen):
 
         self.arcade_button = Button(center_x, start_y, button_width, button_height, "DOOMSDAY", self.button_font)
 
-        self.play_button = Button(
-            center_x,
-            start_y + button_height + button_spacing,
-            button_width,
-            button_height,
-            "TARGET PRACTICE",
-            self.button_font,
-        )
-
         self.capybara_button = Button(
             center_x,
             start_y + 2 * (button_height + button_spacing),
             button_width,
             button_height,
             "CAPYBARA HUNT",
+            self.button_font,
+        )
+
+        self.play_button = Button(
+            center_x,
+            start_y + button_height + button_spacing,
+            button_width,
+            button_height,
+            "TARGET PRACTICE",
             self.button_font,
         )
 
