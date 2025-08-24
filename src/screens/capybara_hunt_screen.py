@@ -42,6 +42,7 @@ class FlyingCapybara:
     sprites_loaded = False
     sprite_frames = []
     laydown_sprite_frames = []  # Sprites for laying down animation
+    sleeping_sprite_frames = []  # Sprites for sleeping animation (plays after laying down)
     sit_sprite_frames = []  # Sprites for sitting animation
     frontkick_sprite_frames = []  # Sprites for front kick animation
     standing_sprite_frames = []  # Sprites for standing animation
@@ -83,6 +84,13 @@ class FlyingCapybara:
         self.laying_animation_speed = 0.1  # Seconds per frame
         self.laying_animation_playing = False  # True when transitioning to/from laying
         self.laying_animation_reverse = False  # True when getting up
+        
+        # Sleeping state (plays after laying down)
+        self.sleeping = False
+        self.sleeping_frame = 0
+        self.sleeping_timer = 0
+        self.sleeping_speed = 0.15  # Slightly slower for breathing effect
+        self.sleeping_forward = True  # Direction of animation (0->4 or 4->0)
 
         # Sitting state
         self.sitting = False
@@ -183,6 +191,17 @@ class FlyingCapybara:
                         cls.laydown_sprite_frames.append(sprite)
                     else:
                         print(f"Warning: Laydown sprite not found: {sprite_path}")
+
+                # Load sleeping sprite frames (plays after laying down)
+                for i in range(5):  # 0 to 4
+                    sprite_path = f"assets/sleeping_capybara/frame_{i}_delay-0.1s.png"
+                    if os.path.exists(sprite_path):
+                        sprite = pygame.image.load(sprite_path)
+                        # Scale sprite to consistent size
+                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
+                        cls.sleeping_sprite_frames.append(sprite)
+                    else:
+                        print(f"Warning: Sleeping sprite not found: {sprite_path}")
 
                 # Load sit sprite frames
                 for i in range(5):  # 0 to 4
@@ -306,6 +325,7 @@ class FlyingCapybara:
                             # Finished getting up - choose to stand or walk
                             self.laying_animation_playing = False
                             self.laying_down = False
+                            self.sleeping = False  # Stop sleeping when getting up
                             if random.random() < 0.25:  # 25% chance to stand after getting up
                                 self.standing = True
                                 self.walking = False
@@ -318,11 +338,33 @@ class FlyingCapybara:
                         if self.laying_animation_frame < len(self.laydown_sprite_frames) - 1:
                             self.laying_animation_frame += 1
                         else:
-                            # Finished laying down
+                            # Finished laying down - start sleeping
                             self.laying_animation_playing = False
                             self.laying_down = True
+                            self.sleeping = True
+                            self.sleeping_frame = 0
+                            self.sleeping_forward = True
+                            self.sleeping_timer = 0
                             self.time_until_action = random.uniform(3.0, 6.0)  # Stay down longer
 
+            # Handle sleeping animation (breathing loop)
+            elif self.sleeping and self.laying_down:
+                self.sleeping_timer += dt
+                if self.sleeping_timer > self.sleeping_speed:
+                    self.sleeping_timer = 0
+                    
+                    # Animation goes 0->1->2->3->4->3->2->1->0 and loops
+                    if self.sleeping_forward:
+                        self.sleeping_frame += 1
+                        if self.sleeping_frame >= len(self.sleeping_sprite_frames) - 1:
+                            self.sleeping_frame = len(self.sleeping_sprite_frames) - 1
+                            self.sleeping_forward = False
+                    else:
+                        self.sleeping_frame -= 1
+                        if self.sleeping_frame <= 0:
+                            self.sleeping_frame = 0
+                            self.sleeping_forward = True
+            
             # Handle kicking animation
             elif self.kicking:
                 self.kick_animation_timer += dt
@@ -383,6 +425,7 @@ class FlyingCapybara:
             elif self.time_until_action <= 0:
                 if self.laying_down:
                     # Start getting up from laying
+                    self.sleeping = False  # Stop sleeping when starting to get up
                     self.laying_animation_playing = True
                     self.laying_animation_reverse = True
                     self.laying_animation_frame = len(self.laydown_sprite_frames) - 1
@@ -660,8 +703,13 @@ class FlyingCapybara:
                     if self.flip_sprite:
                         sprite = pygame.transform.flip(sprite, True, False)
             elif self.laying_down or self.laying_animation_playing:
-                # Use laydown sprite
-                if self.__class__.laydown_sprite_frames:
+                # Use sleeping sprite if sleeping, otherwise laydown sprite
+                if self.sleeping and self.__class__.sleeping_sprite_frames:
+                    sprite = self.__class__.sleeping_sprite_frames[self.sleeping_frame]
+                    # Sleeping sprites face west by default, flip if facing east
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+                elif self.__class__.laydown_sprite_frames:
                     sprite = self.__class__.laydown_sprite_frames[self.laying_animation_frame]
                     # Laydown sprites face west by default, flip if facing east
                     if self.flip_sprite:
