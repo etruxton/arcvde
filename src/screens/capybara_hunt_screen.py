@@ -41,6 +41,10 @@ class FlyingCapybara:
     # Class variables to store loaded sprites (shared by all instances)
     sprites_loaded = False
     sprite_frames = []
+    laydown_sprite_frames = []  # Sprites for laying down animation
+    sit_sprite_frames = []  # Sprites for sitting animation
+    frontkick_sprite_frames = []  # Sprites for front kick animation
+    standing_sprite_frames = []  # Sprites for standing animation
     sprite_size = (80, 80)  # Keep sprites square since originals are square
 
     def __init__(self, start_x: float, start_y: float, direction: str, speed_multiplier: float = 1.0):
@@ -65,9 +69,43 @@ class FlyingCapybara:
         self.hit_time = None
         self.fall_speed = 0
         self.walking = False  # Whether capybara is walking on ground
+        self.standing = False  # Whether capybara is standing still
+        self.grounded = False  # Whether capybara has landed on ground
+        self.ground_y = 0  # Y position when grounded
         self.walk_direction = 1  # 1 for right, -1 for left
         self.walk_speed = 50  # Slower speed for walking
         self.shot_capybara = False  # True if player shot capybara instead of balloon
+        
+        # Laying down state
+        self.laying_down = False
+        self.laying_animation_frame = 0
+        self.laying_animation_timer = 0
+        self.laying_animation_speed = 0.1  # Seconds per frame
+        self.laying_animation_playing = False  # True when transitioning to/from laying
+        self.laying_animation_reverse = False  # True when getting up
+        
+        # Sitting state
+        self.sitting = False
+        self.sit_animation_frame = 0
+        self.sit_animation_timer = 0
+        self.sit_animation_speed = 0.1  # Seconds per frame
+        self.sit_animation_playing = False  # True when transitioning to/from sitting
+        self.sit_animation_reverse = False  # True when standing up
+        
+        # Front kick state
+        self.kicking = False
+        self.kick_animation_frame = 0
+        self.kick_animation_timer = 0
+        self.kick_animation_speed = 0.08  # Slightly faster animation
+        self.kick_loops_completed = 0
+        self.kick_loops_target = 1  # Will be randomized when kicking starts
+        
+        # Standing state
+        self.standing_animation_frame = 0
+        self.standing_animation_timer = 0
+        self.standing_animation_speed = 0.15  # Slower for idle animation
+        
+        self.time_until_action = random.uniform(2.0, 5.0)  # Time before next action
 
         # Balloon properties
         self.balloon_color = random.choice(
@@ -124,7 +162,7 @@ class FlyingCapybara:
         """Load capybara sprite images (only once for all instances)"""
         if not cls.sprites_loaded:
             try:
-                # Load sprite frames
+                # Load running sprite frames
                 for i in range(5):  # 0 to 4
                     sprite_path = f"assets/running_capybara/running-capybara-{i}.png"
                     if os.path.exists(sprite_path):
@@ -135,9 +173,53 @@ class FlyingCapybara:
                     else:
                         print(f"Warning: Sprite not found: {sprite_path}")
 
+                # Load laydown sprite frames
+                for i in range(5):  # 0 to 4
+                    sprite_path = f"assets/laydown_capybara/frame_{i}_delay-0.1s.png"
+                    if os.path.exists(sprite_path):
+                        sprite = pygame.image.load(sprite_path)
+                        # Scale sprite to consistent size
+                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
+                        cls.laydown_sprite_frames.append(sprite)
+                    else:
+                        print(f"Warning: Laydown sprite not found: {sprite_path}")
+
+                # Load sit sprite frames
+                for i in range(5):  # 0 to 4
+                    sprite_path = f"assets/sit_capybara/frame_{i}_delay-0.1s.png"
+                    if os.path.exists(sprite_path):
+                        sprite = pygame.image.load(sprite_path)
+                        # Scale sprite to consistent size
+                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
+                        cls.sit_sprite_frames.append(sprite)
+                    else:
+                        print(f"Warning: Sit sprite not found: {sprite_path}")
+
+                # Load front kick sprite frames
+                for i in range(5):  # 0 to 4
+                    sprite_path = f"assets/frontkick_capybara/frame_{i}_delay-0.1s.png"
+                    if os.path.exists(sprite_path):
+                        sprite = pygame.image.load(sprite_path)
+                        # Scale sprite to consistent size
+                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
+                        cls.frontkick_sprite_frames.append(sprite)
+                    else:
+                        print(f"Warning: Front kick sprite not found: {sprite_path}")
+
+                # Load standing sprite frames
+                for i in range(5):  # 0 to 4
+                    sprite_path = f"assets/standing_capybara/frame_{i}_delay-0.1s.png"
+                    if os.path.exists(sprite_path):
+                        sprite = pygame.image.load(sprite_path)
+                        # Scale sprite to consistent size
+                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
+                        cls.standing_sprite_frames.append(sprite)
+                    else:
+                        print(f"Warning: Standing sprite not found: {sprite_path}")
+
                 if cls.sprite_frames:
                     cls.sprites_loaded = True
-                    print(f"Loaded {len(cls.sprite_frames)} capybara sprites")
+                    print(f"Loaded {len(cls.sprite_frames)} running, {len(cls.laydown_sprite_frames)} laydown, {len(cls.sit_sprite_frames)} sit, {len(cls.frontkick_sprite_frames)} kick, {len(cls.standing_sprite_frames)} standing sprites")
                 else:
                     print("Warning: No capybara sprites loaded")
             except Exception as e:
@@ -153,8 +235,21 @@ class FlyingCapybara:
         """
         self.flight_time += dt
 
-        # Update sprite animation always
-        if self.sprite_frames:
+        # Update sprite animation based on state
+        if self.alive and self.sprite_frames:
+            # Flying capybara - always use running animation
+            self.sprite_animation_timer += dt
+            if self.sprite_animation_timer > self.sprite_animation_speed:
+                self.sprite_animation_timer = 0
+                self.sprite_frame_index = (self.sprite_frame_index + 1) % len(self.sprite_frames)
+        elif self.standing and self.__class__.standing_sprite_frames:
+            # Standing animation for grounded capybaras
+            self.standing_animation_timer += dt
+            if self.standing_animation_timer > self.standing_animation_speed:
+                self.standing_animation_timer = 0
+                self.standing_animation_frame = (self.standing_animation_frame + 1) % len(self.__class__.standing_sprite_frames)
+        elif self.walking and self.sprite_frames:
+            # Walking animation for grounded capybaras
             self.sprite_animation_timer += dt
             if self.sprite_animation_timer > self.sprite_animation_speed:
                 self.sprite_animation_timer = 0
@@ -188,17 +283,183 @@ class FlyingCapybara:
                 self.y = SCREEN_HEIGHT - 150
                 self.vy = min(self.vy, 0)
 
-        elif self.walking:
-            # Capybara is walking on ground after balloon was popped (safely)
-            self.x += self.walk_speed * self.walk_direction * dt
+        elif self.grounded:
+            # Capybara is on ground - maintain Y position
+            self.y = self.ground_y  # Always keep at ground level
+            self.time_until_action -= dt
+            
+            # Handle laying down animation transitions
+            if self.laying_animation_playing:
+                self.laying_animation_timer += dt
+                if self.laying_animation_timer > self.laying_animation_speed:
+                    self.laying_animation_timer = 0
+                    
+                    if self.laying_animation_reverse:
+                        # Getting up animation (play frames in reverse)
+                        if self.laying_animation_frame > 0:
+                            self.laying_animation_frame -= 1
+                        else:
+                            # Finished getting up - choose to stand or walk
+                            self.laying_animation_playing = False
+                            self.laying_down = False
+                            if random.random() < 0.25:  # 25% chance to stand after getting up
+                                self.standing = True
+                                self.walking = False
+                            else:
+                                self.standing = False
+                                self.walking = True
+                            self.time_until_action = random.uniform(2.0, 5.0)
+                    else:
+                        # Laying down animation
+                        if self.laying_animation_frame < len(self.laydown_sprite_frames) - 1:
+                            self.laying_animation_frame += 1
+                        else:
+                            # Finished laying down
+                            self.laying_animation_playing = False
+                            self.laying_down = True
+                            self.time_until_action = random.uniform(3.0, 6.0)  # Stay down longer
+            
+            # Handle kicking animation
+            elif self.kicking:
+                self.kick_animation_timer += dt
+                if self.kick_animation_timer > self.kick_animation_speed:
+                    self.kick_animation_timer = 0
+                    self.kick_animation_frame += 1
+                    
+                    # Check if we completed a loop
+                    if self.kick_animation_frame >= len(self.frontkick_sprite_frames):
+                        self.kick_animation_frame = 0
+                        self.kick_loops_completed += 1
+                        
+                        # Check if we've done enough loops
+                        if self.kick_loops_completed >= self.kick_loops_target:
+                            # Finished kicking - choose to stand or walk
+                            self.kicking = False
+                            self.kick_loops_completed = 0
+                            if random.random() < 0.25:  # 25% chance to stand after kicking
+                                self.standing = True
+                                self.walking = False
+                            else:
+                                self.standing = False
+                                self.walking = True
+                            self.time_until_action = random.uniform(2.0, 5.0)
+            
+            # Handle sitting animation transitions
+            elif self.sit_animation_playing:
+                self.sit_animation_timer += dt
+                if self.sit_animation_timer > self.sit_animation_speed:
+                    self.sit_animation_timer = 0
+                    
+                    if self.sit_animation_reverse:
+                        # Standing up animation (play frames in reverse)
+                        if self.sit_animation_frame > 0:
+                            self.sit_animation_frame -= 1
+                        else:
+                            # Finished standing up - choose to stand or walk
+                            self.sit_animation_playing = False
+                            self.sitting = False
+                            if random.random() < 0.25:  # 25% chance to stand after sitting
+                                self.standing = True
+                                self.walking = False
+                            else:
+                                self.standing = False
+                                self.walking = True
+                            self.time_until_action = random.uniform(2.0, 5.0)
+                    else:
+                        # Sitting down animation
+                        if self.sit_animation_frame < len(self.sit_sprite_frames) - 1:
+                            self.sit_animation_frame += 1
+                        else:
+                            # Finished sitting down
+                            self.sit_animation_playing = False
+                            self.sitting = True
+                            self.time_until_action = random.uniform(2.0, 4.0)  # Sit for a moderate time
+            
+            # Decide on next action
+            elif self.time_until_action <= 0:
+                if self.laying_down:
+                    # Start getting up from laying
+                    self.laying_animation_playing = True
+                    self.laying_animation_reverse = True
+                    self.laying_animation_frame = len(self.laydown_sprite_frames) - 1
+                elif self.sitting:
+                    # Start standing up from sitting
+                    self.sit_animation_playing = True
+                    self.sit_animation_reverse = True
+                    self.sit_animation_frame = len(self.sit_sprite_frames) - 1
+                else:
+                    # Decide what to do next based on current state
+                    action_roll = random.random()
+                    
+                    if self.standing:
+                        # Standing capybara can: start walking, kick, lay down, or sit
+                        if action_roll < 0.25:  # 25% chance to start walking
+                            self.standing = False
+                            self.walking = True
+                            self.time_until_action = random.uniform(2.0, 5.0)
+                        elif action_roll < 0.40:  # 15% chance to kick
+                            self.standing = False  # Clear standing state
+                            self.walking = False
+                            self.kicking = True
+                            self.kick_animation_frame = 0
+                            self.kick_loops_completed = 0
+                            self.kick_loops_target = 3  
+                        elif action_roll < 0.55:  # 15% chance to lay down
+                            self.standing = False  # Clear standing state
+                            self.walking = False
+                            self.laying_animation_playing = True
+                            self.laying_animation_reverse = False
+                            self.laying_animation_frame = 0
+                        elif action_roll < 0.70:  # 15% chance to sit
+                            self.standing = False  # Clear standing state
+                            self.walking = False
+                            self.sit_animation_playing = True
+                            self.sit_animation_reverse = False
+                            self.sit_animation_frame = 0
+                        else:
+                            # Keep standing, reset timer
+                            self.time_until_action = random.uniform(2.0, 5.0)
+                    
+                    elif self.walking:
+                        # Walking capybara can: stand, kick, lay down, or sit
+                        if action_roll < 0.20:  # 20% chance to stand
+                            self.walking = False
+                            self.standing = True
+                            self.time_until_action = random.uniform(2.0, 5.0)
+                        elif action_roll < 0.35:  # 15% chance to kick
+                            self.walking = False  # Clear walking state
+                            self.standing = False
+                            self.kicking = True
+                            self.kick_animation_frame = 0
+                            self.kick_loops_completed = 0
+                            self.kick_loops_target = 3  
+                        elif action_roll < 0.50:  # 15% chance to lay down
+                            self.walking = False  # Clear walking state
+                            self.standing = False
+                            self.laying_animation_playing = True
+                            self.laying_animation_reverse = False
+                            self.laying_animation_frame = 0
+                        elif action_roll < 0.65:  # 15% chance to sit
+                            self.walking = False  # Clear walking state
+                            self.standing = False
+                            self.sit_animation_playing = True
+                            self.sit_animation_reverse = False
+                            self.sit_animation_frame = 0
+                        else:
+                            # Keep walking, reset timer
+                            self.time_until_action = random.uniform(2.0, 5.0)
+            
+            # Only move if walking and not doing any special action
+            if self.walking and not self.laying_down and not self.laying_animation_playing and not self.sitting and not self.sit_animation_playing and not self.kicking:
+                self.x += self.walk_speed * self.walk_direction * dt
 
-            # Turn around at screen edges
-            if self.x <= 50:
-                self.walk_direction = 1
-                self.flip_sprite = True
-            elif self.x >= SCREEN_WIDTH - 50:
-                self.walk_direction = -1
-                self.flip_sprite = False
+                # Turn around at screen edges
+                if self.x <= 50:
+                    self.walk_direction = 1
+                    self.flip_sprite = True
+                elif self.x >= SCREEN_WIDTH - 50:
+                    self.walk_direction = -1
+                    self.flip_sprite = False
 
             # Keep current Y position (already set when landing)
 
@@ -220,11 +481,19 @@ class FlyingCapybara:
                 self.fall_speed += 300 * dt  # Gentler gravity
                 self.y += self.fall_speed * dt
 
-                # Check if hit ground (Y coordinates 600-700 in 720p screen)
-                ground_level = random.randint(600, 700)
+                # Check if hit ground (Y coordinates 575-627 in 720p screen)
+                ground_level = random.randint(575, 725)
                 if self.y >= ground_level:
                     self.y = ground_level
-                    self.walking = True  # Start walking
+                    self.grounded = True
+                    self.ground_y = ground_level  # Store the ground Y position
+                    # Randomly choose to stand or walk when landing
+                    if random.random() < 0.2:  # 20% chance to stand
+                        self.standing = True
+                        self.walking = False
+                    else:
+                        self.walking = True
+                        self.standing = False
                     self.walk_direction = random.choice([-1, 1])
                     self.flip_sprite = self.walk_direction > 0
 
@@ -268,8 +537,9 @@ class FlyingCapybara:
 
     def draw(self, screen: pygame.Surface):
         """Draw the capybara with balloon"""
-        if self.walking:
-            # Draw walking capybara on ground
+        # Check if capybara is on ground
+        if self.grounded:
+            # Draw grounded capybara (walking, standing, or doing actions)
             self._draw_walking_capybara(screen)
         elif not self.alive:
             # Draw falling/dead capybara
@@ -342,22 +612,55 @@ class FlyingCapybara:
         x, y = int(self.x), int(self.y)
 
         # Draw sprite if available
-        if self.sprites_loaded and self.sprite_frames:
-            # Get current sprite frame
-            sprite = self.sprite_frames[self.sprite_frame_index]
+        if self.sprites_loaded:
+            sprite = None
+            
+            # Choose sprite based on state (priority: kicking > laying > sitting > standing > walking)
+            if self.kicking:
+                # Use front kick sprite
+                if self.__class__.frontkick_sprite_frames:
+                    sprite = self.__class__.frontkick_sprite_frames[self.kick_animation_frame]
+                    # Front kick sprites face west by default, flip if facing east
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+            elif self.laying_down or self.laying_animation_playing:
+                # Use laydown sprite
+                if self.__class__.laydown_sprite_frames:
+                    sprite = self.__class__.laydown_sprite_frames[self.laying_animation_frame]
+                    # Laydown sprites face west by default, flip if facing east
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+            elif self.sitting or self.sit_animation_playing:
+                # Use sit sprite
+                if self.__class__.sit_sprite_frames:
+                    sprite = self.__class__.sit_sprite_frames[self.sit_animation_frame]
+                    # Sit sprites face west by default, flip if facing east
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+            elif self.standing:
+                # Use standing sprite
+                if self.__class__.standing_sprite_frames:
+                    sprite = self.__class__.standing_sprite_frames[self.standing_animation_frame]
+                    # Standing sprites face west by default, flip if facing east
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+            elif self.walking and self.sprite_frames:
+                # Use walking sprite
+                sprite = self.sprite_frames[self.sprite_frame_index]
+                # Flip sprite if moving right
+                if self.flip_sprite:
+                    sprite = pygame.transform.flip(sprite, True, False)
+            
+            if sprite:
+                # Draw sprite centered at position
+                sprite_rect = sprite.get_rect(center=(x, y))
+                screen.blit(sprite, sprite_rect)
+                return
 
-            # Flip sprite if moving right
-            if self.flip_sprite:
-                sprite = pygame.transform.flip(sprite, True, False)
-
-            # Draw sprite centered at position
-            sprite_rect = sprite.get_rect(center=(x, y))
-            screen.blit(sprite, sprite_rect)
-        else:
-            # Fallback to simple drawn capybara if sprites not loaded
-            body_rect = pygame.Rect(x - self.size // 2, y - self.size // 3, self.size, self.size * 2 // 3)
-            pygame.draw.ellipse(screen, self.color, body_rect)
-            pygame.draw.ellipse(screen, (100, 60, 30), body_rect, 2)
+        # Fallback to simple drawn capybara if sprites not loaded
+        body_rect = pygame.Rect(x - self.size // 2, y - self.size // 3, self.size, self.size * 2 // 3)
+        pygame.draw.ellipse(screen, self.color, body_rect)
+        pygame.draw.ellipse(screen, (100, 60, 30), body_rect, 2)
 
     def _draw_dead_capybara(self, screen: pygame.Surface):
         """Draw a falling/dead capybara (shot capybara or safely landed)"""
@@ -378,9 +681,10 @@ class FlyingCapybara:
             if self.flip_sprite:
                 sprite = pygame.transform.flip(sprite, True, False)
 
-            # Optional: Rotate sprite while falling for tumbling effect
-            angle = (time.time() - self.hit_time) * 180  # Rotate while falling
-            sprite = pygame.transform.rotate(sprite, angle)
+            # Only rotate if capybara was shot (not for safe landing)
+            if self.shot_capybara:
+                angle = (time.time() - self.hit_time) * 180  # Rotate while falling
+                sprite = pygame.transform.rotate(sprite, angle)
 
             # Draw sprite centered at position
             sprite_rect = sprite.get_rect(center=(x, y))
@@ -653,9 +957,10 @@ class CapybaraHuntScreen(BaseScreen):
         # Check round completion (when all capybaras spawned and no flying/falling ones left)
         if self.capybaras_spawned >= self.capybaras_per_round:
             flying_capybaras = [c for c in self.capybaras if c.alive]
-            falling_capybaras = [c for c in self.capybaras if not c.alive and not c.walking and not c.shot_capybara]
+            # Falling capybaras are those that are not alive, not grounded, and not shot
+            falling_capybaras = [c for c in self.capybaras if not c.alive and not c.grounded and not c.shot_capybara]
 
-            # First check if round is ready (all capybaras landed/escaped/shot)
+            # First check if round is ready (all capybaras are either landed or gone)
             if len(flying_capybaras) == 0 and len(falling_capybaras) == 0 and not self.wave_active:
                 if not self.round_ready_to_complete:
                     self.round_ready_to_complete = True
@@ -832,8 +1137,11 @@ class CapybaraHuntScreen(BaseScreen):
             self._draw_camera_feed()
             return
 
-        # Draw capybaras
-        for capybara in self.capybaras:
+        # Draw capybaras (sorted by Y position for depth layering)
+        # Capybaras with lower Y values (higher up) are drawn first (behind)
+        # Capybaras with higher Y values (lower down) are drawn last (in front)
+        sorted_capybaras = sorted(self.capybaras, key=lambda c: c.y)
+        for capybara in sorted_capybaras:
             capybara.draw(self.screen)
 
         # Draw crosshair
