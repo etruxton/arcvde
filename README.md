@@ -192,6 +192,11 @@ Planned additions to ARCVDE:
   - Source: https://opengameart.org/content/somewhere-in-the-elevator
   - License: CC-BY 3.0
 
+#### Capybara Hunt Music
+- **Background Music**: "Day & Night in Summerset" by edwinnington
+  - Source: https://opengameart.org/content/day-night-in-summerset
+  - License: CC-BY 3.0
+
 #### Doomsday Mode Stage Music
 - **Stage 1**: "Boss Battle 3 Alternate (8-bit)" by nene
   - Source: https://opengameart.org/content/boss-battle-3-alternate-8-bit
