@@ -61,30 +61,9 @@ class FlyingCapybara:
         # Visual properties
         self.size = 80
         self.color = (139, 90, 43)  # Brown color for capybara
-        self.alive = True  # Balloon is intact
+        self.alive = True
         self.hit_time = None
         self.fall_speed = 0
-        self.walking = False  # Whether capybara is walking on ground
-        self.walk_direction = 1  # 1 for right, -1 for left
-        self.walk_speed = 50  # Slower speed for walking
-        self.shot_capybara = False  # True if player shot capybara instead of balloon
-
-        # Balloon properties
-        self.balloon_color = random.choice(
-            [
-                (255, 100, 100),  # Red
-                (100, 255, 100),  # Green
-                (100, 100, 255),  # Blue
-                (255, 255, 100),  # Yellow
-                (255, 100, 255),  # Magenta
-                (100, 255, 255),  # Cyan
-                (255, 180, 100),  # Orange
-                (200, 100, 255),  # Purple
-            ]
-        )
-        self.balloon_radius = 35
-        self.string_wave = 0  # For string animation
-        self.balloon_popped = False
 
         # Flight properties
         self.base_speed = 150  # pixels per second (reduced for better gameplay)
@@ -107,8 +86,8 @@ class FlyingCapybara:
             self.vy = -self.base_speed * 0.8 * speed_multiplier  # More vertical
 
         # Animation
-        self.float_timer = 0
-        self.float_amplitude = 5  # How much the balloon bobs
+        self.wing_flap_timer = 0
+        self.wing_up = True
         self.sprite_frame_index = 0
         self.sprite_animation_timer = 0
         self.sprite_animation_speed = 0.1  # Seconds per frame
@@ -153,167 +132,86 @@ class FlyingCapybara:
         """
         self.flight_time += dt
 
-        # Update sprite animation always
-        if self.sprite_frames:
-            self.sprite_animation_timer += dt
-            if self.sprite_animation_timer > self.sprite_animation_speed:
-                self.sprite_animation_timer = 0
-                self.sprite_frame_index = (self.sprite_frame_index + 1) % len(self.sprite_frames)
-
-        # Update balloon float animation
-        self.float_timer += dt
-        self.string_wave = math.sin(self.float_timer * 3) * 2  # Gentle string waving
-
         if self.alive:
-            # Balloon is intact - float with balloon
+            # Update position
             self.x += self.vx * dt
             self.y += self.vy * dt
 
-            # Add bobbing motion from balloon
-            self.y += math.sin(self.float_timer * 2) * self.float_amplitude * dt
+            # Add some wave motion for more natural flight
+            wave_amplitude = 20
+            wave_frequency = 2
+            self.y += math.sin(self.flight_time * wave_frequency) * wave_amplitude * dt
 
-            # Check if escaped off screen
-            if self.flight_time > self.escape_time:
-                # Start flying upward to escape
-                self.vy = max(self.vy - 150 * dt, -300)
+            # Wing flapping animation
+            self.wing_flap_timer += dt
+            if self.wing_flap_timer > 0.2:  # Flap every 0.2 seconds
+                self.wing_up = not self.wing_up
+                self.wing_flap_timer = 0
 
-            # Check boundaries
-            if self.x < -100 or self.x > SCREEN_WIDTH + 100:
-                return True  # Escaped horizontally
-            if self.y < -100:
-                return True  # Escaped vertically
+            # Sprite animation (cycle through running frames)
+            if self.sprite_frames:
+                self.sprite_animation_timer += dt
+                if self.sprite_animation_timer > self.sprite_animation_speed:
+                    self.sprite_animation_timer = 0
+                    # Cycle through frames 0-4 then back
+                    self.sprite_frame_index = (self.sprite_frame_index + 1) % len(self.sprite_frames)
 
-            # Keep above ground level
-            if self.y > SCREEN_HEIGHT - 150:
-                self.y = SCREEN_HEIGHT - 150
-                self.vy = min(self.vy, 0)
-
-        elif self.walking:
-            # Capybara is walking on ground after balloon was popped (safely)
-            self.x += self.walk_speed * self.walk_direction * dt
-
-            # Turn around at screen edges
-            if self.x <= 50:
-                self.walk_direction = 1
-                self.flip_sprite = True
-            elif self.x >= SCREEN_WIDTH - 50:
-                self.walk_direction = -1
-                self.flip_sprite = False
-
-            # Keep current Y position (already set when landing)
+            # Check if escaped (off screen or time limit)
+            if (
+                self.x < -self.size * 2
+                or self.x > SCREEN_WIDTH + self.size * 2
+                or self.y < -self.size * 2
+                or self.flight_time > self.escape_time
+            ):
+                return True
 
         else:
-            # Falling after balloon popped or shot
-            if self.shot_capybara:
-                # Shot capybara falls faster and off screen
-                self.fall_speed += 800 * dt  # Faster gravity for shot capybaras
-                self.y += self.fall_speed * dt
+            # Falling after being shot
+            self.fall_speed += 800 * dt  # Gravity
+            self.y += self.fall_speed * dt
 
-                # Slight horizontal drift while falling
-                self.x += random.uniform(-20, 20) * dt
+            # Slight horizontal drift while falling
+            self.x += random.uniform(-20, 20) * dt
 
-                # Remove when fallen off screen
-                if self.y > SCREEN_HEIGHT + self.size:
-                    return True  # Remove from game
-            else:
-                # Balloon was popped - gentler fall
-                self.fall_speed += 300 * dt  # Gentler gravity
-                self.y += self.fall_speed * dt
-
-                # Check if hit ground (Y coordinates 600-700 in 720p screen)
-                ground_level = random.randint(600, 700)
-                if self.y >= ground_level:
-                    self.y = ground_level
-                    self.walking = True  # Start walking
-                    self.walk_direction = random.choice([-1, 1])
-                    self.flip_sprite = self.walk_direction > 0
+            # Remove when fallen off screen
+            if self.y > SCREEN_HEIGHT + self.size:
+                return True
 
         return False
 
-    def check_hit(self, x: int, y: int) -> tuple[bool, str]:
-        """Check if shot hit the balloon or capybara
+    def check_hit(self, x: int, y: int) -> bool:
+        """Check if shot hit the capybara"""
+        if not self.alive:
+            return False
 
-        Returns:
-            (hit, target) where target is 'balloon', 'capybara', or 'none'
-        """
-        if not self.alive or self.balloon_popped:
-            return False, "none"
+        # Calculate distance from center
+        dx = x - self.x
+        dy = y - self.y
+        distance = math.sqrt(dx * dx + dy * dy)
 
-        # Check balloon hit first (above capybara)
-        balloon_y = self.y - self.size // 2 - 40  # Balloon is above capybara
-        balloon_distance = math.sqrt((x - self.x) ** 2 + (y - balloon_y) ** 2)
-        if balloon_distance < self.balloon_radius:
-            return True, "balloon"
-
-        # Check capybara hit
-        capybara_distance = math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
-        if capybara_distance < self.size // 2:
-            return True, "capybara"
-
-        return False, "none"
-
-    def shoot(self, target: str):
-        """Handle shooting the balloon or capybara"""
-        if target == "balloon":
+        # Hit if within radius (generous hitbox)
+        if distance < self.size:
             self.alive = False
-            self.balloon_popped = True
             self.hit_time = time.time()
             self.fall_speed = 0
-        elif target == "capybara":
-            self.alive = False
-            self.balloon_popped = True
-            self.shot_capybara = True
-            self.hit_time = time.time()
-            self.fall_speed = 0
+            return True
+
+        return False
 
     def draw(self, screen: pygame.Surface):
-        """Draw the capybara with balloon"""
-        if self.walking:
-            # Draw walking capybara on ground
-            self._draw_walking_capybara(screen)
-        elif not self.alive:
+        """Draw the capybara"""
+        if not self.alive:
             # Draw falling/dead capybara
             self._draw_dead_capybara(screen)
         else:
-            # Draw flying capybara with balloon
+            # Draw flying capybara
             self._draw_flying_capybara(screen)
 
     def _draw_flying_capybara(self, screen: pygame.Surface):
-        """Draw a flying capybara with balloon"""
+        """Draw a flying capybara with wings using sprites"""
         x, y = int(self.x), int(self.y)
 
-        # Draw balloon string first (behind balloon)
-        balloon_x = x
-        balloon_y = y - self.size // 2 - 40  # Balloon is above capybara
-
-        # Draw wavy string from capybara to balloon
-        string_points = []
-        num_segments = 8
-        for i in range(num_segments + 1):
-            t = i / num_segments
-            string_x = x + self.string_wave * math.sin(t * math.pi) * (1 - t)  # Less wave at top
-            string_y = y - t * (self.size // 2 + 40)
-            string_points.append((string_x, string_y))
-
-        # Draw string
-        for i in range(len(string_points) - 1):
-            pygame.draw.line(screen, (100, 100, 100), string_points[i], string_points[i + 1], 2)
-
-        # Draw balloon shadow
-        shadow_offset = 3
-        pygame.draw.circle(
-            screen, (50, 50, 50, 100), (balloon_x + shadow_offset, balloon_y + shadow_offset), self.balloon_radius
-        )
-
-        # Draw balloon
-        pygame.draw.circle(screen, self.balloon_color, (balloon_x, balloon_y), self.balloon_radius)
-
-        # Draw balloon highlight
-        highlight_x = balloon_x - self.balloon_radius // 3
-        highlight_y = balloon_y - self.balloon_radius // 3
-        pygame.draw.circle(screen, (255, 255, 255, 150), (highlight_x, highlight_y), self.balloon_radius // 4)
-
-        # Draw capybara sprite
+        # Draw sprite if available
         if self.sprites_loaded and self.sprite_frames:
             # Get current sprite frame
             sprite = self.sprite_frames[self.sprite_frame_index]
@@ -337,33 +235,153 @@ class FlyingCapybara:
             pygame.draw.circle(screen, self.color, (head_x, y - self.size // 4), head_size // 2)
             pygame.draw.circle(screen, (100, 60, 30), (head_x, y - self.size // 4), head_size // 2, 2)
 
-    def _draw_walking_capybara(self, screen: pygame.Surface):
-        """Draw a walking capybara on the ground"""
-        x, y = int(self.x), int(self.y)
+        # Wings (animated) - drawn with one behind based on direction
+        wing_width = self.size // 2  # Smaller wings
+        moving_right = self.vx > 0
 
-        # Draw sprite if available
-        if self.sprites_loaded and self.sprite_frames:
-            # Get current sprite frame
-            sprite = self.sprite_frames[self.sprite_frame_index]
-
-            # Flip sprite if moving right
-            if self.flip_sprite:
-                sprite = pygame.transform.flip(sprite, True, False)
-
-            # Draw sprite centered at position
-            sprite_rect = sprite.get_rect(center=(x, y))
-            screen.blit(sprite, sprite_rect)
+        # Offset wings based on direction - wings closer to rear of capybara
+        if moving_right:
+            # Facing east (flipped sprite) - wings offset to the left
+            wing_offset = -15
         else:
-            # Fallback to simple drawn capybara if sprites not loaded
-            body_rect = pygame.Rect(x - self.size // 2, y - self.size // 3, self.size, self.size * 2 // 3)
-            pygame.draw.ellipse(screen, self.color, body_rect)
-            pygame.draw.ellipse(screen, (100, 60, 30), body_rect, 2)
+            # Facing west (default) - wings offset to the right
+            wing_offset = 15
+
+        # Create wing surface for transparency
+        wing_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
+        if self.wing_up:
+            # Wings up position
+            if moving_right:
+                # Left wing behind (darker) - mostly hidden behind body, overlapping with front wing
+                back_wing_points = [
+                    (x + wing_offset + 3, y - 10),
+                    (x + wing_offset + 3 - wing_width, y - 30),
+                    (x + wing_offset + 3 - wing_width // 2, y - 10),
+                ]
+                # Draw back wing first
+                pygame.draw.polygon(wing_surface, (170, 170, 170, 180), back_wing_points)
+                pygame.draw.polygon(wing_surface, (130, 130, 130, 255), back_wing_points, 2)
+
+                # Draw sprite on top of back wing
+                screen.blit(wing_surface, (0, 0))
+                wing_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
+                # Redraw sprite here if needed (to cover back wing)
+                if self.sprites_loaded and self.sprite_frames:
+                    sprite = self.sprite_frames[self.sprite_frame_index]
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+                    sprite_rect = sprite.get_rect(center=(x, y))
+                    screen.blit(sprite, sprite_rect)
+
+                # Right wing in front (brighter) - tips touch
+                front_wing_points = [
+                    (x + wing_offset + 5, y - 10),
+                    (x + wing_offset + 5 + wing_width, y - 30),
+                    (x + wing_offset + 5 + wing_width // 2, y - 10),
+                ]
+            else:
+                # Right wing behind (darker) - mostly hidden behind body, overlapping with front wing
+                back_wing_points = [
+                    (x + wing_offset - 3, y - 10),
+                    (x + wing_offset - 3 + wing_width, y - 30),
+                    (x + wing_offset - 3 + wing_width // 2, y - 10),
+                ]
+                # Draw back wing first
+                pygame.draw.polygon(wing_surface, (170, 170, 170, 180), back_wing_points)
+                pygame.draw.polygon(wing_surface, (130, 130, 130, 255), back_wing_points, 2)
+
+                # Draw sprite on top of back wing
+                screen.blit(wing_surface, (0, 0))
+                wing_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
+                # Redraw sprite here if needed (to cover back wing)
+                if self.sprites_loaded and self.sprite_frames:
+                    sprite = self.sprite_frames[self.sprite_frame_index]
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+                    sprite_rect = sprite.get_rect(center=(x, y))
+                    screen.blit(sprite, sprite_rect)
+
+                # Left wing in front (brighter) - tips touch
+                front_wing_points = [
+                    (x + wing_offset - 5, y - 10),
+                    (x + wing_offset - 5 - wing_width, y - 30),
+                    (x + wing_offset - 5 - wing_width // 2, y - 10),
+                ]
+        else:
+            # Wings down position
+            if moving_right:
+                # Left wing behind (darker) - mostly hidden behind body, overlapping with front wing
+                back_wing_points = [
+                    (x + wing_offset + 3, y),
+                    (x + wing_offset + 3 - wing_width, y + 15),
+                    (x + wing_offset + 3 - wing_width // 2, y),
+                ]
+                # Draw back wing first
+                pygame.draw.polygon(wing_surface, (170, 170, 170, 180), back_wing_points)
+                pygame.draw.polygon(wing_surface, (130, 130, 130, 255), back_wing_points, 2)
+
+                # Draw sprite on top of back wing
+                screen.blit(wing_surface, (0, 0))
+                wing_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
+                # Redraw sprite here if needed (to cover back wing)
+                if self.sprites_loaded and self.sprite_frames:
+                    sprite = self.sprite_frames[self.sprite_frame_index]
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+                    sprite_rect = sprite.get_rect(center=(x, y))
+                    screen.blit(sprite, sprite_rect)
+
+                # Right wing in front (brighter) - tips touch
+                front_wing_points = [
+                    (x + wing_offset + 5, y),
+                    (x + wing_offset + 5 + wing_width, y + 15),
+                    (x + wing_offset + 5 + wing_width // 2, y),
+                ]
+            else:
+                # Right wing behind (darker) - mostly hidden behind body, overlapping with front wing
+                back_wing_points = [
+                    (x + wing_offset - 3, y),
+                    (x + wing_offset - 3 + wing_width, y + 15),
+                    (x + wing_offset - 3 + wing_width // 2, y),
+                ]
+                # Draw back wing first
+                pygame.draw.polygon(wing_surface, (170, 170, 170, 180), back_wing_points)
+                pygame.draw.polygon(wing_surface, (130, 130, 130, 255), back_wing_points, 2)
+
+                # Draw sprite on top of back wing
+                screen.blit(wing_surface, (0, 0))
+                wing_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
+                # Redraw sprite here if needed (to cover back wing)
+                if self.sprites_loaded and self.sprite_frames:
+                    sprite = self.sprite_frames[self.sprite_frame_index]
+                    if self.flip_sprite:
+                        sprite = pygame.transform.flip(sprite, True, False)
+                    sprite_rect = sprite.get_rect(center=(x, y))
+                    screen.blit(sprite, sprite_rect)
+
+                # Left wing in front (brighter) - tips touch
+                front_wing_points = [
+                    (x + wing_offset - 5, y),
+                    (x + wing_offset - 5 - wing_width, y + 15),
+                    (x + wing_offset - 5 - wing_width // 2, y),
+                ]
+
+        # Draw front wing (brighter)
+        pygame.draw.polygon(wing_surface, (210, 210, 210, 220), front_wing_points)
+        pygame.draw.polygon(wing_surface, (160, 160, 160, 255), front_wing_points, 2)
+
+        screen.blit(wing_surface, (0, 0))
 
     def _draw_dead_capybara(self, screen: pygame.Surface):
-        """Draw a falling/dead capybara (shot capybara or safely landed)"""
+        """Draw a falling/dead capybara without wings"""
         x, y = int(self.x), int(self.y)
 
-        # Draw sprite if available
+        # Draw sprite if available (without wings)
         if self.sprites_loaded and self.sprite_frames:
             # Keep animating sprite while falling
             self.sprite_animation_timer += 0.016  # Approximate dt
@@ -391,18 +409,17 @@ class FlyingCapybara:
             pygame.draw.ellipse(screen, self.color, body_rect)
             pygame.draw.ellipse(screen, (100, 60, 30), body_rect, 2)
 
-        # Draw X eyes only if capybara was shot (not if balloon was popped)
-        if self.shot_capybara:
-            eye_size = 12  # Bigger X for emphasis
-            eye_offset = 15
+        # Draw X eyes over the sprite to show it's dead
+        eye_size = 8
+        eye_offset = 15
 
-            # X eyes (dead) - positioned relative to center
-            pygame.draw.line(
-                screen, (255, 0, 0), (x - eye_size, y - eye_offset - eye_size), (x + eye_size, y - eye_offset + eye_size), 4
-            )
-            pygame.draw.line(
-                screen, (255, 0, 0), (x - eye_size, y - eye_offset + eye_size), (x + eye_size, y - eye_offset - eye_size), 4
-            )
+        # X eyes (dead) - positioned relative to center
+        pygame.draw.line(
+            screen, (255, 0, 0), (x - eye_size, y - eye_offset - eye_size), (x + eye_size, y - eye_offset + eye_size), 3
+        )
+        pygame.draw.line(
+            screen, (255, 0, 0), (x - eye_size, y - eye_offset + eye_size), (x + eye_size, y - eye_offset - eye_size), 3
+        )
 
 
 class CapybaraHuntScreen(BaseScreen):
@@ -421,7 +438,7 @@ class CapybaraHuntScreen(BaseScreen):
         # Game state
         self.round_number = 1
         self.score = 0
-        self.shots_remaining = 5  # Increased from 3 to 5 for buffer
+        self.shots_remaining = 3
         self.capybaras_per_round = 10
         self.capybaras_spawned = 0
         self.capybaras_hit = 0
@@ -429,8 +446,6 @@ class CapybaraHuntScreen(BaseScreen):
         self.game_over = False
         self.round_complete = False
         self.round_complete_time = 0
-        self.round_ready_to_complete = False  # Track when round is ready to complete
-        self.round_ready_time = 0  # Time when round became ready
         self.paused = False
 
         # UI Buttons for shooting
@@ -449,7 +464,6 @@ class CapybaraHuntScreen(BaseScreen):
         self.shoot_pos = None
         self.shoot_animation_time = 0
         self.shoot_animation_duration = 200
-        self.capybara_shot_message_time = 0  # For showing punishment message
 
         # Hit tracking for round
         self.hit_markers = []  # List of booleans for hit/miss display
@@ -495,25 +509,6 @@ class CapybaraHuntScreen(BaseScreen):
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
-        # Handle mouse clicks for buttons
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Left click
-                mouse_pos = pygame.mouse.get_pos()
-
-                # Check continue button
-                if self.round_complete and self.continue_button:
-                    if self.continue_button.rect.collidepoint(mouse_pos):
-                        self.start_next_round()
-                        return None
-
-                # Check retry and menu buttons
-                if self.game_over:
-                    if self.retry_button and self.retry_button.rect.collidepoint(mouse_pos):
-                        self.reset_game()
-                        return None
-                    if self.menu_button and self.menu_button.rect.collidepoint(mouse_pos):
-                        return GAME_STATE_MENU
-
         if event.type == pygame.KEYDOWN:
             # Handle console input when active
             if self.console_active:
@@ -554,15 +549,13 @@ class CapybaraHuntScreen(BaseScreen):
         """Reset the entire game"""
         self.round_number = 1
         self.score = 0
-        self.shots_remaining = 5  # Reset to 5 shots
+        self.shots_remaining = 3
         self.capybaras_per_round = 10
         self.capybaras_spawned = 0
         self.capybaras_hit = 0
         self.required_hits = 6
         self.game_over = False
         self.round_complete = False
-        self.round_ready_to_complete = False
-        self.round_ready_time = 0
         self.capybaras.clear()
         self.hit_markers.clear()
         self.spawn_timer = 0
@@ -580,10 +573,8 @@ class CapybaraHuntScreen(BaseScreen):
         self.round_number += 1
         self.capybaras_spawned = 0
         self.capybaras_hit = 0
-        self.shots_remaining = 5  # Reset to 5 shots for new round
+        self.shots_remaining = 3
         self.round_complete = False
-        self.round_ready_to_complete = False
-        self.round_ready_time = 0
         self.capybaras.clear()
         self.hit_markers.clear()
         self.spawn_timer = 0
@@ -633,47 +624,30 @@ class CapybaraHuntScreen(BaseScreen):
         for capybara in self.capybaras:
             if capybara.update(dt):
                 capybaras_to_remove.append(capybara)
-                if capybara.alive and not hasattr(capybara, "already_counted"):
-                    # Missed (escaped) - only count if not already counted
+                if capybara.alive:
+                    # Missed (escaped)
                     self.hit_markers.append(False)
-                    capybara.already_counted = True
                     self.wave_active = False
-                    self.shots_remaining = 5  # Reset shots for next wave
+                    self.shots_remaining = 3  # Reset shots for next wave
 
         for capybara in capybaras_to_remove:
             self.capybaras.remove(capybara)
 
-        # Check if wave is complete (all capybaras either escaped or balloon popped)
-        if self.wave_active:
-            flying_capybaras = [c for c in self.capybaras if c.alive]
-            if len(flying_capybaras) == 0:
-                self.wave_active = False
-                self.shots_remaining = 5  # Reset shots for next wave
+        # Check if wave is complete (all capybaras gone)
+        if self.wave_active and len(self.capybaras) == 0:
+            self.wave_active = False
+            self.shots_remaining = 3  # Reset shots for next wave
 
-        # Check round completion (when all capybaras spawned and no flying/falling ones left)
-        if self.capybaras_spawned >= self.capybaras_per_round:
-            flying_capybaras = [c for c in self.capybaras if c.alive]
-            falling_capybaras = [c for c in self.capybaras if not c.alive and not c.walking and not c.shot_capybara]
-
-            # First check if round is ready (all capybaras landed/escaped/shot)
-            if len(flying_capybaras) == 0 and len(falling_capybaras) == 0 and not self.wave_active:
-                if not self.round_ready_to_complete:
-                    self.round_ready_to_complete = True
-                    self.round_ready_time = time.time()
-
-                # Wait 0.5 seconds before showing continue screen
-                if time.time() - self.round_ready_time >= 0.5:
-                    # Also remove any walking capybaras to clear for round end
-                    self.capybaras.clear()
-
-                    if self.capybaras_hit >= self.required_hits:
-                        self.round_complete = True
-                        self.round_complete_time = time.time()
-                        # Perfect round bonus
-                        if self.capybaras_hit == self.capybaras_per_round:
-                            self.score += 1000 * self.round_number
-                    else:
-                        self.game_over = True
+        # Check round completion
+        if self.capybaras_spawned >= self.capybaras_per_round and len(self.capybaras) == 0:
+            if self.capybaras_hit >= self.required_hits:
+                self.round_complete = True
+                self.round_complete_time = time.time()
+                # Perfect round bonus
+                if self.capybaras_hit == self.capybaras_per_round:
+                    self.score += 1000 * self.round_number
+            else:
+                self.game_over = True
 
         # Update FPS counter
         self.fps_counter += 1
@@ -689,19 +663,11 @@ class CapybaraHuntScreen(BaseScreen):
         """Spawn a wave of 1 or 2 capybaras"""
         self.wave_active = True
 
-        # Determine number of capybaras based on round with increasing chance
+        # Determine number of capybaras (1 for early rounds, 2 for later)
         if self.round_number <= 2:
             num_capybaras = 1
         else:
-            # Calculate chance for multiple spawn (increases with rounds)
-            # Round 3: 30% chance, Round 4: 40%, Round 5: 50%, etc.
-            multi_spawn_chance = min(0.3 + (self.round_number - 3) * 0.1, 0.8)  # Cap at 80%
-
-            # Check if we should spawn 2 (and if we have at least 2 capybaras left to spawn)
-            if random.random() < multi_spawn_chance and self.capybaras_spawned < self.capybaras_per_round - 1:
-                num_capybaras = 2
-            else:
-                num_capybaras = 1
+            num_capybaras = 2 if self.capybaras_spawned < self.capybaras_per_round - 1 else 1
 
         self.current_wave_capybaras = min(num_capybaras, self.capybaras_per_round - self.capybaras_spawned)
 
@@ -773,39 +739,20 @@ class CapybaraHuntScreen(BaseScreen):
         # Check for hits
         hit_any = False
         for capybara in self.capybaras:
-            hit, target = capybara.check_hit(shoot_position[0], shoot_position[1])
-            if hit:
-                if target == "balloon":
-                    # Good shot! Saved the capybara
-                    capybara.shoot("balloon")
-                    capybara.already_counted = True  # Mark as counted
-                    self.score += 100 * self.round_number
-                    self.capybaras_hit += 1
-                    self.hit_markers.append(True)
-                    self.sound_manager.play("hit")
-                    hit_any = True
-                elif target == "capybara":
-                    # Bad shot! Shot the capybara instead of balloon
-                    capybara.shoot("capybara")
-                    capybara.already_counted = True  # Mark as counted
-                    self.score -= 200 * self.round_number  # Penalty for shooting capybara
-                    self.hit_markers.append(False)  # Mark as miss
-                    self.sound_manager.play("error")  # Play error sound
-                    # Flash the screen red for visual feedback
-                    self.shoot_animation_time = pygame.time.get_ticks() - 100  # Make animation last longer
-                    self.capybara_shot_message_time = pygame.time.get_ticks()  # Show warning message
-                    hit_any = True
+            if capybara.check_hit(shoot_position[0], shoot_position[1]):
+                self.score += 100 * self.round_number
+                self.capybaras_hit += 1
+                self.hit_markers.append(True)
+                self.sound_manager.play("hit")
+                hit_any = True
                 break
 
-        # Check if wave should end (out of ammo)
-        if self.shots_remaining == 0:
-            # Mark ALL remaining flying capybaras in this wave as missed
-            flying_in_wave = [c for c in self.capybaras if c.alive and not hasattr(c, "already_counted")]
-            for capybara in flying_in_wave:
-                self.hit_markers.append(False)
-                capybara.already_counted = True  # Mark so we don't count it again when it escapes
-                # Force them to escape
-                capybara.flight_time = 10  # Make them fly away immediately
+        # Check if out of ammo and no hits
+        if self.shots_remaining == 0 and not hit_any:
+            # Mark remaining capybaras as missed
+            for capybara in self.capybaras:
+                if capybara.alive:
+                    self.hit_markers.append(False)
 
     def draw(self) -> None:
         """Draw the game screen"""
@@ -918,29 +865,11 @@ class CapybaraHuntScreen(BaseScreen):
         self.screen.blit(fps_text, fps_rect)
 
         # Controls hint (like in Doomsday)
-        controls_text = self.small_font.render("ESC: Menu | P: Pause | R: Reset | Shoot BALLOONS, not capybaras!", True, GRAY)
+        controls_text = self.small_font.render("ESC: Menu | P: Pause | R: Reset", True, GRAY)
         controls_rect = controls_text.get_rect()
         controls_rect.centerx = SCREEN_WIDTH // 2
         controls_rect.y = SCREEN_HEIGHT - 30
         self.screen.blit(controls_text, controls_rect)
-
-        # Show punishment message if capybara was shot
-        current_time = pygame.time.get_ticks()
-        if self.capybara_shot_message_time > 0 and current_time - self.capybara_shot_message_time < 2000:
-            warning_text = self.big_font.render("NO! Save the capybaras!", True, (255, 0, 0))
-            warning_rect = warning_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-
-            # Draw semi-transparent background for message
-            msg_bg = pygame.Surface((warning_rect.width + 40, warning_rect.height + 20))
-            msg_bg.set_alpha(200)
-            msg_bg.fill(BLACK)
-            self.screen.blit(msg_bg, (warning_rect.x - 20, warning_rect.y - 10))
-
-            self.screen.blit(warning_text, warning_rect)
-
-            penalty_text = self.font.render(f"-{200 * self.round_number} points!", True, (255, 100, 100))
-            penalty_rect = penalty_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
-            self.screen.blit(penalty_text, penalty_rect)
 
     def _draw_camera_feed(self) -> None:
         """Draw camera feed in corner"""

@@ -603,8 +603,6 @@ class DoomsdayScreen(BaseScreen):
         wave_text = self.font.render(f"Wave {self.enemy_manager.wave_number}: {stage_name}", True, WHITE)
         surface.blit(wave_text, (10, 50))
 
-        
-
         # Combo indicator
         if self.enemy_manager.current_combo > 1:
             combo_color = (255, 255, 0) if self.enemy_manager.current_combo < 5 else (255, 128, 0)

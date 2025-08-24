@@ -132,7 +132,13 @@ class GameManager:
                 sound_manager.stop_stage_effect(fade_ms=100)  # Stop any stage effects
 
             # When entering menu, instructions, or non-doomsday game modes, start elevator music
-            if new_state in [GAME_STATE_MENU, GAME_STATE_INSTRUCTIONS, GAME_STATE_PLAYING, GAME_STATE_SETTINGS, GAME_STATE_CAPYBARA_HUNT]:
+            if new_state in [
+                GAME_STATE_MENU,
+                GAME_STATE_INSTRUCTIONS,
+                GAME_STATE_PLAYING,
+                GAME_STATE_SETTINGS,
+                GAME_STATE_CAPYBARA_HUNT,
+            ]:
                 if sound_manager.current_ambient != "elevator":
                     sound_manager.play_ambient("elevator")
 

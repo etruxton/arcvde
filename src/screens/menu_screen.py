@@ -100,7 +100,14 @@ class MenuScreen(BaseScreen):
             center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
         )
 
-        self.buttons = [self.arcade_button, self.play_button, self.capybara_button, self.instructions_button, self.settings_button, self.quit_button]
+        self.buttons = [
+            self.arcade_button,
+            self.play_button,
+            self.capybara_button,
+            self.instructions_button,
+            self.settings_button,
+            self.quit_button,
+        ]
 
         # Camera setup
         if not self.camera_manager.current_camera:
