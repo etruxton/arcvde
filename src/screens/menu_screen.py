@@ -419,6 +419,7 @@ class MenuScreen(BaseScreen):
         capybara_center_y = self.capybara_y + 20 + float_offset
 
         # Draw multiple string segments for curve effect
+        prev_x = prev_y = None
         for i in range(5):
             t = i / 4
             # Bezier curve for string
@@ -434,7 +435,7 @@ class MenuScreen(BaseScreen):
             x = x1 * (1 - t) + x2 * t
             y = y1 * (1 - t) + y2 * t
 
-            if i > 0:
+            if i > 0 and prev_x is not None:
                 pygame.draw.line(self.screen, (100, 100, 100), (prev_x, prev_y), (x, y), 2)
             prev_x, prev_y = x, y
 
