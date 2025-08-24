@@ -167,6 +167,13 @@ Planned additions to ARCVDE:
 
 ## Credits
 
+### Art Assets
+
+#### Capybara Hunt Mode
+- **Capybara Sprites**: "Simple Capybara Sprite Sheet" by Rainloaf
+  - Source: https://rainloaf.itch.io/capybara-sprite-sheet
+  - License: Free to use in commercial/non-commercial projects with credit to Rainloaf
+
 ### Music
 - **Menu/Target Practice Music**: "Somewhere in the Elevator" by Peachtea
   - Source: https://opengameart.org/content/somewhere-in-the-elevator
