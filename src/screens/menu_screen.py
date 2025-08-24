@@ -135,9 +135,9 @@ class MenuScreen(BaseScreen):
             if event.key == pygame.K_1:
                 return GAME_STATE_ARCADE
             elif event.key == pygame.K_2:
-                return GAME_STATE_PLAYING
-            elif event.key == pygame.K_3:
                 return GAME_STATE_CAPYBARA_HUNT
+            elif event.key == pygame.K_3:
+                return GAME_STATE_PLAYING
             elif event.key == pygame.K_ESCAPE:
                 return "quit"
 

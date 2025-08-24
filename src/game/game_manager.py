@@ -83,16 +83,27 @@ class GameManager:
 
             print("Initializing game screens...")
             self.screens[GAME_STATE_MENU] = MenuScreen(self.screen, self.camera_manager)
+            print("Menu screen initialized")
             self.screens[GAME_STATE_PLAYING] = TargetPracticeScreen(self.screen, self.camera_manager)
+            print("Target Practice screen initialized")
             self.screens[GAME_STATE_ARCADE] = DoomsdayScreen(self.screen, self.camera_manager)
+            print("Doomsday screen initialized")
             self.screens[GAME_STATE_CAPYBARA_HUNT] = CapybaraHuntScreen(self.screen, self.camera_manager)
+            print("Capybara Hunt screen initialized")
             self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
+            print("Settings screen initialized")
             self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
+            print("Instructions screen initialized")
 
             self.loading_complete = True
             print("Loading complete!")
         except Exception as e:
+            # Standard library imports
+            import traceback
+
             print(f"Error during initialization: {e}")
+            print("Full traceback:")
+            traceback.print_exc()
             self.loading_complete = True  # Mark as complete even if failed to prevent infinite loop
 
     def handle_events(self) -> None:

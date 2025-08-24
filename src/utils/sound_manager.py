@@ -46,7 +46,7 @@ class SoundManager:
             "enemy_hit": "hit.wav",  # Can use same or different sound
             "enemy_death": "hit.wav",  # Can be customized later
             "elevator": "Peachtea - Somewhere in the Elevator.ogg",  # Ambient music for menu
-            "capybara_hunt": "DayAndNight.ogg",  # Music for Capybara Hunt mode
+            "capybara_hunt": "DayAndNight-modified.ogg",  # Music for Capybara Hunt mode
             "boss_battle": "boss_battle_8_metal_loop.ogg",  # Legacy - keep for compatibility
             # Stage-specific music for Doomsday mode
             "stage1_music": "boss_battle_3_alternate.ogg",  # Stage 1 music

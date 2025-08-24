@@ -75,7 +75,7 @@ class FlyingCapybara:
         self.walk_direction = 1  # 1 for right, -1 for left
         self.walk_speed = 50  # Slower speed for walking
         self.shot_capybara = False  # True if player shot capybara instead of balloon
-        
+
         # Laying down state
         self.laying_down = False
         self.laying_animation_frame = 0
@@ -83,7 +83,7 @@ class FlyingCapybara:
         self.laying_animation_speed = 0.1  # Seconds per frame
         self.laying_animation_playing = False  # True when transitioning to/from laying
         self.laying_animation_reverse = False  # True when getting up
-        
+
         # Sitting state
         self.sitting = False
         self.sit_animation_frame = 0
@@ -91,7 +91,7 @@ class FlyingCapybara:
         self.sit_animation_speed = 0.1  # Seconds per frame
         self.sit_animation_playing = False  # True when transitioning to/from sitting
         self.sit_animation_reverse = False  # True when standing up
-        
+
         # Front kick state
         self.kicking = False
         self.kick_animation_frame = 0
@@ -99,12 +99,12 @@ class FlyingCapybara:
         self.kick_animation_speed = 0.08  # Slightly faster animation
         self.kick_loops_completed = 0
         self.kick_loops_target = 1  # Will be randomized when kicking starts
-        
+
         # Standing state
         self.standing_animation_frame = 0
         self.standing_animation_timer = 0
         self.standing_animation_speed = 0.15  # Slower for idle animation
-        
+
         self.time_until_action = random.uniform(2.0, 5.0)  # Time before next action
 
         # Balloon properties
@@ -219,7 +219,9 @@ class FlyingCapybara:
 
                 if cls.sprite_frames:
                     cls.sprites_loaded = True
-                    print(f"Loaded {len(cls.sprite_frames)} running, {len(cls.laydown_sprite_frames)} laydown, {len(cls.sit_sprite_frames)} sit, {len(cls.frontkick_sprite_frames)} kick, {len(cls.standing_sprite_frames)} standing sprites")
+                    print(
+                        f"Loaded {len(cls.sprite_frames)} running, {len(cls.laydown_sprite_frames)} laydown, {len(cls.sit_sprite_frames)} sit, {len(cls.frontkick_sprite_frames)} kick, {len(cls.standing_sprite_frames)} standing sprites"
+                    )
                 else:
                     print("Warning: No capybara sprites loaded")
             except Exception as e:
@@ -247,7 +249,9 @@ class FlyingCapybara:
             self.standing_animation_timer += dt
             if self.standing_animation_timer > self.standing_animation_speed:
                 self.standing_animation_timer = 0
-                self.standing_animation_frame = (self.standing_animation_frame + 1) % len(self.__class__.standing_sprite_frames)
+                self.standing_animation_frame = (self.standing_animation_frame + 1) % len(
+                    self.__class__.standing_sprite_frames
+                )
         elif self.walking and self.sprite_frames:
             # Walking animation for grounded capybaras
             self.sprite_animation_timer += dt
@@ -287,13 +291,13 @@ class FlyingCapybara:
             # Capybara is on ground - maintain Y position
             self.y = self.ground_y  # Always keep at ground level
             self.time_until_action -= dt
-            
+
             # Handle laying down animation transitions
             if self.laying_animation_playing:
                 self.laying_animation_timer += dt
                 if self.laying_animation_timer > self.laying_animation_speed:
                     self.laying_animation_timer = 0
-                    
+
                     if self.laying_animation_reverse:
                         # Getting up animation (play frames in reverse)
                         if self.laying_animation_frame > 0:
@@ -318,19 +322,19 @@ class FlyingCapybara:
                             self.laying_animation_playing = False
                             self.laying_down = True
                             self.time_until_action = random.uniform(3.0, 6.0)  # Stay down longer
-            
+
             # Handle kicking animation
             elif self.kicking:
                 self.kick_animation_timer += dt
                 if self.kick_animation_timer > self.kick_animation_speed:
                     self.kick_animation_timer = 0
                     self.kick_animation_frame += 1
-                    
+
                     # Check if we completed a loop
                     if self.kick_animation_frame >= len(self.frontkick_sprite_frames):
                         self.kick_animation_frame = 0
                         self.kick_loops_completed += 1
-                        
+
                         # Check if we've done enough loops
                         if self.kick_loops_completed >= self.kick_loops_target:
                             # Finished kicking - choose to stand or walk
@@ -343,13 +347,13 @@ class FlyingCapybara:
                                 self.standing = False
                                 self.walking = True
                             self.time_until_action = random.uniform(2.0, 5.0)
-            
+
             # Handle sitting animation transitions
             elif self.sit_animation_playing:
                 self.sit_animation_timer += dt
                 if self.sit_animation_timer > self.sit_animation_speed:
                     self.sit_animation_timer = 0
-                    
+
                     if self.sit_animation_reverse:
                         # Standing up animation (play frames in reverse)
                         if self.sit_animation_frame > 0:
@@ -374,7 +378,7 @@ class FlyingCapybara:
                             self.sit_animation_playing = False
                             self.sitting = True
                             self.time_until_action = random.uniform(2.0, 4.0)  # Sit for a moderate time
-            
+
             # Decide on next action
             elif self.time_until_action <= 0:
                 if self.laying_down:
@@ -390,7 +394,7 @@ class FlyingCapybara:
                 else:
                     # Decide what to do next based on current state
                     action_roll = random.random()
-                    
+
                     if self.standing:
                         # Standing capybara can: start walking, kick, lay down, or sit
                         if action_roll < 0.25:  # 25% chance to start walking
@@ -403,7 +407,7 @@ class FlyingCapybara:
                             self.kicking = True
                             self.kick_animation_frame = 0
                             self.kick_loops_completed = 0
-                            self.kick_loops_target = 3  
+                            self.kick_loops_target = 3
                         elif action_roll < 0.55:  # 15% chance to lay down
                             self.standing = False  # Clear standing state
                             self.walking = False
@@ -419,7 +423,7 @@ class FlyingCapybara:
                         else:
                             # Keep standing, reset timer
                             self.time_until_action = random.uniform(2.0, 5.0)
-                    
+
                     elif self.walking:
                         # Walking capybara can: stand, kick, lay down, or sit
                         if action_roll < 0.20:  # 20% chance to stand
@@ -432,7 +436,7 @@ class FlyingCapybara:
                             self.kicking = True
                             self.kick_animation_frame = 0
                             self.kick_loops_completed = 0
-                            self.kick_loops_target = 3  
+                            self.kick_loops_target = 3
                         elif action_roll < 0.50:  # 15% chance to lay down
                             self.walking = False  # Clear walking state
                             self.standing = False
@@ -448,10 +452,40 @@ class FlyingCapybara:
                         else:
                             # Keep walking, reset timer
                             self.time_until_action = random.uniform(2.0, 5.0)
-            
+
             # Only move if walking and not doing any special action
-            if self.walking and not self.laying_down and not self.laying_animation_playing and not self.sitting and not self.sit_animation_playing and not self.kicking:
-                self.x += self.walk_speed * self.walk_direction * dt
+            if (
+                self.walking
+                and not self.laying_down
+                and not self.laying_animation_playing
+                and not self.sitting
+                and not self.sit_animation_playing
+                and not self.kicking
+            ):
+                # Calculate new position
+                new_x = self.x + self.walk_speed * self.walk_direction * dt
+
+                # Check pond boundaries (pond is at bottom left)
+                # Pond parameters from init_scenery
+                pond_center_x = 100
+                pond_center_y = SCREEN_HEIGHT - 40
+                pond_width = 280
+                pond_height = 140
+                pond_left = pond_center_x - pond_width // 2 - 20  # Add buffer
+                pond_right = pond_center_x + pond_width // 2 + 20  # Add buffer
+                pond_top = pond_center_y - pond_height // 2 - 10  # Add buffer
+
+                # Check if capybara would walk into pond area
+                in_pond_x = pond_left < new_x < pond_right
+                in_pond_y = self.y > pond_top  # Capybara is low enough to be near pond
+
+                if in_pond_x and in_pond_y:
+                    # Turn around instead of walking into pond
+                    self.walk_direction *= -1
+                    self.flip_sprite = self.walk_direction > 0
+                else:
+                    # Safe to move
+                    self.x = new_x
 
                 # Turn around at screen edges
                 if self.x <= 50:
@@ -481,12 +515,10 @@ class FlyingCapybara:
                 self.fall_speed += 300 * dt  # Gentler gravity
                 self.y += self.fall_speed * dt
 
-                # Check if hit ground (Y coordinates 575-627 in 720p screen)
-                ground_level = random.randint(575, 725)
-                if self.y >= ground_level:
-                    self.y = ground_level
+                # Check if hit ground (use pre-determined ground level)
+                if self.y >= self.ground_y:
+                    self.y = self.ground_y
                     self.grounded = True
-                    self.ground_y = ground_level  # Store the ground Y position
                     # Randomly choose to stand or walk when landing
                     if random.random() < 0.2:  # 20% chance to stand
                         self.standing = True
@@ -528,12 +560,16 @@ class FlyingCapybara:
             self.balloon_popped = True
             self.hit_time = time.time()
             self.fall_speed = 0
+            # Set random landing position when balloon is popped
+            self.ground_y = random.randint(575, 700)
         elif target == "capybara":
             self.alive = False
             self.balloon_popped = True
             self.shot_capybara = True
             self.hit_time = time.time()
             self.fall_speed = 0
+            # Shot capybaras also get a random landing position
+            self.ground_y = random.randint(575, 700)
 
     def draw(self, screen: pygame.Surface):
         """Draw the capybara with balloon"""
@@ -614,7 +650,7 @@ class FlyingCapybara:
         # Draw sprite if available
         if self.sprites_loaded:
             sprite = None
-            
+
             # Choose sprite based on state (priority: kicking > laying > sitting > standing > walking)
             if self.kicking:
                 # Use front kick sprite
@@ -650,7 +686,7 @@ class FlyingCapybara:
                 # Flip sprite if moving right
                 if self.flip_sprite:
                     sprite = pygame.transform.flip(sprite, True, False)
-            
+
             if sprite:
                 # Draw sprite centered at position
                 sprite_rect = sprite.get_rect(center=(x, y))
@@ -766,6 +802,9 @@ class CapybaraHuntScreen(BaseScreen):
         # Background
         self.create_background()
 
+        # Animated scenery elements
+        self.init_scenery()
+
         # Debug console (for pause menu commands)
         self.console_active = False
         self.console_input = ""
@@ -786,6 +825,33 @@ class CapybaraHuntScreen(BaseScreen):
             )
             pygame.draw.line(self.background, color, (0, y), (SCREEN_WIDTH, y))
 
+        # Draw distant mountains (back layer)
+        self.draw_mountain_layer(
+            self.background,
+            color=(170, 180, 200),  # Light blue-gray for distance
+            peak_heights=[200, 280, 250, 300, 220],
+            base_y=SCREEN_HEIGHT * 2 // 3 - 50,
+            peak_variance=30,
+        )
+
+        # Draw middle mountains
+        self.draw_mountain_layer(
+            self.background,
+            color=(140, 150, 180),  # Slightly darker blue-gray
+            peak_heights=[180, 240, 200, 260],
+            base_y=SCREEN_HEIGHT * 2 // 3 - 30,
+            peak_variance=25,
+        )
+
+        # Draw rolling hills (front layer)
+        self.draw_hills_layer(
+            self.background,
+            color=(120, 130, 100),  # Muted sage/olive color for distant hills
+            base_y=SCREEN_HEIGHT * 2 // 3,
+            hill_count=5,
+            max_height=80,
+        )
+
         # Ground
         ground_color = (34, 139, 34)  # Forest green
         pygame.draw.rect(self.background, ground_color, (0, SCREEN_HEIGHT * 2 // 3, SCREEN_WIDTH, SCREEN_HEIGHT // 3))
@@ -796,6 +862,604 @@ class CapybaraHuntScreen(BaseScreen):
             y = random.randint(SCREEN_HEIGHT * 2 // 3, SCREEN_HEIGHT)
             height = random.randint(5, 15)
             pygame.draw.line(self.background, (46, 125, 50), (x, y), (x, y - height), 1)
+
+        # Draw pond in bottom left corner (cut off by edge)
+        pond_center_x = 100  # Mostly visible, slightly cut off on left
+        pond_center_y = SCREEN_HEIGHT - 40  # Lower, so bottom is cut off
+        pond_width = 280  # Bigger pond
+        pond_height = 140  # Bigger pond
+
+        # Draw pond water
+        pond_rect = pygame.Rect(pond_center_x - pond_width // 2, pond_center_y - pond_height // 2, pond_width, pond_height)
+
+        # Draw pond with gradient effect
+        for i in range(pond_height // 2):
+            color_factor = i / (pond_height // 2)
+            water_color = (
+                int(64 + 20 * color_factor),  # Blue gets lighter toward edge
+                int(140 + 30 * color_factor),
+                int(180 + 40 * color_factor),
+            )
+            pygame.draw.ellipse(
+                self.background,
+                water_color,
+                (
+                    pond_center_x - pond_width // 2 + i,
+                    pond_center_y - pond_height // 2 + i,
+                    pond_width - i * 2,
+                    pond_height - i * 2,
+                ),
+            )
+
+        # Add pond edge with darker color
+        pygame.draw.ellipse(self.background, (40, 90, 120), pond_rect, 3)
+
+    def draw_mountain_layer(self, surface, color, peak_heights, base_y, peak_variance):
+        """Draw a layer of mountains with jagged peaks"""
+        points = [(0, base_y)]
+
+        # Create mountain peaks
+        num_peaks = len(peak_heights)
+        for i, height in enumerate(peak_heights):
+            x = (i + 1) * (SCREEN_WIDTH // (num_peaks + 1))
+
+            # Add some smaller peaks between main peaks for more natural look
+            if i > 0:
+                mid_x = x - (SCREEN_WIDTH // (num_peaks + 1)) // 2
+                mid_height = height - peak_variance - random.randint(20, 40)
+                points.append((mid_x, base_y - mid_height))
+
+            # Main peak with slight random variance
+            peak_y = base_y - height + random.randint(-peak_variance, peak_variance)
+            points.append((x, peak_y))
+
+        # Complete the polygon
+        points.append((SCREEN_WIDTH, base_y))
+        points.append((SCREEN_WIDTH, SCREEN_HEIGHT))
+        points.append((0, SCREEN_HEIGHT))
+
+        # Draw filled mountains
+        pygame.draw.polygon(surface, color, points)
+
+        # Add subtle shading with darker edges
+        darker_color = tuple(max(0, c - 20) for c in color)
+        pygame.draw.lines(surface, darker_color, False, points[: len(peak_heights) * 2 + 2], 2)
+
+    def draw_hills_layer(self, surface, color, base_y, hill_count, max_height):
+        """Draw rolling hills using smooth curves"""
+        points = [(0, base_y)]
+
+        # Create smooth rolling hills using sine waves
+        for x in range(0, SCREEN_WIDTH + 10, 10):
+            # Combine multiple sine waves for natural rolling effect
+            y = base_y
+            for i in range(hill_count):
+                amplitude = max_height * (0.5 + 0.5 * math.sin(i * 1.3))
+                frequency = (i + 1) * 0.003
+                phase = i * math.pi / 3
+                y -= amplitude * (0.5 + 0.5 * math.sin(x * frequency + phase))
+
+            points.append((x, y))
+
+        # Complete the polygon
+        points.append((SCREEN_WIDTH, SCREEN_HEIGHT))
+        points.append((0, SCREEN_HEIGHT))
+
+        # Draw filled hills
+        pygame.draw.polygon(surface, color, points)
+
+        # Add gentle highlight on tops
+        lighter_color = tuple(min(255, c + 10) for c in color)
+        for i in range(1, len(points) - 2):
+            if points[i][1] < points[i - 1][1] and points[i][1] < points[i + 1][1]:  # Peak point
+                pygame.draw.circle(surface, lighter_color, (int(points[i][0]), int(points[i][1])), 3)
+
+    def init_scenery(self):
+        """Initialize animated scenery elements"""
+        # Define pond parameters first (needed for flower and grass placement)
+        self.pond_center_x = 100
+        self.pond_center_y = SCREEN_HEIGHT - 40
+        self.pond_width = 280
+        self.pond_height = 140
+
+        # Clouds
+        self.clouds = []
+        for i in range(5):
+            cloud = {
+                "x": random.randint(-200, SCREEN_WIDTH),
+                "y": random.randint(30, 150),  # Raised higher - was 50-200
+                "speed": random.uniform(10, 30),  # pixels per second
+                "size": random.uniform(0.8, 1.5),
+                "opacity": random.randint(180, 255),
+                "type": random.randint(0, 2),  # Different cloud shapes
+            }
+            self.clouds.append(cloud)
+
+        # Birds
+        self.birds = []
+        for i in range(3):
+            bird = {
+                "x": random.randint(-100, SCREEN_WIDTH + 100),
+                "y": random.randint(50, 250),
+                "speed": random.uniform(40, 80),
+                "direction": random.choice([-1, 1]),
+                "wing_phase": random.uniform(0, math.pi * 2),
+                "size": random.uniform(0.8, 1.2),
+            }
+            self.birds.append(bird)
+
+        # Floating particles (pollen/dandelion seeds)
+        self.particles = []
+        for i in range(30):
+            particle = {
+                "x": random.randint(0, SCREEN_WIDTH),
+                "y": random.randint(0, SCREEN_HEIGHT),
+                "vx": random.uniform(-10, 10),
+                "vy": random.uniform(5, 20),
+                "size": random.uniform(2, 5),
+                "opacity": random.randint(100, 200),
+                "rotation": random.uniform(0, math.pi * 2),
+                "rotation_speed": random.uniform(-2, 2),
+            }
+            self.particles.append(particle)
+
+        # Swaying flowers (reduced count and better positioning)
+        self.flowers = []
+        ground_line = SCREEN_HEIGHT * 2 // 3  # Where capybaras walk
+        pond_left = self.pond_center_x - self.pond_width // 2
+        pond_right = self.pond_center_x + self.pond_width // 2
+        pond_top = self.pond_center_y - self.pond_height // 2
+
+        for i in range(12):  # Reduced from 20 to 12
+            # Calculate max height so flower doesn't extend above ground line
+            # Flower position is its base, so we need to ensure top doesn't go above ground
+            max_flower_height = 30  # Maximum height a flower can be
+            min_y = ground_line + max_flower_height + 10  # Add buffer so flowers don't poke above
+            min_spacing = 30  # Minimum distance between flowers
+
+            # Keep trying until we get a position not in the pond and not overlapping other flowers
+            attempts = 0
+            valid_position = False
+            x, y = 0, 0
+
+            while attempts < 20 and not valid_position:  # Increased attempts for better placement
+                x = random.randint(50, SCREEN_WIDTH - 50)
+                y = random.randint(min_y, SCREEN_HEIGHT - 20)
+
+                # Check if this position is in the pond area (with some margin)
+                if pond_left - 20 < x < pond_right + 20 and y > pond_top - 20:
+                    attempts += 1
+                    continue
+
+                # Check if too close to existing flowers
+                too_close = False
+                for existing_flower in self.flowers:
+                    distance = math.sqrt((x - existing_flower["x"]) ** 2 + (y - existing_flower["y"]) ** 2)
+                    if distance < min_spacing:
+                        too_close = True
+                        break
+
+                if not too_close:
+                    valid_position = True
+                    break
+
+                attempts += 1
+
+            # Only add flower if we found a valid position
+            if valid_position:
+                flower = {
+                    "x": x,
+                    "y": y,
+                    "sway_phase": random.uniform(0, math.pi * 2),
+                    "sway_speed": random.uniform(0.5, 1.5),
+                    "height": random.randint(15, 25),  # Reduced height range
+                    "color": random.choice(
+                        [
+                            (255, 105, 180),  # Hot pink
+                            (255, 255, 0),  # Yellow
+                            (238, 130, 238),  # Violet
+                            (255, 165, 0),  # Orange
+                            (147, 112, 219),  # Purple
+                        ]
+                    ),
+                    "petal_count": random.randint(5, 8),
+                    "size": random.randint(8, 15),
+                }
+                self.flowers.append(flower)
+
+        # Animated grass tufts (pixel art style)
+        self.grass_tufts = []
+        ground_line = SCREEN_HEIGHT * 2 // 3
+        pond_left = self.pond_center_x - self.pond_width // 2
+        pond_right = self.pond_center_x + self.pond_width // 2
+        pond_top = self.pond_center_y - self.pond_height // 2
+
+        # Create fewer but more visible grass tufts
+        for _ in range(80):  # Reduced from 200 to 80 for cleaner look
+            # Keep trying until we get a position not in the pond
+            attempts = 0
+            while attempts < 10:
+                x = random.randint(10, SCREEN_WIDTH - 10)
+                y = random.randint(ground_line + 10, SCREEN_HEIGHT - 10)
+
+                # Check if this position is in the pond area (with some margin)
+                if not (pond_left - 20 < x < pond_right + 20 and y > pond_top - 20):
+                    # Not in pond, we can use this position
+                    break
+                attempts += 1
+
+            grass = {
+                "x": x,
+                "y": y,
+                "type": random.choice(["tall", "medium", "bushy"]),  # Different grass types
+                "sway_phase": random.uniform(0, math.pi * 2),
+                "sway_speed": random.uniform(0.6, 1.2),
+                "color_variation": random.choice(
+                    [
+                        (46, 125, 50),  # Standard green
+                        (56, 135, 60),  # Slightly brighter
+                        (36, 115, 40),  # Slightly darker
+                        (66, 145, 70),  # Light green
+                    ]
+                ),
+                "size": random.uniform(0.8, 1.2),  # Size variation
+            }
+            self.grass_tufts.append(grass)
+
+        # Sun rays
+        self.sun_ray_angle = 0
+        self.sun_x = SCREEN_WIDTH - 150
+        self.sun_y = 100
+
+        # Pond ripples
+        self.pond_ripples = []
+        self.ripple_spawn_timer = 0
+
+        # Initialize a few ripples
+        for i in range(3):
+            # Keep ripples well within pond bounds
+            ripple = {
+                "x": self.pond_center_x + random.randint(-60, 60),
+                "y": self.pond_center_y + random.randint(-40, 20),  # Adjusted for lower pond
+                "radius": random.uniform(0, 20),
+                "max_radius": random.uniform(25, 40),  # Smaller max radius to stay in bounds
+                "speed": random.uniform(15, 25),
+                "opacity": 255,
+            }
+            self.pond_ripples.append(ripple)
+
+    def update_scenery(self, dt: float):
+        """Update animated scenery elements"""
+        current_time = pygame.time.get_ticks() / 1000.0
+
+        # Update clouds
+        for cloud in self.clouds:
+            cloud["x"] += cloud["speed"] * dt
+            if cloud["x"] > SCREEN_WIDTH + 200:
+                cloud["x"] = -200
+                cloud["y"] = random.randint(30, 150)  # Match initial spawn height
+
+        # Update birds
+        for bird in self.birds:
+            bird["x"] += bird["speed"] * bird["direction"] * dt
+            bird["y"] += math.sin(current_time * 2 + bird["wing_phase"]) * 10 * dt
+            bird["wing_phase"] += dt * 8
+
+            # Wrap around
+            if bird["direction"] > 0 and bird["x"] > SCREEN_WIDTH + 100:
+                bird["x"] = -100
+                bird["y"] = random.randint(50, 250)
+            elif bird["direction"] < 0 and bird["x"] < -100:
+                bird["x"] = SCREEN_WIDTH + 100
+                bird["y"] = random.randint(50, 250)
+
+        # Update floating particles
+        for particle in self.particles:
+            # Gentle floating movement
+            particle["x"] += particle["vx"] * dt + math.sin(current_time * 2 + particle["rotation"]) * 10 * dt
+            particle["y"] += particle["vy"] * dt
+            particle["rotation"] += particle["rotation_speed"] * dt
+
+            # Respawn at top when reaching bottom
+            if particle["y"] > SCREEN_HEIGHT + 10:
+                particle["y"] = -10
+                particle["x"] = random.randint(0, SCREEN_WIDTH)
+
+        # Update sun rays
+        self.sun_ray_angle += dt * 0.1
+
+        # Update pond ripples
+        self.ripple_spawn_timer += dt
+        if self.ripple_spawn_timer > random.uniform(1.5, 3.0):
+            self.ripple_spawn_timer = 0
+            # Spawn new ripple within pond bounds
+            # Calculate safe spawn area considering ripple max size
+            max_ripple_radius = 40
+            safe_x_range = (self.pond_width // 2 - max_ripple_radius) * 0.8  # 80% to be safe
+            safe_y_range = (self.pond_height // 2 - max_ripple_radius) * 0.8
+
+            new_ripple = {
+                "x": self.pond_center_x + random.randint(-int(safe_x_range), int(safe_x_range)),
+                "y": self.pond_center_y + random.randint(-int(safe_y_range), int(safe_y_range // 2)),  # Less range below
+                "radius": 0,
+                "max_radius": random.uniform(25, 40),  # Smaller to stay in bounds
+                "speed": random.uniform(15, 25),
+                "opacity": 255,
+            }
+            self.pond_ripples.append(new_ripple)
+
+        # Update existing ripples
+        ripples_to_remove = []
+        for ripple in self.pond_ripples:
+            ripple["radius"] += ripple["speed"] * dt
+            # Fade out as ripple expands
+            ripple["opacity"] = max(0, 255 * (1 - ripple["radius"] / ripple["max_radius"]))
+
+            if ripple["radius"] >= ripple["max_radius"]:
+                ripples_to_remove.append(ripple)
+
+        # Remove dead ripples
+        for ripple in ripples_to_remove:
+            self.pond_ripples.remove(ripple)
+
+    def draw_scenery(self):
+        """Draw animated scenery elements"""
+        current_time = pygame.time.get_ticks() / 1000.0
+
+        # Draw sun and rays
+        self.draw_sun_rays()
+
+        # Draw clouds (behind everything)
+        for cloud in self.clouds:
+            self.draw_cloud(cloud)
+
+        # Draw birds
+        for bird in self.birds:
+            self.draw_bird(bird, current_time)
+
+        # Draw floating particles
+        for particle in self.particles:
+            self.draw_particle(particle)
+
+        # Draw animated grass tufts
+        for grass in self.grass_tufts:
+            self.draw_grass_tuft(grass, current_time)
+
+        # Draw pond ripples
+        for ripple in self.pond_ripples:
+            self.draw_pond_ripple(ripple)
+
+        # Draw flowers (foreground)
+        for flower in self.flowers:
+            self.draw_flower(flower, current_time)
+
+    def draw_sun_rays(self):
+        """Draw animated sun rays"""
+        # Draw sun
+        pygame.draw.circle(self.screen, (255, 253, 184), (self.sun_x, self.sun_y), 40)
+        pygame.draw.circle(self.screen, (255, 255, 224), (self.sun_x, self.sun_y), 35)
+
+        # Draw rotating rays
+        ray_count = 12
+        for i in range(ray_count):
+            angle = self.sun_ray_angle + (i * math.pi * 2 / ray_count)
+            length = 60 + math.sin(angle * 3) * 20
+            end_x = self.sun_x + math.cos(angle) * length
+            end_y = self.sun_y + math.sin(angle) * length
+
+            # Create gradient effect for rays
+            for j in range(3):
+                alpha = 100 - j * 30
+                width = 3 - j
+                color = (255, 253, 184)
+                start_radius = 40 + j * 5
+                start_x = self.sun_x + math.cos(angle) * start_radius
+                start_y = self.sun_y + math.sin(angle) * start_radius
+
+                pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), width)
+
+    def draw_cloud(self, cloud):
+        """Draw a fluffy cloud"""
+        x, y = int(cloud["x"]), int(cloud["y"])
+        size = cloud["size"]
+
+        # Create cloud with multiple circles
+        cloud_surface = pygame.Surface((int(150 * size), int(80 * size)), pygame.SRCALPHA)
+
+        # Cloud puffs
+        puffs = [(30, 40, 35), (60, 35, 40), (90, 40, 35), (45, 50, 30), (75, 50, 30), (50, 30, 25), (70, 30, 25)]
+
+        for px, py, radius in puffs:
+            color = (255, 255, 255, cloud["opacity"])
+            pygame.draw.circle(cloud_surface, color, (int(px * size), int(py * size)), int(radius * size))
+
+        self.screen.blit(cloud_surface, (x, y))
+
+    def draw_grass_tuft(self, grass, current_time):
+        """Draw an animated grass tuft with pixel art style"""
+        # Calculate sway based on time and unique phase
+        sway = math.sin(current_time * grass["sway_speed"] + grass["sway_phase"]) * 4
+
+        x = grass["x"]
+        y = grass["y"]
+        color = grass["color_variation"]
+        size = grass["size"]
+
+        if grass["type"] == "tall":
+            # Tall grass with 3-5 blades in a cluster
+            blade_count = 4
+            for i in range(blade_count):
+                offset_x = (i - blade_count // 2) * 3
+                height = int(20 * size - abs(i - blade_count // 2) * 3)
+
+                # Draw each blade as a triangle/diamond shape
+                blade_sway = sway * (1 - abs(i - blade_count // 2) * 0.2)
+
+                # Base of blade (wider)
+                pygame.draw.polygon(
+                    self.screen,
+                    color,
+                    [
+                        (x + offset_x - 2, y),
+                        (x + offset_x + 2, y),
+                        (x + offset_x + int(blade_sway), y - height),
+                    ],
+                )
+
+                # Highlight on one side for depth
+                if i < blade_count // 2:
+                    lighter = tuple(min(255, c + 20) for c in color)
+                    pygame.draw.line(
+                        self.screen, lighter, (x + offset_x - 1, y), (x + offset_x + int(blade_sway) - 1, y - height), 1
+                    )
+
+        elif grass["type"] == "medium":
+            # Medium grass with wider blades
+            for i in range(3):
+                offset_x = (i - 1) * 5
+                height = int(12 * size)
+                blade_sway = sway * (1 - abs(i - 1) * 0.3)
+
+                # Draw as filled triangular shapes
+                points = [
+                    (x + offset_x - 3, y),
+                    (x + offset_x + 3, y),
+                    (x + offset_x + int(blade_sway) + 1, y - height + 2),
+                    (x + offset_x + int(blade_sway), y - height),
+                ]
+                pygame.draw.polygon(self.screen, color, points)
+
+        else:  # bushy
+            # Bushy grass - circular cluster of short blades
+            for angle in range(0, 180, 30):
+                rad = math.radians(angle)
+                end_x = x + math.cos(rad) * 8 * size
+                end_y = y - abs(math.sin(rad)) * 10 * size
+
+                # Add sway to endpoints
+                end_x += sway * math.sin(rad)
+
+                # Draw thick triangular blade
+                pygame.draw.polygon(self.screen, color, [(x - 1, y), (x + 1, y), (int(end_x), int(end_y))])
+
+                # Add some color variation within the tuft
+                if angle % 60 == 0:
+                    darker = tuple(max(0, c - 10) for c in color)
+                    pygame.draw.line(self.screen, darker, (x, y), (int(end_x), int(end_y)), 1)
+
+    def draw_pond_ripple(self, ripple):
+        """Draw an animated water ripple"""
+        if ripple["opacity"] > 0:
+            # Check if ripple is within reasonable bounds of pond
+            # Calculate distance from pond center
+            dx = ripple["x"] - self.pond_center_x
+            dy = ripple["y"] - self.pond_center_y
+
+            # Simple ellipse bounds check (with some margin)
+            ellipse_check = (dx * dx) / ((self.pond_width / 2) ** 2) + (dy * dy) / ((self.pond_height / 2) ** 2)
+
+            # Only draw if ripple center is within or near the pond ellipse
+            if ellipse_check < 1.5:  # 1.5 allows slight overlap but prevents far escapes
+                # Create a surface for the ripple with transparency
+                ripple_surface = pygame.Surface(
+                    (int(ripple["radius"] * 2 + 4), int(ripple["radius"] * 2 + 4)), pygame.SRCALPHA
+                )
+
+                # Draw ripple circle with fading opacity
+                color = (100, 180, 220, int(ripple["opacity"]))
+                center = (int(ripple["radius"] + 2), int(ripple["radius"] + 2))
+
+                # Draw the ripple ring (not filled)
+                if ripple["radius"] > 2:
+                    pygame.draw.circle(ripple_surface, color, center, int(ripple["radius"]), 2)
+
+                    # Add inner highlight for water effect
+                    highlight_color = (200, 220, 240, int(ripple["opacity"] * 0.5))
+                    pygame.draw.circle(ripple_surface, highlight_color, center, int(ripple["radius"] - 1), 1)
+
+                # Blit the ripple to the screen
+                self.screen.blit(ripple_surface, (ripple["x"] - ripple["radius"] - 2, ripple["y"] - ripple["radius"] - 2))
+
+    def draw_bird(self, bird, current_time):
+        """Draw an animated bird"""
+        x, y = int(bird["x"]), int(bird["y"])
+        size = bird["size"]
+
+        # Wing flap animation
+        wing_angle = math.sin(bird["wing_phase"]) * 30
+
+        # Body
+        body_color = (80, 80, 80)
+        pygame.draw.ellipse(self.screen, body_color, (x - int(8 * size), y - int(4 * size), int(16 * size), int(8 * size)))
+
+        # Wings
+        wing_length = int(15 * size)
+        left_wing_end = (x - wing_length, y + int(wing_angle * 0.5))
+        right_wing_end = (x + wing_length, y + int(wing_angle * 0.5))
+
+        pygame.draw.line(self.screen, body_color, (x, y), left_wing_end, int(3 * size))
+        pygame.draw.line(self.screen, body_color, (x, y), right_wing_end, int(3 * size))
+
+        # Beak
+        if bird["direction"] > 0:
+            pygame.draw.polygon(
+                self.screen,
+                (255, 165, 0),
+                [(x + int(8 * size), y), (x + int(12 * size), y), (x + int(8 * size), y + int(2 * size))],
+            )
+        else:
+            pygame.draw.polygon(
+                self.screen,
+                (255, 165, 0),
+                [(x - int(8 * size), y), (x - int(12 * size), y), (x - int(8 * size), y + int(2 * size))],
+            )
+
+    def draw_particle(self, particle):
+        """Draw a floating particle (pollen/dandelion seed)"""
+        x, y = int(particle["x"]), int(particle["y"])
+
+        # Create semi-transparent surface
+        size = int(particle["size"] * 3)
+        particle_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+
+        # Draw dandelion seed shape
+        center = (size, size)
+        color = (255, 255, 255, particle["opacity"])
+
+        # Draw radiating lines from center
+        for i in range(8):
+            angle = particle["rotation"] + (i * math.pi / 4)
+            end_x = center[0] + math.cos(angle) * size
+            end_y = center[1] + math.sin(angle) * size
+            pygame.draw.line(particle_surface, color, center, (end_x, end_y), 1)
+
+        # Center dot
+        pygame.draw.circle(particle_surface, color, center, 2)
+
+        self.screen.blit(particle_surface, (x - size, y - size))
+
+    def draw_flower(self, flower, current_time):
+        """Draw an animated swaying flower"""
+        # Calculate sway
+        sway = math.sin(current_time * flower["sway_speed"] + flower["sway_phase"]) * 5
+
+        # Stem
+        stem_top = (flower["x"] + int(sway), flower["y"] - flower["height"])
+        pygame.draw.line(self.screen, (34, 139, 34), (flower["x"], flower["y"]), stem_top, 3)
+
+        # Leaves on stem
+        leaf_y = flower["y"] - flower["height"] // 2
+        pygame.draw.ellipse(self.screen, (46, 125, 50), (flower["x"] - 8, leaf_y - 3, 16, 6))
+
+        # Flower petals
+        for i in range(flower["petal_count"]):
+            angle = (i * math.pi * 2 / flower["petal_count"]) + sway * 0.1
+            petal_x = stem_top[0] + math.cos(angle) * flower["size"]
+            petal_y = stem_top[1] + math.sin(angle) * flower["size"]
+            pygame.draw.circle(self.screen, flower["color"], (int(petal_x), int(petal_y)), flower["size"] // 2)
+
+        # Flower center
+        pygame.draw.circle(self.screen, (255, 215, 0), stem_top, flower["size"] // 3)
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
@@ -980,6 +1644,9 @@ class CapybaraHuntScreen(BaseScreen):
                     else:
                         self.game_over = True
 
+        # Update animated scenery
+        self.update_scenery(dt)
+
         # Update FPS counter
         self.fps_counter += 1
         self.fps_timer += dt
@@ -1116,6 +1783,9 @@ class CapybaraHuntScreen(BaseScreen):
         """Draw the game screen"""
         # Draw background
         self.screen.blit(self.background, (0, 0))
+
+        # Draw animated scenery (behind capybaras)
+        self.draw_scenery()
 
         if self.paused:
             self._draw_pause_screen()
