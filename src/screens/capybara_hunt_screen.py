@@ -1930,8 +1930,8 @@ class CapybaraHuntScreen(BaseScreen):
 
         # If we didn't hit anything, it's a complete miss
         if not hit_any:
-            # 1/3 chance for snarky speech when missing completely
-            if random.random() < 1 / 3:
+            # 1/4 chance for snarky speech when missing completely
+            if random.random() < 1 / 4:
                 self._set_pond_buddy_mood("laughing", 2.5)
                 # This will automatically use snarky speech since it's the default
 
