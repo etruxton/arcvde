@@ -19,7 +19,13 @@ import cv2
 import numpy as np
 
 # Import the trackers directly
-from enhanced_hand_tracker import EnhancedHandTracker
+try:
+    # Try new location first
+    from game.cv.finger_gun_detection import EnhancedHandTracker
+except ImportError:
+    # Fallback to old location
+    from enhanced_hand_tracker import EnhancedHandTracker
+
 from hand_tracker import HandTracker
 
 

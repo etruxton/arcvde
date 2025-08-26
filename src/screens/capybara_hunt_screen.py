@@ -1,5 +1,5 @@
 """
-Capybara Hunt - Duck Hunt inspired game mode with flying capybaras
+Capybara Hunt - Duck Hunt inspired game mode with capybaras on balloons.
 """
 
 # Standard library imports

@@ -12,13 +12,12 @@ import pygame
 # Use enhanced tracker for better performance
 try:
     # Local application imports
-    from game.enhanced_hand_tracker import EnhancedHandTracker as HandTracker
+    from game.cv.finger_gun_detection import EnhancedHandTracker as HandTracker
 
     print("[Hand Tracking] Using Enhanced Tracker with preprocessing, angles, and Kalman filter")
 except ImportError:
-    # Local application imports
+    # Original tracker fallback
     from game.hand_tracker import HandTracker
-
     print("[Hand Tracking] Using Original Tracker")
 # Local application imports
 from utils.camera_manager import CameraManager
