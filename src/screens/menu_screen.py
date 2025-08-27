@@ -5,6 +5,7 @@ Main menu screen with camera feed and finger gun interaction
 # Standard library imports
 import math
 import os
+import random
 import time
 from typing import Optional
 
@@ -55,6 +56,29 @@ class MenuScreen(BaseScreen):
         self.title_font = pygame.font.Font(None, 72)
         self.button_font = pygame.font.Font(None, 36)  # Reduced default size for better fit
         self.info_font = pygame.font.Font(None, 24)
+
+        # Pond buddy under the red triangle enemy (right side but not far edge)
+        self.pond_buddy = {
+            "x": SCREEN_WIDTH - 300,  # Right side but with space from edge
+            "y": SCREEN_HEIGHT - 120,
+            "mood": "neutral",
+            "mood_timer": 0,
+            "mood_duration": 2.0,
+            "bob_time": 0,
+            "bob_offset": 0,
+            "animation_timer": 0,
+            "animation_frame": 0,
+            "sprite": None,
+        }
+
+        # Load pond buddy sprite
+        try:
+            self.pond_buddy["sprite"] = pygame.image.load("assets/pond_buddy.png").convert_alpha()
+            # Scale it bigger for menu
+            self.pond_buddy["sprite"] = pygame.transform.scale(self.pond_buddy["sprite"], (120, 120))
+        except Exception as e:
+            print(f"Could not load pond buddy sprite: {e}")
+            self.pond_buddy["sprite"] = None
 
         # Create buttons
         button_width = 250
@@ -255,6 +279,31 @@ class MenuScreen(BaseScreen):
                 self.capybara_animation_time = 0
                 self.capybara_animation_frame = (self.capybara_animation_frame + 1) % len(self.capybara_sprites)
 
+        # Update pond buddy
+        self._update_pond_buddy(dt)
+
+        # Check if hovering over any game button
+        hovering_game_button = False
+        hovering_capybara = False
+        for button in [self.arcade_button, self.play_button, self.capybara_button]:
+            if button.finger_aimed:
+                hovering_game_button = True
+                if button == self.capybara_button:
+                    hovering_capybara = True
+                break
+
+        # Pond buddy reacts to hovering
+        if hovering_game_button:
+            if self.pond_buddy["mood"] == "neutral":
+                if hovering_capybara:
+                    self._set_pond_buddy_mood("celebration", 3.0)  # Extra excited for capybara hunt!
+                else:
+                    self._set_pond_buddy_mood("excited", 2.0)
+        else:
+            # Not hovering - return to neutral if in an excited state
+            if self.pond_buddy["mood"] in ["excited", "celebration"]:
+                self._set_pond_buddy_mood("neutral", 0)
+
         # Handle finger gun shooting as clicks
         shot_button = self.check_button_shoot(self.buttons)
         if shot_button:
@@ -319,6 +368,9 @@ class MenuScreen(BaseScreen):
         self.update_button_finger_states(self.buttons)
         for button in self.buttons:
             button.draw(self.screen)
+
+        # Draw pond buddy in bottom right
+        self._draw_pond_buddy()
 
         # Draw crosshair if aiming
         if self.crosshair_pos:
@@ -450,3 +502,122 @@ class MenuScreen(BaseScreen):
         current_sprite = self.capybara_sprites[self.capybara_animation_frame]
         capybara_rect = current_sprite.get_rect(center=(int(capybara_center_x), int(capybara_center_y)))
         self.screen.blit(current_sprite, capybara_rect)
+
+    def _update_pond_buddy(self, dt: float):
+        """Update pond buddy animations and mood"""
+        # Update mood timer
+        if self.pond_buddy["mood_timer"] > 0:
+            self.pond_buddy["mood_timer"] -= dt
+            if self.pond_buddy["mood_timer"] <= 0:
+                self.pond_buddy["mood"] = "neutral"
+
+        # Random idle animations when neutral
+        # Standard library imports
+        import random
+
+        if self.pond_buddy["mood"] == "neutral" and random.random() < 0.005:
+            idle_moods = ["happy", "excited"]
+            self._set_pond_buddy_mood(random.choice(idle_moods), random.uniform(1.0, 2.0))
+
+        # Bobbing animation
+        self.pond_buddy["bob_time"] += dt
+        self.pond_buddy["bob_offset"] = math.sin(self.pond_buddy["bob_time"] * 2) * 3
+
+        # Animation frame update
+        self.pond_buddy["animation_timer"] += dt
+        if self.pond_buddy["animation_timer"] > 0.2:
+            self.pond_buddy["animation_timer"] = 0
+            self.pond_buddy["animation_frame"] = (self.pond_buddy["animation_frame"] + 1) % 2
+
+    def _set_pond_buddy_mood(self, mood: str, duration: float = 2.0):
+        """Set the pond buddy's mood"""
+        self.pond_buddy["mood"] = mood
+        self.pond_buddy["mood_timer"] = duration
+        self.pond_buddy["animation_frame"] = 0
+
+    def _draw_pond_buddy(self):
+        """Draw the pond companion"""
+        x = self.pond_buddy["x"]
+        y = self.pond_buddy["y"] + self.pond_buddy["bob_offset"]
+        mood = self.pond_buddy["mood"]
+
+        # Draw sprite if loaded
+        if self.pond_buddy["sprite"]:
+            sprite_rect = self.pond_buddy["sprite"].get_rect()
+            sprite_rect.center = (int(x), int(y))
+            self.screen.blit(self.pond_buddy["sprite"], sprite_rect)
+
+            # Draw simple facial expressions
+            # Adjusted for 120x120 sprite size, positioned higher
+            face_x = x + 3
+            face_y = y - 20  # Much higher on the face
+
+            eye_color = (0, 0, 0)
+            WHITE = (255, 255, 255)
+
+            if mood == "neutral":
+                # Normal eyes
+                pygame.draw.circle(self.screen, eye_color, (int(face_x - 18), int(face_y)), 5)
+                pygame.draw.circle(self.screen, eye_color, (int(face_x + 18), int(face_y)), 5)
+
+            elif mood == "happy":
+                # Happy eyes (curved)
+                left_eye_rect = (int(face_x - 24), int(face_y - 3), 15, 15)
+                right_eye_rect = (int(face_x + 9), int(face_y - 3), 15, 15)
+                pygame.draw.arc(self.screen, eye_color, left_eye_rect, 0, math.pi, 3)
+                pygame.draw.arc(self.screen, eye_color, right_eye_rect, 0, math.pi, 3)
+                # Smile
+                smile_rect = (int(face_x - 16), int(face_y + 10), 32, 18)
+                pygame.draw.arc(self.screen, eye_color, smile_rect, math.pi, 2 * math.pi, 3)
+
+            elif mood == "excited":
+                # Star eyes
+                if self.pond_buddy["animation_frame"] == 0:
+                    # Wide eyes
+                    pygame.draw.circle(self.screen, eye_color, (int(face_x - 18), int(face_y)), 7)
+                    pygame.draw.circle(self.screen, eye_color, (int(face_x + 18), int(face_y)), 7)
+                    pygame.draw.circle(self.screen, WHITE, (int(face_x - 15), int(face_y - 3)), 3)
+                    pygame.draw.circle(self.screen, WHITE, (int(face_x + 21), int(face_y - 3)), 3)
+                else:
+                    # Sparkle effect
+                    pygame.draw.circle(self.screen, (255, 215, 0), (int(face_x - 18), int(face_y)), 6)
+                    pygame.draw.circle(self.screen, (255, 215, 0), (int(face_x + 18), int(face_y)), 6)
+                # Big smile
+                smile_rect = (int(face_x - 20), int(face_y + 10), 40, 20)
+                pygame.draw.arc(self.screen, eye_color, smile_rect, math.pi, 2 * math.pi, 3)
+
+            elif mood == "celebration":
+                # Jumping animation
+                jump_offset = abs(math.sin(self.pond_buddy["animation_timer"] * 10)) * 5
+                face_y -= jump_offset
+
+                # Star eyes
+                for eye_x in [-18, 18]:
+                    cx = int(face_x + eye_x)
+                    cy = int(face_y)
+                    # Draw star shape
+                    for angle in range(0, 360, 72):
+                        rad = math.radians(angle)
+                        x1 = cx + math.cos(rad) * 8
+                        y1 = cy + math.sin(rad) * 8
+                        x2 = cx + math.cos(rad + math.radians(36)) * 4
+                        y2 = cy + math.sin(rad + math.radians(36)) * 4
+                        pygame.draw.line(self.screen, (255, 215, 0), (cx, cy), (int(x1), int(y1)), 2)
+
+                # Huge smile
+                smile_rect = (int(face_x - 22), int(face_y + 8), 44, 24)
+                pygame.draw.arc(self.screen, eye_color, smile_rect, math.pi, 2 * math.pi, 3)
+
+                # Party hat
+                hat_color = (255, 20, 147) if self.pond_buddy["animation_frame"] == 0 else (16, 231, 245)
+                pygame.draw.polygon(
+                    self.screen,
+                    hat_color,
+                    [
+                        (int(face_x), int(face_y - 50)),
+                        (int(face_x - 25), int(face_y - 15)),
+                        (int(face_x + 25), int(face_y - 15)),
+                    ],
+                )
+                # Hat pompom
+                pygame.draw.circle(self.screen, (255, 255, 255), (int(face_x), int(face_y - 50)), 6)

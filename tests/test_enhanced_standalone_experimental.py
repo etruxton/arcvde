@@ -6,8 +6,8 @@ This version had complex import handling and detailed shooting detection debuggi
 
 # Standard library imports
 import os
-import sys
 import random
+import sys
 
 # Add src directories to path (go up one level from tests/ to project root)
 project_root = os.path.dirname(os.path.dirname(__file__))
@@ -22,6 +22,7 @@ import numpy as np
 # Import the trackers directly - EXPERIMENTAL COMPLEX VERSION
 try:
     # Try new location first
+    # Local application imports
     from game.cv.finger_gun_detection import EnhancedHandTracker
     from game.cv.finger_gun_detection.enhanced_hand_tracker import FramePreprocessor
     from game.cv.finger_gun_detection.kalman_tracker import HandKalmanTracker
@@ -30,6 +31,7 @@ except ImportError:
     from enhanced_hand_tracker import EnhancedHandTracker, FramePreprocessor
     from kalman_tracker import HandKalmanTracker
 
+# Third-party imports
 from hand_tracker import HandTracker
 
 
@@ -68,7 +70,7 @@ def draw_debug_info(frame, stats, tracker):
         cv2.putText(frame, f"ERROR: {stats['error'][:30]}...", (20, y_offset), font, font_scale, (0, 0, 255), thickness)
         y_offset += 25
         return frame  # Skip other displays if there's an error
-    
+
     # Performance stats
     if "total_ms" in stats and stats["total_ms"] > 0:
         cv2.putText(frame, f"FPS: {1000/stats['total_ms']:.1f}", (20, y_offset), font, font_scale, (0, 255, 0), thickness)
@@ -106,7 +108,7 @@ def draw_debug_info(frame, stats, tracker):
     y_offset += 25
 
     if stats.get("kalman_active"):
-        kalman_conf = stats.get('kalman_tracking_confidence', 0)
+        kalman_conf = stats.get("kalman_tracking_confidence", 0)
         kalman_color = (0, 255, 0) if kalman_conf > 0.8 else (255, 255, 0) if kalman_conf > 0.5 else (255, 0, 0)
         cv2.putText(
             frame,
@@ -118,15 +120,18 @@ def draw_debug_info(frame, stats, tracker):
             1,
         )
         y_offset += 25
-    
+
     # Show if region adaptive detection is working - EXPERIMENTAL FEATURE
     if hasattr(tracker, "region_detector") and hasattr(tracker, "last_position_hints"):
         if tracker.last_position_category == "problem_zone" and hasattr(tracker, "last_position_hints"):
             hints = tracker.last_position_hints
             hint_text = ""
-            if hints.get("hand_pointing_up"): hint_text += "UP "
-            if hints.get("fingers_compressed"): hint_text += "COMP "  
-            if hints.get("hand_small"): hint_text += "SMALL "
+            if hints.get("hand_pointing_up"):
+                hint_text += "UP "
+            if hints.get("fingers_compressed"):
+                hint_text += "COMP "
+            if hints.get("hand_small"):
+                hint_text += "SMALL "
             if hint_text:
                 cv2.putText(frame, f"Hints: {hint_text}", (20, y_offset), font, 0.4, (100, 255, 100), 1)
                 y_offset += 20
@@ -136,23 +141,28 @@ def draw_debug_info(frame, stats, tracker):
         y_offset += 10
         cv2.putText(frame, "Features:", (20, y_offset), font, 0.5, (255, 255, 255), 1)
         y_offset += 18
-        
+
         # Preprocessing
         prep_color = (0, 255, 0) if tracker.enable_preprocessing else (100, 100, 100)
-        cv2.putText(frame, f"Preprocessing: {'ON' if tracker.enable_preprocessing else 'OFF'}", 
-                   (20, y_offset), font, 0.4, prep_color, 1)
+        cv2.putText(
+            frame,
+            f"Preprocessing: {'ON' if tracker.enable_preprocessing else 'OFF'}",
+            (20, y_offset),
+            font,
+            0.4,
+            prep_color,
+            1,
+        )
         y_offset += 15
-        
+
         # Angles
         angle_color = (0, 255, 0) if tracker.enable_angles else (100, 100, 100)
-        cv2.putText(frame, f"Angles: {'ON' if tracker.enable_angles else 'OFF'}", 
-                   (20, y_offset), font, 0.4, angle_color, 1)
+        cv2.putText(frame, f"Angles: {'ON' if tracker.enable_angles else 'OFF'}", (20, y_offset), font, 0.4, angle_color, 1)
         y_offset += 15
-        
+
         # Kalman
         kalman_color = (0, 255, 0) if tracker.enable_kalman else (100, 100, 100)
-        cv2.putText(frame, f"Kalman: {'ON' if tracker.enable_kalman else 'OFF'}", 
-                   (20, y_offset), font, 0.4, kalman_color, 1)
+        cv2.putText(frame, f"Kalman: {'ON' if tracker.enable_kalman else 'OFF'}", (20, y_offset), font, 0.4, kalman_color, 1)
         y_offset += 20
 
     # Instructions
@@ -210,7 +220,7 @@ def main():
     print("Flick thumb down to test shooting detection")
     print("\nKeyboard shortcuts:")
     print("  P - Toggle preprocessing")
-    print("  A - Toggle angle detection") 
+    print("  A - Toggle angle detection")
     print("  K - Toggle Kalman filter")
     print("  O - Switch between trackers")
     print("  L - Toggle landmarks")
@@ -255,8 +265,9 @@ def main():
                         "detection_mode": getattr(enhanced_tracker, "detection_mode", "unknown"),
                         "confidence": getattr(enhanced_tracker, "confidence_score", 0),
                         "kalman_active": getattr(enhanced_tracker, "enable_kalman", False),
-                        "kalman_tracking_confidence": getattr(enhanced_tracker, "kalman_tracker", None) and 
-                                                    getattr(enhanced_tracker.kalman_tracker, "tracking_confidence", 0) or 0,
+                        "kalman_tracking_confidence": getattr(enhanced_tracker, "kalman_tracker", None)
+                        and getattr(enhanced_tracker.kalman_tracker, "tracking_confidence", 0)
+                        or 0,
                     }
             except Exception as e:
                 print(f"Enhanced tracker error: {e}")
@@ -328,26 +339,31 @@ def main():
                                     (0, 0, 255),
                                     4,
                                 )
-                            
+
                             # EXPERIMENTAL SHOOTING DEBUG INFO - This was the complex version
-                            if hasattr(current_tracker, 'previous_thumb_y') and current_tracker.previous_thumb_y is not None:
-                                thumb_vel = (thumb_tip.y - current_tracker.previous_thumb_y) if current_tracker.previous_time > 0 else 0
-                                
+                            if hasattr(current_tracker, "previous_thumb_y") and current_tracker.previous_thumb_y is not None:
+                                thumb_vel = (
+                                    (thumb_tip.y - current_tracker.previous_thumb_y)
+                                    if current_tracker.previous_time > 0
+                                    else 0
+                                )
+
                                 # Calculate raw distance for comparison - EXPERIMENTAL
                                 raw_dist = thumb_middle_dist  # Default
-                                if (current_tracker.enable_kalman and 
-                                    hasattr(current_tracker, 'last_raw_landmarks') and 
-                                    current_tracker.last_raw_landmarks):
+                                if (
+                                    current_tracker.enable_kalman
+                                    and hasattr(current_tracker, "last_raw_landmarks")
+                                    and current_tracker.last_raw_landmarks
+                                ):
                                     try:
                                         raw_thumb = current_tracker.last_raw_landmarks.landmark[4]  # THUMB_TIP
                                         raw_middle = current_tracker.last_raw_landmarks.landmark[10]  # MIDDLE_PIP
                                         raw_dist = current_tracker.calculate_distance(
-                                            (raw_thumb.x, raw_thumb.y), 
-                                            (raw_middle.x, raw_middle.y)
+                                            (raw_thumb.x, raw_thumb.y), (raw_middle.x, raw_middle.y)
                                         )
                                     except:
                                         raw_dist = thumb_middle_dist
-                                
+
                                 # EXPERIMENTAL DEBUG OVERLAYS - These were cluttering the display
                                 cv2.putText(
                                     image,
@@ -421,8 +437,10 @@ def main():
                 # Reinitialize preprocessor - EXPERIMENTAL COMPLEX LOGIC
                 if enhanced_tracker.enable_preprocessing and not enhanced_tracker.preprocessor:
                     try:
+                        # Local application imports
                         from game.cv.finger_gun_detection.enhanced_hand_tracker import FramePreprocessor
                     except ImportError:
+                        # Third-party imports
                         from enhanced_hand_tracker import FramePreprocessor
                     enhanced_tracker.preprocessor = FramePreprocessor()
                 print(f"Preprocessing: {'ON' if enhanced_tracker.enable_preprocessing else 'OFF'}")
@@ -436,8 +454,10 @@ def main():
                 # Reinitialize Kalman tracker - EXPERIMENTAL COMPLEX LOGIC
                 if enhanced_tracker.enable_kalman and not enhanced_tracker.kalman_tracker:
                     try:
+                        # Local application imports
                         from game.cv.finger_gun_detection.kalman_tracker import HandKalmanTracker
                     except ImportError:
+                        # Third-party imports
                         from kalman_tracker import HandKalmanTracker
                     enhanced_tracker.kalman_tracker = HandKalmanTracker()
                 elif not enhanced_tracker.enable_kalman and enhanced_tracker.kalman_tracker:

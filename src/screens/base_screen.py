@@ -17,7 +17,9 @@ try:
     print("[Hand Tracking] Using Enhanced Tracker with preprocessing, angles, and Kalman filter")
 except ImportError:
     # Original tracker fallback
+    # Local application imports
     from game.hand_tracker import HandTracker
+
     print("[Hand Tracking] Using Original Tracker")
 # Local application imports
 from utils.camera_manager import CameraManager
