@@ -2,7 +2,7 @@
 
 ![ARCVDE Logo](assets/arCVde-3.png)
 
-> **About the name**: "ARCVDE" is a playful pun on "arcade" - because this project will host a collection of arcade-style games powered by **CV** (Computer Vision)! 🎮👀
+> **About the name**: "ARCVDE" is a playful pun on "ARCADE" - because this project will host a collection of arcade-style games powered by **CV** (Computer Vision)! 👀
 
 A real-time hand gesture recognition game where you use your finger gun to shoot targets and battle waves of enemies! This project combines OpenCV hand tracking with Pygame to create interactive shooting games controlled by your hand movements.
 
@@ -23,6 +23,8 @@ A real-time hand gesture recognition game where you use your finger gun to shoot
 ## How It Works
 
 Make a finger gun gesture (index finger extended, other fingers curled, thumb up) to aim, then flick your thumb down quickly to shoot. The enhanced shooting system now requires you to lift your thumb between shots for more realistic gunplay.
+
+Future: will have different games with different hand controls.
 
 ### Game Modes
 
@@ -45,19 +47,12 @@ A wholesome twist on Duck Hunt where you save capybaras instead of hunting them:
 - **Duck Hunt Rules:** 10 targets per round with increasing hit requirements
 - **Animated Sprites:** Capybaras walk around happily after being saved
 
-### Detection Modes
-
-The game uses three intelligent detection modes:
-
-- **Standard Mode** (Green crosshair) - Original detection method, works best at angles
-- **Depth Mode** (Yellow crosshair) - Activates when pointing directly at camera using 3D coordinates
-- **Wrist Angle Mode** (Purple crosshair) - Fallback method using wrist orientation
-
 ## Installation
 
 ### Prerequisites
 - **Python 3.7+** - Download from [python.org](https://www.python.org/downloads/)
 - **pip** - Usually included with Python installation
+- Webcam
 
 ### Steps
 1. Clone this repository
@@ -135,12 +130,6 @@ All game constants can be modified in `src/utils/constants.py`:
 4. **Pointing at Camera**: The enhanced version automatically switches to depth mode
 5. **Camera Selection**: Try different cameras in Settings if tracking is poor
 
-## Requirements
-
-- Python 3.7+
-- Webcam
-- See `requirements.txt` for Python packages
-
 ## Troubleshooting
 
 **Camera Issues:**
@@ -165,17 +154,22 @@ Planned improvements to Doomsday include:
 - Sound effects and music for both game modes
 - More enemy types and boss battles
 - Power-ups and special abilities (rapid fire, explosive shots)
-- Difficulty levels with adaptive AI
 - Custom hand gesture training for different weapons
 - More stage themes and environmental hazards
 - Weapon upgrades and progression system
 
-Recently added to ARCVDE:
-- **Capybara Hunt** - A Duck Hunt inspired game where you save capybaras by shooting their balloons!
+Planned improvements to Capybara Hunt include:
+- Enemy that you need to shoot to protect the capybara
+- More silly reactions by the pond buddy
+- More animations
+- Difficulty settings
+- More themes and backgrounds
 
 Planned additions to ARCVDE:
-- galaga style game where you control the character with where you point
-- pacman or snake style game where you control player with where you point ?
+- Galaga style game where you control the character with where you point
+- PacMan or Snake style game where you control player with where you point ?
+- Flappybird where you control the bird by putting your hands together and flapping them when you want the bird to jump 🙌
+- AngryBirds style game where you physically pinch and real back the bird to shoot it at a tower of blocks
 - maybe moreeeee
 
 ## Credits
@@ -215,5 +209,3 @@ Planned additions to ARCVDE:
   - License: CC0 (Public Domain)
 
 ---
-
-Have fun shooting targets with your finger gun! 🔫
