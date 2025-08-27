@@ -7,8 +7,8 @@ isort==5.13.2
 
 # Security and vulnerability scanning
 bandit==1.8.6
-safety==3.0.1
-pip-audit==2.6.3
+safety==3.6.0
+pip-audit==2.9.0
 
 # Dependency management
 pip-tools==7.3.0
