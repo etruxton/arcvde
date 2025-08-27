@@ -168,8 +168,8 @@ Planned improvements to Capybara Hunt include:
 Planned additions to ARCVDE:
 - Galaga style game where you control the character with where you point
 - PacMan or Snake style game where you control player with where you point ?
-- Flappybird where you control the bird by putting your hands together and flapping them when you want the bird to jump 🙌
-- AngryBirds style game where you physically pinch and real back the bird to shoot it at a tower of blocks
+- Flappy Bird where you control the bird by clapping. Clappy Bird! 👏
+- Angry Birds style game where you physically pinch and real back the bird to shoot it at a tower of blocks
 - maybe moreeeee
 
 ## Credits
