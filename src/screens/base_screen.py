@@ -9,7 +9,6 @@ from typing import Optional, Tuple
 import cv2
 import pygame
 
-# Use enhanced tracker for better performance
 try:
     # Local application imports
     from game.cv.finger_gun_detection import EnhancedHandTracker as HandTracker
@@ -35,7 +34,6 @@ class BaseScreen:
         self.screen = screen
         self.camera_manager = camera_manager
 
-        # Initialize hand tracker and managers
         self.hand_tracker = HandTracker()
         self.sound_manager = get_sound_manager()
         self.settings_manager = get_settings_manager()
@@ -63,10 +61,9 @@ class BaseScreen:
             return
 
         # Process frame for hand detection
-        # Check if debug mode is enabled
         debug_mode = self.settings_manager.get("debug_mode", False)
 
-        # Handle both original (2 returns) and enhanced (3 returns) tracker
+        # Handle tracker return values
         if hasattr(self.hand_tracker, "enable_preprocessing"):  # Enhanced tracker
             processed_frame, results, stats = self.hand_tracker.process_frame(frame, debug_mode)
             self.last_tracking_stats = stats  # Store for debug overlay
@@ -76,7 +73,6 @@ class BaseScreen:
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-                # Draw landmarks on camera frame
                 self.hand_tracker.draw_landmarks(processed_frame, hand_landmarks)
 
                 # Detect finger gun
@@ -92,7 +88,6 @@ class BaseScreen:
                 )
 
                 if is_gun and index_coords:
-                    # Draw green dot on index finger in camera feed
                     cv2.circle(processed_frame, index_coords, 15, (0, 255, 0), -1)
 
                     # Map finger position to screen coordinates
@@ -109,7 +104,7 @@ class BaseScreen:
                         # Standard library imports
                         import time
 
-                        # Check if enough time has passed since last shot (prevents rapid fire)
+                        # Rate limiting
                         current_time = time.time()
                         if current_time - self.shoot_detected_time > 0.3:  # 300ms cooldown between shots
                             self.shoot_detected = True
@@ -140,10 +135,8 @@ class BaseScreen:
         size = 15
         thickness = 2
 
-        # Draw circle
         pygame.draw.circle(self.screen, color, pos, size, thickness)
 
-        # Draw cross lines
         pygame.draw.line(self.screen, color, (x - size - 8, y), (x + size + 8, y), thickness)
         pygame.draw.line(self.screen, color, (x, y - size - 8), (x, y + size + 8), thickness)
 
@@ -160,7 +153,6 @@ class BaseScreen:
 
     def draw_camera_with_tracking(self, x: int, y: int, width: int, height: int) -> None:
         """Draw camera feed with hand tracking overlays"""
-        # Use processed frame if available (with hand tracking overlays)
         if self._processed_camera_frame is not None:
             camera_surface = self.camera_manager.frame_to_pygame_surface(self._processed_camera_frame, (width, height))
         else:
@@ -173,21 +165,17 @@ class BaseScreen:
                 camera_surface = pygame.Surface((width, height))
                 camera_surface.fill(DARK_GRAY)
 
-                # Add "No Camera" text
                 font = pygame.font.Font(None, 24)
                 no_cam_text = font.render("No Camera", True, WHITE)
                 text_rect = no_cam_text.get_rect(center=(width // 2, height // 2))
                 camera_surface.blit(no_cam_text, text_rect)
 
-        # Draw border - green if tracking, accent color otherwise
         border_color = GREEN if self.crosshair_pos else UI_ACCENT
         border_rect = pygame.Rect(x - 2, y - 2, width + 4, height + 4)
         pygame.draw.rect(self.screen, border_color, border_rect, 2)
 
-        # Draw camera feed
         self.screen.blit(camera_surface, (x, y))
 
-        # Draw problem zone rectangle in debug mode
         if self.settings_manager.get("debug_mode", False):
             # Problem zone is bottom 160 pixels of camera (full width)
             # Scale to camera display size
@@ -205,7 +193,6 @@ class BaseScreen:
                 else (255, 100, 100)
             )
 
-            # Draw semi-transparent overlay
             zone_surface = pygame.Surface((width, zone_height))
             zone_surface.set_alpha(50)
             zone_surface.fill(zone_color)

@@ -40,7 +40,6 @@ class CapybaraHuntScreen(BaseScreen):
     """Capybara Hunt gameplay screen - Duck Hunt inspired"""
 
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
-        # Initialize base class (handles camera, hand tracker, sound manager, settings)
         super().__init__(screen, camera_manager)
 
         # Fonts
@@ -51,59 +50,54 @@ class CapybaraHuntScreen(BaseScreen):
 
         # Game state
         self.score = 0
-        self.shots_remaining = 5  # Increased from 3 to 5 for buffer
+        self.shots_remaining = 5
         self.game_over = False
         self.round_complete_time = 0
         self.paused = False
 
-        # UI Buttons for shooting
+        # UI Buttons
         self.continue_button = None
         self.retry_button = None
         self.menu_button = None
 
-        # Pond companion (like Duck Hunt dog)
+        # Pond companion
         self.pond_buddy = {
             "x": 100,  # Center of pond
             "y": SCREEN_HEIGHT - 70,  # In the pond - raised up a bit
             "mood": "neutral",  # neutral, happy, sad, excited, laughing, surprised, celebration, relieved, proud, disappointed, worried
             "mood_timer": 0,
-            "mood_duration": 2.0,  # How long each mood lasts
-            "mood_priority": 0,  # Priority level for mood override (higher = harder to override)
-            "bob_offset": 0,  # For bobbing animation
+            "mood_duration": 2.0,
+            "mood_priority": 0,
+            "bob_offset": 0,
             "bob_time": 0,
-            "last_hit_streak": 0,  # Track consecutive hits
-            "last_miss_streak": 0,  # Track consecutive misses
+            "last_hit_streak": 0,
+            "last_miss_streak": 0,
             "animation_frame": 0,
             "animation_timer": 0,
-            "sprite": None,  # Will load the pond buddy sprite
-            "speech_text": "",  # Current speech text
-            "speech_timer": 0,  # How long to show current speech
-            "speech_index": 0,  # Index for cycling through different speeches
+            "sprite": None,
+            "speech_text": "",
+            "speech_timer": 0,
+            "speech_index": 0,
         }
 
         # Load pond buddy sprite
         try:
             self.pond_buddy["sprite"] = pygame.image.load("assets/pond_buddy.png").convert_alpha()
-            # Scale it to be bigger
             self.pond_buddy["sprite"] = pygame.transform.scale(self.pond_buddy["sprite"], (100, 100))
         except Exception as e:
             print(f"Could not load pond buddy sprite: {e}")
             self.pond_buddy["sprite"] = None
 
-        # Capybara management - using CapybaraManager instead of direct management
         self.capybara_manager = CapybaraManager(SCREEN_WIDTH, SCREEN_HEIGHT)
-
-        # Remove old capybara management variables that are now handled by CapybaraManager
-        # These were: self.capybaras, self.spawn_timer, self.spawn_delay, self.current_wave_capybaras, self.wave_active
 
         # Shooting state
         self.shoot_pos = None
         self.shoot_animation_time = 0
         self.shoot_animation_duration = 200
-        self.capybara_shot_message_time = 0  # For showing punishment message
+        self.capybara_shot_message_time = 0
 
         # Hit tracking for round
-        self.hit_markers = []  # List of booleans for hit/miss display
+        self.hit_markers = []
 
         # Performance tracking
         self.fps_counter = 0
@@ -116,7 +110,7 @@ class CapybaraHuntScreen(BaseScreen):
         # Animated scenery elements
         self.init_scenery()
 
-        # Debug console (for pause menu commands)
+        # Debug console
         self.console_active = False
         self.console_input = ""
         self.console_message = ""
@@ -130,16 +124,16 @@ class CapybaraHuntScreen(BaseScreen):
         for y in range(SCREEN_HEIGHT * 2 // 3):
             progress = y / (SCREEN_HEIGHT * 2 // 3)
             color = (
-                int(135 + (206 - 135) * progress),  # Sky blue to lighter
+                int(135 + (206 - 135) * progress),
                 int(206 + (235 - 206) * progress),
                 int(235 + (250 - 235) * progress),
             )
             pygame.draw.line(self.background, color, (0, y), (SCREEN_WIDTH, y))
 
-        # Draw distant mountains (back layer)
+        # Draw distant mountains
         self.draw_mountain_layer(
             self.background,
-            color=(170, 180, 200),  # Light blue-gray for distance
+            color=(170, 180, 200),
             peak_heights=[200, 280, 250, 300, 220],
             base_y=SCREEN_HEIGHT * 2 // 3 - 50,
             peak_variance=30,
@@ -154,40 +148,37 @@ class CapybaraHuntScreen(BaseScreen):
             peak_variance=25,
         )
 
-        # Draw rolling hills (front layer)
+        # Draw rolling hills
         self.draw_hills_layer(
             self.background,
-            color=(120, 130, 100),  # Muted sage/olive color for distant hills
+            color=(120, 130, 100),
             base_y=SCREEN_HEIGHT * 2 // 3,
             hill_count=5,
             max_height=80,
         )
 
         # Ground
-        ground_color = (34, 139, 34)  # Forest green
+        ground_color = (34, 139, 34)
         pygame.draw.rect(self.background, ground_color, (0, SCREEN_HEIGHT * 2 // 3, SCREEN_WIDTH, SCREEN_HEIGHT // 3))
 
-        # Add some grass texture
         for _ in range(200):
             x = random.randint(0, SCREEN_WIDTH)
             y = random.randint(SCREEN_HEIGHT * 2 // 3, SCREEN_HEIGHT)
             height = random.randint(5, 15)
             pygame.draw.line(self.background, (46, 125, 50), (x, y), (x, y - height), 1)
 
-        # Draw pond in bottom left corner (cut off by edge)
-        pond_center_x = 100  # Mostly visible, slightly cut off on left
-        pond_center_y = SCREEN_HEIGHT - 40  # Lower, so bottom is cut off
-        pond_width = 280  # Bigger pond
-        pond_height = 140  # Bigger pond
+        # Draw pond in bottom left corner
+        pond_center_x = 100
+        pond_center_y = SCREEN_HEIGHT - 40
+        pond_width = 280
+        pond_height = 140
 
-        # Draw pond water
         pond_rect = pygame.Rect(pond_center_x - pond_width // 2, pond_center_y - pond_height // 2, pond_width, pond_height)
 
-        # Draw pond with gradient effect
         for i in range(pond_height // 2):
             color_factor = i / (pond_height // 2)
             water_color = (
-                int(64 + 20 * color_factor),  # Blue gets lighter toward edge
+                int(64 + 20 * color_factor),
                 int(140 + 30 * color_factor),
                 int(180 + 40 * color_factor),
             )
@@ -202,7 +193,6 @@ class CapybaraHuntScreen(BaseScreen):
                 ),
             )
 
-        # Add pond edge with darker color
         pygame.draw.ellipse(self.background, (40, 90, 120), pond_rect, 3)
 
     def draw_mountain_layer(self, surface, color, peak_heights, base_y, peak_variance):
@@ -214,7 +204,6 @@ class CapybaraHuntScreen(BaseScreen):
         for i, height in enumerate(peak_heights):
             x = (i + 1) * (SCREEN_WIDTH // (num_peaks + 1))
 
-            # Add some smaller peaks between main peaks for more natural look
             if i > 0:
                 mid_x = x - (SCREEN_WIDTH // (num_peaks + 1)) // 2
                 mid_height = height - peak_variance - random.randint(20, 40)
@@ -229,10 +218,8 @@ class CapybaraHuntScreen(BaseScreen):
         points.append((SCREEN_WIDTH, SCREEN_HEIGHT))
         points.append((0, SCREEN_HEIGHT))
 
-        # Draw filled mountains
         pygame.draw.polygon(surface, color, points)
 
-        # Add subtle shading with darker edges
         darker_color = tuple(max(0, c - 20) for c in color)
         pygame.draw.lines(surface, darker_color, False, points[: len(peak_heights) * 2 + 2], 2)
 
@@ -242,7 +229,6 @@ class CapybaraHuntScreen(BaseScreen):
 
         # Create smooth rolling hills using sine waves
         for x in range(0, SCREEN_WIDTH + 10, 10):
-            # Combine multiple sine waves for natural rolling effect
             y = base_y
             for i in range(hill_count):
                 amplitude = max_height * (0.5 + 0.5 * math.sin(i * 1.3))
@@ -256,10 +242,8 @@ class CapybaraHuntScreen(BaseScreen):
         points.append((SCREEN_WIDTH, SCREEN_HEIGHT))
         points.append((0, SCREEN_HEIGHT))
 
-        # Draw filled hills
         pygame.draw.polygon(surface, color, points)
 
-        # Add gentle highlight on tops
         lighter_color = tuple(min(255, c + 10) for c in color)
         for i in range(1, len(points) - 2):
             if points[i][1] < points[i - 1][1] and points[i][1] < points[i + 1][1]:  # Peak point
@@ -267,7 +251,7 @@ class CapybaraHuntScreen(BaseScreen):
 
     def init_scenery(self):
         """Initialize animated scenery elements"""
-        # Define pond parameters first (needed for flower and grass placement)
+        # Define pond parameters
         self.pond_center_x = 100
         self.pond_center_y = SCREEN_HEIGHT - 40
         self.pond_width = 280
@@ -278,8 +262,8 @@ class CapybaraHuntScreen(BaseScreen):
         for i in range(5):
             cloud = {
                 "x": random.randint(-200, SCREEN_WIDTH),
-                "y": random.randint(30, 150),  # Raised higher - was 50-200
-                "speed": random.uniform(10, 30),  # pixels per second
+                "y": random.randint(30, 150),
+                "speed": random.uniform(10, 30),
                 "size": random.uniform(0.8, 1.5),
                 "opacity": random.randint(180, 255),
                 "type": random.randint(0, 2),  # Different cloud shapes
@@ -321,7 +305,7 @@ class CapybaraHuntScreen(BaseScreen):
         pond_right = self.pond_center_x + self.pond_width // 2
         pond_top = self.pond_center_y - self.pond_height // 2
 
-        for i in range(12):  # Reduced from 20 to 12
+        for i in range(12):
             # Calculate max height so flower doesn't extend above ground line
             # Flower position is its base, so we need to ensure top doesn't go above ground
             max_flower_height = 30  # Maximum height a flower can be
@@ -356,8 +340,7 @@ class CapybaraHuntScreen(BaseScreen):
 
                 attempts += 1
 
-            # Only add flower if we found a valid position
-            if valid_position:
+                if valid_position:
                 flower = {
                     "x": x,
                     "y": y,
@@ -378,7 +361,7 @@ class CapybaraHuntScreen(BaseScreen):
                 }
                 self.flowers.append(flower)
 
-        # Animated grass tufts (pixel art style)
+        # Animated grass tufts
         self.grass_tufts = []
         ground_line = SCREEN_HEIGHT * 2 // 3
         pond_left = self.pond_center_x - self.pond_width // 2
@@ -386,7 +369,7 @@ class CapybaraHuntScreen(BaseScreen):
         pond_top = self.pond_center_y - self.pond_height // 2
 
         # Create fewer but more visible grass tufts
-        for _ in range(80):  # Reduced from 200 to 80 for cleaner look
+        for _ in range(80):
             # Keep trying until we get a position not in the pond
             attempts = 0
             while attempts < 10:
@@ -431,7 +414,7 @@ class CapybaraHuntScreen(BaseScreen):
             # Keep ripples well within pond bounds
             ripple = {
                 "x": self.pond_center_x + random.randint(-60, 60),
-                "y": self.pond_center_y + random.randint(-40, 20),  # Adjusted for lower pond
+                "y": self.pond_center_y + random.randint(-40, 20),
                 "radius": random.uniform(0, 20),
                 "max_radius": random.uniform(25, 40),  # Smaller max radius to stay in bounds
                 "speed": random.uniform(15, 25),
@@ -443,14 +426,12 @@ class CapybaraHuntScreen(BaseScreen):
         """Update animated scenery elements"""
         current_time = pygame.time.get_ticks() / 1000.0
 
-        # Update clouds
         for cloud in self.clouds:
             cloud["x"] += cloud["speed"] * dt
             if cloud["x"] > SCREEN_WIDTH + 200:
                 cloud["x"] = -200
                 cloud["y"] = random.randint(30, 150)  # Match initial spawn height
 
-        # Update birds
         for bird in self.birds:
             bird["x"] += bird["speed"] * bird["direction"] * dt
             bird["y"] += math.sin(current_time * 2 + bird["wing_phase"]) * 10 * dt
@@ -464,22 +445,18 @@ class CapybaraHuntScreen(BaseScreen):
                 bird["x"] = SCREEN_WIDTH + 100
                 bird["y"] = random.randint(50, 250)
 
-        # Update floating particles
         for particle in self.particles:
             # Gentle floating movement
             particle["x"] += particle["vx"] * dt + math.sin(current_time * 2 + particle["rotation"]) * 10 * dt
             particle["y"] += particle["vy"] * dt
             particle["rotation"] += particle["rotation_speed"] * dt
 
-            # Respawn at top when reaching bottom
             if particle["y"] > SCREEN_HEIGHT + 10:
                 particle["y"] = -10
                 particle["x"] = random.randint(0, SCREEN_WIDTH)
 
-        # Update sun rays
         self.sun_ray_angle += dt * 0.1
 
-        # Update pond ripples
         self.ripple_spawn_timer += dt
         if self.ripple_spawn_timer > random.uniform(1.5, 3.0):
             self.ripple_spawn_timer = 0
@@ -499,7 +476,6 @@ class CapybaraHuntScreen(BaseScreen):
             }
             self.pond_ripples.append(new_ripple)
 
-        # Update existing ripples
         ripples_to_remove = []
         for ripple in self.pond_ripples:
             ripple["radius"] += ripple["speed"] * dt
@@ -517,7 +493,6 @@ class CapybaraHuntScreen(BaseScreen):
         """Draw animated scenery elements"""
         current_time = pygame.time.get_ticks() / 1000.0
 
-        # Draw sun and rays
         self.draw_sun_rays()
 
         # Draw clouds (behind everything)
@@ -669,7 +644,6 @@ class CapybaraHuntScreen(BaseScreen):
             # Simple ellipse bounds check (with some margin)
             ellipse_check = (dx * dx) / ((self.pond_width / 2) ** 2) + (dy * dy) / ((self.pond_height / 2) ** 2)
 
-            # Only draw if ripple center is within or near the pond ellipse
             if ellipse_check < 1.5:  # 1.5 allows slight overlap but prevents far escapes
                 # Calculate ellipse dimensions based on pond aspect ratio
                 # The pond is wider than it is tall, so maintain that ratio
@@ -692,7 +666,6 @@ class CapybaraHuntScreen(BaseScreen):
                     inner_rect = pygame.Rect(3, 3, ellipse_width - 2, ellipse_height - 2)
                     pygame.draw.ellipse(ripple_surface, highlight_color, inner_rect, 1)
 
-                # Blit the ripple to the screen (center it on the ripple position)
                 self.screen.blit(ripple_surface, (ripple["x"] - ellipse_width // 2 - 2, ripple["y"] - ellipse_height // 2 - 2))
 
     def draw_bird(self, bird, current_time):
@@ -851,17 +824,14 @@ class CapybaraHuntScreen(BaseScreen):
         self.hand_tracker.reset_tracking_state()
         self.shoot_pos = None
         self.crosshair_pos = None
-        # Reset buttons
         self.continue_button = None
         self.retry_button = None
         self.menu_button = None
 
     def start_next_round(self) -> None:
         """Start the next round"""
-        # Starting next round
         self.capybara_manager.start_next_round()
-        self.shots_remaining = 5  # Reset to 5 shots for new round
-        # Remove processed flags for round completion
+        self.shots_remaining = 5
         if hasattr(self, "_round_completion_processed"):
             delattr(self, "_round_completion_processed")
         if hasattr(self, "_game_over_processed"):
@@ -883,7 +853,6 @@ class CapybaraHuntScreen(BaseScreen):
         # Process hand tracking always (for button shooting)
         self._process_hand_tracking()
 
-        # Always update animations (even during round complete/game over)
         self._update_pond_buddy(dt)
         self.update_scenery(dt)
 
@@ -896,14 +865,14 @@ class CapybaraHuntScreen(BaseScreen):
             self.game_over = True
             self._set_pond_buddy_mood("disappointed", 5.0, 2)
 
-        # Refresh shots when new wave spawns (Duck Hunt style)
+        # Refresh shots when new wave spawns
         if new_wave_spawned and not self.capybara_manager.round_complete and not self.game_over:
-            self.shots_remaining = 5  # Reset to 5 shots per wave
+            self.shots_remaining = 5
 
         # Handle escaped capybaras - add to hit_markers as misses (red squares)
         if escaped_count > 0 and not self.capybara_manager.round_complete and not self.game_over:
             for _ in range(escaped_count):
-                self.hit_markers.append(False)  # False = miss = red square
+                self.hit_markers.append(False)
                 self._on_capybara_escape()  # Pond buddy shows worried reaction
 
         # Handle button shooting in round complete or game over states
@@ -927,13 +896,11 @@ class CapybaraHuntScreen(BaseScreen):
         if self.paused:
             return None
 
-        # Spawning is now handled by CapybaraManager in the update call above
 
         # Round completion processing is handled in draw() method
 
-        # Round completion processing is now handled in draw() method when the screen is first displayed
+        # Round completion processing is handled in draw() method
 
-        # Game over is now handled by CapybaraManager in update() method above
 
         # Update FPS counter
         self.fps_counter += 1
@@ -975,12 +942,9 @@ class CapybaraHuntScreen(BaseScreen):
             num_capybaras, self.capybara_manager.capybaras_per_round - self.capybara_manager.capybaras_spawned
         )
 
-        # Spawn capybaras from grass area (2/3 down the screen)
         grass_line = SCREEN_HEIGHT * 2 // 3
 
         for i in range(self.current_wave_capybaras):
-            # Spawn in the middle 60% of the screen to give better shooting opportunity
-            # Avoid edges: spawn between 20% and 80% of screen width
             start_x = random.randint(int(SCREEN_WIDTH * 0.2), int(SCREEN_WIDTH * 0.8))
 
             # Start just at or slightly below the grass line so they emerge from grass
@@ -1002,7 +966,7 @@ class CapybaraHuntScreen(BaseScreen):
                 direction = random.choice(["left", "diagonal_left", "diagonal_left"])
 
             # Speed increases with round (more gradual)
-            speed_multiplier = 1.0 + (self.capybara_manager.round_number - 1) * 0.08  # 8% increase per round instead of 15%
+            speed_multiplier = 1.0 + (self.capybara_manager.round_number - 1) * 0.08
 
             capybara = FlyingCapybara(start_x, start_y, direction, speed_multiplier)
             self.capybara_manager.capybaras.append(capybara)
@@ -1013,7 +977,6 @@ class CapybaraHuntScreen(BaseScreen):
         # Use base class method for tracking
         self.process_finger_gun_tracking()
 
-        # Only handle shooting in active game
         if not self.game_over and not self.capybara_manager.round_complete and not self.paused:
             # Check if we should shoot
             if self.shoot_detected and self.shots_remaining > 0:
@@ -1040,24 +1003,20 @@ class CapybaraHuntScreen(BaseScreen):
         # Play shoot sound
         self.sound_manager.play("shoot")
 
-        # Check for hits using CapybaraManager
         hit, target, points = self.capybara_manager.check_hit(shoot_position[0], shoot_position[1])
         hit_any = hit
 
         if hit:
             if target == "balloon":
-                # Good shot! Saved the capybara
                 self.score += points * self.capybara_manager.round_number
                 self.hit_markers.append(True)
                 self._on_capybara_hit()  # Pond buddy reacts
                 self.sound_manager.play("hit")
             elif target == "capybara":
-                # Bad shot! Shot the capybara instead of balloon
                 self.score -= points * self.capybara_manager.round_number  # Penalty for shooting capybara
-                self.hit_markers.append(False)  # Mark as miss
+                self.hit_markers.append(False)
                 self._on_capybara_miss()  # Pond buddy reacts
                 self.sound_manager.play("error")  # Play error sound
-                # Flash the screen red for visual feedback
                 self.shoot_animation_time = pygame.time.get_ticks() - 100  # Make animation last longer
                 self.capybara_shot_message_time = pygame.time.get_ticks()  # Show warning message
 
@@ -1070,7 +1029,6 @@ class CapybaraHuntScreen(BaseScreen):
 
         # Check if wave should end (out of ammo)
         if self.shots_remaining == 0:
-            # Mark ALL remaining flying capybaras in this wave as missed
             flying_in_wave = [c for c in self.capybara_manager.capybaras if c.alive and not hasattr(c, "already_counted")]
             for capybara in flying_in_wave:
                 self.hit_markers.append(False)
@@ -1086,12 +1044,9 @@ class CapybaraHuntScreen(BaseScreen):
         # Draw animated scenery (behind capybaras)
         self.draw_scenery()
 
-        # Always draw capybaras and pond buddy (even during round complete/game over)
         # Draw capybaras (sorted by Y position for depth layering)
-        # Draw all capybaras using CapybaraManager
         self.capybara_manager.draw(self.screen)
 
-        # Draw pond buddy (after capybaras so it appears in front)
         self._draw_pond_buddy()
 
         if self.paused:
@@ -1100,7 +1055,6 @@ class CapybaraHuntScreen(BaseScreen):
 
         if self.game_over or self.capybara_manager.game_over:
             if not self.game_over and self.capybara_manager.game_over:
-                # Process game over if screen hasn't caught up yet
                 if not hasattr(self, "_game_over_processed"):
                     self._game_over_processed = True
                     self.game_over = True
@@ -1119,7 +1073,6 @@ class CapybaraHuntScreen(BaseScreen):
                 self._round_completion_processed = True
                 self.round_complete_time = pygame.time.get_ticks()
 
-                # Perfect round bonus
                 if self.capybara_manager.capybaras_hit == self.capybara_manager.capybaras_per_round:
                     self.score += 1000 * self.capybara_manager.round_number
                     # Pond buddy celebrates perfect round
@@ -1191,7 +1144,7 @@ class CapybaraHuntScreen(BaseScreen):
         )
         self.screen.blit(shot_text, (10, 90))
 
-        # Hit/Pass meter (like Duck Hunt)
+        # Hit/Pass meter
         meter_x = SCREEN_WIDTH // 2 - 150
         meter_y = SCREEN_HEIGHT - 80
 
@@ -1300,7 +1253,7 @@ class CapybaraHuntScreen(BaseScreen):
     def _draw_game_over_screen(self):
         """Draw game over screen"""
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(80)  # More transparent so you can see the pond buddy's reaction
+        overlay.set_alpha(80)
         overlay.fill(BLACK)
         self.screen.blit(overlay, (0, 0))
 
@@ -1418,7 +1371,6 @@ class CapybaraHuntScreen(BaseScreen):
                 self.console_message = "Invalid score"
 
         elif command == "/perfect":
-            # Set current round to perfect score
             self.capybara_manager.capybaras_hit = self.capybara_manager.capybaras_per_round
             self.hit_markers = [True] * self.capybara_manager.capybaras_per_round
             self.console_message = "Perfect round activated"
@@ -1447,7 +1399,6 @@ class CapybaraHuntScreen(BaseScreen):
 
     def _jump_to_round(self, round_num: int):
         """Jump directly to a specific round"""
-        # Reset game state using CapybaraManager
         self.capybara_manager.round_number = round_num
         self.capybara_manager.capybaras_spawned = 0
         self.capybara_manager.capybaras_hit = 0
@@ -1510,21 +1461,18 @@ class CapybaraHuntScreen(BaseScreen):
         2 = special reactions (excited, laughing, disappointed)
         3 = round completion reactions (celebration, relieved, proud)
         """
-        # Only override if new mood has higher or equal priority, or if current mood timer has expired
         if priority >= self.pond_buddy["mood_priority"] or self.pond_buddy["mood_timer"] <= 0:
             self.pond_buddy["mood"] = mood
             self.pond_buddy["mood_timer"] = duration
             self.pond_buddy["mood_priority"] = priority
             self.pond_buddy["animation_frame"] = 0
 
-            # Set speech text for laughing mood
             if mood == "laughing":
                 self._set_pond_buddy_speech(duration, "snarky")
 
     def _set_pond_buddy_speech(self, duration: float, speech_type: str = "snarky"):
         """Set speech text for the pond buddy"""
         if speech_type == "snarky":
-            # Snarky things the pond buddy says when player misses
             speech_options = [
                 "Haha! Try again!",
                 "Oops! That was close!",
@@ -1539,7 +1487,6 @@ class CapybaraHuntScreen(BaseScreen):
             ]
             index_key = "snarky_index"
         else:  # encouraging
-            # Encouraging things the pond buddy says when player hits balloons
             speech_options = [
                 "Nice shot!",
                 "Great aim!",
@@ -1568,7 +1515,6 @@ class CapybaraHuntScreen(BaseScreen):
         if not self.pond_buddy["speech_text"] or self.pond_buddy["speech_timer"] <= 0:
             return
 
-        # Position above pond buddy
         bubble_x = self.pond_buddy["x"] + 50  # Offset to the right so it doesn't overlap
         bubble_y = self.pond_buddy["y"] - 60  # Above the buddy
 
@@ -1653,7 +1599,6 @@ class CapybaraHuntScreen(BaseScreen):
             self.screen.blit(self.pond_buddy["sprite"], sprite_rect)
 
             # Now draw facial expressions on top of the sprite
-            # The face area appears to be in the center-upper part of the sprite
             # Adjusting positions based on the sprite's face area (scaled for 100x100)
             face_x = x + 2
             face_y = y - 20

@@ -37,18 +37,14 @@ class TargetPracticeScreen(BaseScreen):
     """Target Practice gameplay screen"""
 
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
-        # Initialize base class (handles camera, hand tracker, sound manager, settings)
         super().__init__(screen, camera_manager)
 
-        # Initialize game-specific components
         self.target_manager = TargetManager(SCREEN_WIDTH, SCREEN_HEIGHT, (CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT))
 
-        # Fonts
         self.font = pygame.font.Font(None, 36)
         self.small_font = pygame.font.Font(None, 24)
         self.big_font = pygame.font.Font(None, 72)
 
-        # Game state
         self.score = 0
         self.game_time = 0
         self.paused = False
@@ -93,10 +89,8 @@ class TargetPracticeScreen(BaseScreen):
 
         self.game_time += dt
 
-        # Update targets
         self.target_manager.update(dt, current_time)
 
-        # Update FPS counter
         self.fps_counter += 1
         self.fps_timer += dt
         if self.fps_timer >= 1.0:
@@ -114,7 +108,6 @@ class TargetPracticeScreen(BaseScreen):
         # Use base class method for tracking
         self.process_finger_gun_tracking()
 
-        # Check if we should shoot
         if self.shoot_detected:
             self._handle_shoot(self.crosshair_pos)
             self.shoot_detected = False  # Reset after handling
@@ -127,7 +120,6 @@ class TargetPracticeScreen(BaseScreen):
         # Play shoot sound
         self.sound_manager.play("shoot")
 
-        # Check for target hits
         score_gained = self.target_manager.check_hit(shoot_position[0], shoot_position[1])
         if score_gained > 0:
             self.sound_manager.play("hit")
@@ -142,25 +134,19 @@ class TargetPracticeScreen(BaseScreen):
             self._draw_pause_screen()
             return
 
-        # Draw targets
         self.target_manager.draw(self.screen)
 
-        # Draw crosshair (using base class method)
         if self.crosshair_pos:
             self.draw_crosshair(self.crosshair_pos, self.crosshair_color)
 
-        # Draw shooting animation
         current_time = pygame.time.get_ticks()
         if self.shoot_pos and current_time - self.shoot_animation_time < self.shoot_animation_duration:
             self._draw_shoot_animation(self.shoot_pos)
 
-        # Draw UI
         self._draw_ui()
 
-        # Draw camera feed
         self._draw_camera_feed()
 
-        # Draw debug overlay if enabled (using base class method)
         if self.settings_manager.get("debug_mode", False):
             self.draw_debug_overlay()
 

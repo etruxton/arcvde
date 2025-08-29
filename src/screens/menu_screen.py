@@ -49,7 +49,6 @@ class MenuScreen(BaseScreen):
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
         super().__init__(screen, camera_manager)
 
-        # Initialize sound manager
         self.sound_manager = get_sound_manager()
 
         # Fonts
@@ -71,7 +70,6 @@ class MenuScreen(BaseScreen):
             "sprite": None,
         }
 
-        # Load pond buddy sprite
         try:
             self.pond_buddy["sprite"] = pygame.image.load("assets/pond_buddy.png").convert_alpha()
             # Scale it bigger for menu
@@ -80,7 +78,6 @@ class MenuScreen(BaseScreen):
             print(f"Could not load pond buddy sprite: {e}")
             self.pond_buddy["sprite"] = None
 
-        # Create buttons
         button_width = 250
         button_height = 50  # Reduced height to fit more buttons
         button_spacing = 15  # Reduced spacing
@@ -149,12 +146,10 @@ class MenuScreen(BaseScreen):
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
-        # Handle button events (mouse clicks)
         for button in self.buttons:
             if button.handle_event(event):
                 return self._handle_button_action(button)
 
-        # Handle keyboard
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_1:
                 return GAME_STATE_ARCADE
@@ -190,7 +185,7 @@ class MenuScreen(BaseScreen):
 
     def init_enemy_showcase(self):
         """Initialize enemies for showcase display"""
-        # Create enemies in two rows to avoid button overlap
+        # Create enemies in two rows
         # Front row: zombie and giant (larger, more visible)
         # Back row: skull and demon (behind and offset)
 
@@ -214,13 +209,12 @@ class MenuScreen(BaseScreen):
 
     def init_capybara_showcase(self):
         """Initialize capybara for showcase display"""
-        # Load capybara sprites
         self.capybara_sprites = []
         try:
             sprite_dir = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "running_capybara"
             )
-            for i in range(5):  # Load frames 0-4
+            for i in range(5):
                 sprite_path = os.path.join(sprite_dir, f"running-capybara-{i}.png")
                 if os.path.exists(sprite_path):
                     sprite = pygame.image.load(sprite_path).convert_alpha()
@@ -263,26 +257,21 @@ class MenuScreen(BaseScreen):
         # Process hand tracking
         self.process_finger_gun_tracking()
 
-        # Update showcase enemies
         for enemy in self.showcase_enemies:
             # Just update their animation time for idle animations
             enemy.animation_time += dt * 2
             enemy.walk_cycle += dt * 4
 
-        # Update capybara animation
         if self.capybara_sprites:
             self.capybara_float_time += dt
             self.capybara_animation_time += dt
 
-            # Update animation frame
             if self.capybara_animation_time > 0.15:  # Change frame every 0.15 seconds
                 self.capybara_animation_time = 0
                 self.capybara_animation_frame = (self.capybara_animation_frame + 1) % len(self.capybara_sprites)
 
-        # Update pond buddy
         self._update_pond_buddy(dt)
 
-        # Check if hovering over any game button
         hovering_game_button = False
         hovering_capybara = False
         for button in [self.arcade_button, self.play_button, self.capybara_button]:
@@ -304,7 +293,6 @@ class MenuScreen(BaseScreen):
             if self.pond_buddy["mood"] in ["excited", "celebration"]:
                 self._set_pond_buddy_mood("neutral", 0)
 
-        # Handle finger gun shooting as clicks
         shot_button = self.check_button_shoot(self.buttons)
         if shot_button:
             return self._handle_button_action(shot_button)
@@ -316,16 +304,12 @@ class MenuScreen(BaseScreen):
         # Clear screen with vaporwave background
         self.screen.fill(UI_BACKGROUND)
 
-        # Draw gradient background similar to game
         self._draw_menu_background()
 
-        # Draw enemy showcase
         self._draw_enemy_showcase()
 
-        # Draw capybara showcase
         self._draw_capybara_showcase()
 
-        # Draw semi-transparent overlay for UI readability (reduced opacity)
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(40)  # Reduced from 100 to 40 for more vibrant enemies
         overlay.fill((0, 0, 0))
@@ -335,7 +319,6 @@ class MenuScreen(BaseScreen):
             logo_rect = self.logo.get_rect(center=(SCREEN_WIDTH // 2, 100))
             self.screen.blit(self.logo, logo_rect)
         else:
-            # Draw title with vaporwave glow effect
             title_y = 100
 
             # Multi-layer glow effect
@@ -353,7 +336,6 @@ class MenuScreen(BaseScreen):
                         if x_offset * x_offset + y_offset * y_offset <= radius * radius:
                             glow_rect = glow_text.get_rect(center=(SCREEN_WIDTH // 2 + x_offset, title_y + y_offset))
 
-                            # Create alpha surface for this glow layer
                             glow_surface = pygame.Surface(glow_text.get_size(), pygame.SRCALPHA)
                             glow_surface.blit(glow_text, (0, 0))
                             glow_surface.set_alpha(alpha)

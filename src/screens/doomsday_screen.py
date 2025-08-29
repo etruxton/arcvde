@@ -39,10 +39,9 @@ class DoomsdayScreen(BaseScreen):
     """Doomsday mode gameplay screen with enemy waves"""
 
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
-        # Initialize base class (handles camera, hand tracker, sound manager, settings)
         super().__init__(screen, camera_manager)
 
-        # Initialize game-specific components
+        # Game-specific components
         self.enemy_manager = EnemyManager(SCREEN_WIDTH, SCREEN_HEIGHT)
 
         # Fonts
@@ -68,7 +67,6 @@ class DoomsdayScreen(BaseScreen):
         self.last_shoot_time = 0
         self.rapid_fire_count = 0
 
-        # Note: crosshair_pos and crosshair_color are inherited from BaseScreen
 
         # Screen effects
         self.damage_flash_time = 0
@@ -89,11 +87,9 @@ class DoomsdayScreen(BaseScreen):
         self.console_message = ""
         self.console_message_time = 0
 
-        # Background gradient for doom-like atmosphere
         self.current_stage_theme = 1
         self.create_background()
 
-        # Music management for stages
         self.current_music_track = None
         self.stage4_alternating_mode = False
         self.music_started = False
@@ -147,10 +143,8 @@ class DoomsdayScreen(BaseScreen):
             },
         }
 
-        # Get current theme based on wave
         theme = themes.get(self.current_stage_theme, themes[1])
 
-        # Create gradient from theme colors
         for y in range(SCREEN_HEIGHT):
             # progress = y / SCREEN_HEIGHT
 
@@ -171,18 +165,15 @@ class DoomsdayScreen(BaseScreen):
 
             pygame.draw.line(self.background, color, (0, y), (SCREEN_WIDTH, y))
 
-        # Add horizon line
         pygame.draw.line(
             self.background, theme["horizon"], (0, int(SCREEN_HEIGHT * 0.4)), (SCREEN_WIDTH, int(SCREEN_HEIGHT * 0.4)), 2
         )
 
-        # Store grid color for later use
         self.grid_color = theme["grid"]
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
         if event.type == pygame.KEYDOWN:
-            # Handle console input when active
             if self.console_active:
                 if event.key == pygame.K_RETURN:
                     self._execute_console_command()
@@ -210,7 +201,7 @@ class DoomsdayScreen(BaseScreen):
                 self.reset_game()
             elif event.key == pygame.K_d:
                 self.debug_mode = not self.debug_mode
-            elif event.key == pygame.K_SLASH and self.paused:  # Open console with /
+            elif event.key == pygame.K_SLASH and self.paused:
                 self.console_active = True
                 self.console_input = "/"
 
@@ -230,12 +221,11 @@ class DoomsdayScreen(BaseScreen):
         self.damage_flash_time = 0
         self.screen_shake_time = 0
 
-        # Reset stage and music
         self.current_stage_theme = 1
         self.stage4_alternating_mode = False
         self.music_started = False
         self.current_stage_ambient = None
-        self.sound_manager.stop_stage_effect()  # Stop any ambient effects
+        self.sound_manager.stop_stage_effect()
         self.create_background()
 
     def update(self, dt: float, current_time: int) -> Optional[str]:
@@ -243,29 +233,24 @@ class DoomsdayScreen(BaseScreen):
         if self.paused or self.game_over:
             return None
 
-        # Start music on first update when game is active
         if not self.music_started:
             self.music_started = True
             self._start_stage_music(1)
 
         self.game_time += dt
 
-        # Update enemies and check for damage
         damage, enemies_killed = self.enemy_manager.update(dt, current_time / 1000.0)
 
         if damage > 0:
             self.take_damage(damage)
 
-        # Update stage theme based on wave
         new_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
         if new_theme != self.current_stage_theme and not self.stage_transition_active:
             self._start_stage_transition(new_theme)
 
-        # Handle Stage 4+ alternating music
         if self.current_stage_theme >= 4 and self.stage4_alternating_mode:
             self._handle_stage4_music_alternation()
 
-        # Update screen effects
         if self.damage_flash_time > 0:
             self.damage_flash_time -= dt
 
@@ -275,13 +260,11 @@ class DoomsdayScreen(BaseScreen):
         if self.muzzle_flash_time > 0:
             self.muzzle_flash_time -= dt
 
-        # Update stage transitions
         if self.stage_transition_active:
             self.stage_transition_time += dt
             if self.stage_transition_time >= self.stage_transition_duration:
                 self._complete_stage_transition()
 
-        # Update FPS counter
         self.fps_counter += 1
         self.fps_timer += dt
         if self.fps_timer >= 1.0:
@@ -289,7 +272,6 @@ class DoomsdayScreen(BaseScreen):
             self.fps_counter = 0
             self.fps_timer = 0
 
-        # Process hand tracking
         self._process_hand_tracking()
 
         return None
@@ -308,13 +290,11 @@ class DoomsdayScreen(BaseScreen):
 
     def _process_hand_tracking(self) -> None:
         """Process hand tracking and shooting detection"""
-        # Use base class method for tracking
         self.process_finger_gun_tracking()
 
-        # Check if we should shoot
         if self.shoot_detected:
             self._handle_shoot(self.crosshair_pos)
-            self.shoot_detected = False  # Reset after handling
+            self.shoot_detected = False
 
     def _handle_shoot(self, shoot_position: tuple) -> None:
         """Handle shooting action"""
@@ -326,14 +306,14 @@ class DoomsdayScreen(BaseScreen):
         # Play shoot sound
         self.sound_manager.play("shoot")
 
-        # Check for rapid fire (panic mode)
+        # Rapid fire detection
         if current_time - self.last_shoot_time < 0.3:
             self.rapid_fire_count += 1
         else:
             self.rapid_fire_count = 0
         self.last_shoot_time = current_time
 
-        # If rapid firing and enemies are close, push them all back
+        # Rapid fire panic mode
         if self.rapid_fire_count >= 3:
             closest_distance = self.enemy_manager.get_closest_enemy_distance()
             if closest_distance < 0.3:
@@ -341,7 +321,6 @@ class DoomsdayScreen(BaseScreen):
                 for enemy in self.enemy_manager.enemies:
                     if enemy.alive and enemy.z < 0.4:
                         enemy.z = min(0.6, enemy.z + 0.2)
-                # Big screen shake for panic mode
                 self.screen_shake_time = 0.3
                 self.screen_shake_intensity = 8
                 self.rapid_fire_count = 0
@@ -349,13 +328,12 @@ class DoomsdayScreen(BaseScreen):
         self.screen_shake_time = 0.05
         self.screen_shake_intensity = 3
 
-        # Check for enemy hits (increased damage for better gameplay)
+        # Check for enemy hits
         score_gained, killed = self.enemy_manager.check_hit(shoot_position[0], shoot_position[1], damage=25)
 
         if score_gained > 0:
             self.score += score_gained
             if killed:
-                # Bigger shake for kills
                 self.screen_shake_time = 0.1
                 self.screen_shake_intensity = 5
                 self.sound_manager.play("enemy_death")
@@ -373,25 +351,21 @@ class DoomsdayScreen(BaseScreen):
         self.create_background()
         self.new_background = self.background.copy()
 
-        # Restore old theme temporarily during transition
         self.current_stage_theme = old_theme
         self.background = self.old_background.copy()
 
-        # Choose transition type based on stage
         if new_theme == 2:
             self.stage_transition_type = "flash"  # Hell's gates - dramatic flash
         elif new_theme == 3:
-            self.stage_transition_type = "fade"  # Demon realm - mysterious fade
+            self.stage_transition_type = "fade"
         elif new_theme == 4:
             self.stage_transition_type = "slide"  # Final apocalypse - sliding destruction
         else:
             self.stage_transition_type = "fade"
 
-        # Start the transition
         self.stage_transition_active = True
         self.stage_transition_time = 0
 
-        # Add screen shake for dramatic effect
         self.screen_shake_time = 1.0
         self.screen_shake_intensity = 15
 
@@ -404,7 +378,6 @@ class DoomsdayScreen(BaseScreen):
         self.background = self.new_background.copy()
         self._start_stage_music(self.current_stage_theme)
 
-        # Clean up transition state
         self.stage_transition_active = False
         self.stage_transition_time = 0
         self.old_background = None
@@ -417,16 +390,13 @@ class DoomsdayScreen(BaseScreen):
         if not self.stage_transition_active or not self.old_background or not self.new_background:
             return
 
-        # Calculate transition progress (0.0 to 1.0)
         progress = self.stage_transition_time / self.stage_transition_duration
         progress = min(1.0, progress)
 
         if self.stage_transition_type == "fade":
-            # Fade transition - blend the two backgrounds
             # Create a copy of old background
             transition_surface = self.old_background.copy()
 
-            # Create new background with alpha based on progress
             new_with_alpha = self.new_background.copy()
             alpha = int(255 * progress)
             fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -442,7 +412,6 @@ class DoomsdayScreen(BaseScreen):
             surface.blit(transition_surface, (0, 0))
 
         elif self.stage_transition_type == "flash":
-            # Flash transition - bright flash then reveal new background
             if progress < 0.3:
                 # Flash phase - bright white
                 flash_intensity = int(255 * (progress / 0.3))
@@ -455,7 +424,6 @@ class DoomsdayScreen(BaseScreen):
                 # Reveal phase - show new background
                 reveal_progress = (progress - 0.3) / 0.7
                 if reveal_progress < 1.0:
-                    # Fade from white to new background
                     surface.blit(self.new_background, (0, 0))
                     white_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
                     white_overlay.fill((255, 255, 255))
@@ -465,17 +433,13 @@ class DoomsdayScreen(BaseScreen):
                     surface.blit(self.new_background, (0, 0))
 
         elif self.stage_transition_type == "slide":
-            # Slide transition - new background slides in from right
             slide_offset = int(SCREEN_WIDTH * (1 - progress))
 
-            # Draw old background
             surface.blit(self.old_background, (0, 0))
 
-            # Draw new background sliding in
             if slide_offset < SCREEN_WIDTH:
                 surface.blit(self.new_background, (slide_offset, 0))
 
-        # Draw transition text overlay
         self._draw_transition_text(surface, progress)
 
     def _draw_transition_text(self, surface: pygame.Surface, progress: float):
@@ -485,27 +449,23 @@ class DoomsdayScreen(BaseScreen):
         new_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
         stage_text = stage_names.get(new_theme, "STAGE CHANGE")
 
-        # Text appears and fades based on transition progress and type
         text_alpha = 255
 
         if self.stage_transition_type == "flash":
-            # Text appears quickly during flash, stays visible, then fades at the end
             if progress < 0.2:
                 text_alpha = int(255 * (progress / 0.2))
             elif progress < 0.8:
-                text_alpha = 255  # Stay at full opacity
+                text_alpha = 255
             else:
                 text_alpha = int(255 * (1 - (progress - 0.8) / 0.2))
         elif self.stage_transition_type == "fade":
-            # Text fades in quickly, stays visible, then fades at the end
             if progress < 0.15:
                 text_alpha = int(255 * (progress / 0.15))
             elif progress < 0.85:
-                text_alpha = 255  # Stay at full opacity
+                text_alpha = 255
             else:
                 text_alpha = int(255 * (1 - (progress - 0.85) / 0.15))
         elif self.stage_transition_type == "slide":
-            # Text slides in with new background
             slide_progress = min(1.0, progress * 1.2)  # Slightly faster than background
             text_x_offset = int(SCREEN_WIDTH * (1 - slide_progress))
             if text_x_offset < SCREEN_WIDTH * 0.1:  # When mostly visible
@@ -514,13 +474,10 @@ class DoomsdayScreen(BaseScreen):
                 text_alpha = 0
 
         if text_alpha > 0:
-            # Create text surface with glow effect
             text_surface = self.big_font.render(stage_text, True, (255, 100, 0))
 
-            # Add glow effect
             glow_surface = self.big_font.render(stage_text, True, (255, 200, 100))
 
-            # Calculate position
             if self.stage_transition_type == "slide":
                 text_x = max(text_x_offset, SCREEN_WIDTH // 2 - text_surface.get_width() // 2)
             else:
@@ -532,11 +489,9 @@ class DoomsdayScreen(BaseScreen):
             text_surface.set_alpha(text_alpha)
             glow_surface.set_alpha(text_alpha // 2)
 
-            # Draw glow (offset slightly)
             surface.blit(glow_surface, (text_x + 2, text_y + 2))
             surface.blit(glow_surface, (text_x - 2, text_y - 2))
 
-            # Draw main text
             surface.blit(text_surface, (text_x, text_y))
 
     def draw(self) -> None:
@@ -548,10 +503,8 @@ class DoomsdayScreen(BaseScreen):
             shake_offset_x = int((pygame.time.get_ticks() % 100 - 50) / 50 * self.screen_shake_intensity)
             shake_offset_y = int((pygame.time.get_ticks() % 117 - 58) / 58 * self.screen_shake_intensity)
 
-        # Create drawing surface with shake
         draw_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-        # Draw background (or transition effect if active)
         if self.stage_transition_active:
             self._draw_stage_transition(draw_surface)
         else:
@@ -570,10 +523,8 @@ class DoomsdayScreen(BaseScreen):
         # Draw stage-specific background elements
         self._draw_stage_background(draw_surface)
 
-        # Draw 3D floor grid for depth perception
         self._draw_floor_grid(draw_surface)
 
-        # Add atmospheric effects based on stage
         self._draw_stage_effects(draw_surface)
 
         # Draw enemies with blood physics
@@ -622,7 +573,6 @@ class DoomsdayScreen(BaseScreen):
             # First half: fade out old objects
             return int(255 * (1 - progress * 2))
         else:
-            # Second half: fade in new objects
             return int(255 * ((progress - 0.5) * 2))
 
     def _draw_stage_background(self, surface: pygame.Surface):
@@ -641,9 +591,8 @@ class DoomsdayScreen(BaseScreen):
             draw_target = surface
 
         if self.current_stage_theme == 1:
-            # Stage 1: The Beginning - Abandoned facility/military base
+            # Stage 1: The Beginning
 
-            # Background layer - far buildings
             for i in range(18):
                 building_x = i * 70
                 building_height = 60 + (i % 4) * 10
@@ -654,18 +603,15 @@ class DoomsdayScreen(BaseScreen):
                 color = (35, 30, 30)
                 pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
-                # Small windows - ensure they're within bounds
                 max_floors = (building_height - 20) // 20
                 max_windows_per_floor = (building_width - 10) // 12
                 for floor in range(max_floors):
                     for window in range(max_windows_per_floor):
                         win_x = building_x + 5 + window * 12
                         win_y = building_y + 10 + floor * 20
-                        # Ensure window is within building bounds
                         if win_x + 6 <= building_x + building_width - 5:
                             # Use deterministic pattern for dark/lit windows
                             if (i + floor + window) % 3 == 0:
-                                # Flashing light effect using time
                                 if int(pygame.time.get_ticks() / 500) % 2 == 0 or (i + floor) % 4 != 0:
                                     pygame.draw.rect(draw_target, (15, 15, 15), (win_x, win_y, 6, 8))
                                 else:
@@ -673,7 +619,6 @@ class DoomsdayScreen(BaseScreen):
                             else:
                                 pygame.draw.rect(draw_target, (15, 15, 15), (win_x, win_y, 6, 8))
 
-            # Middle layer - medium buildings
             for i in range(10):
                 tower_x = 30 + i * 120
                 tower_height = 100 + (i % 3) * 15
@@ -690,7 +635,6 @@ class DoomsdayScreen(BaseScreen):
                     draw_target, (20, 18, 18), (tower_x + tower_width - shadow_width, tower_y, shadow_width, tower_height)
                 )
 
-                # Broken top variation (deterministic)
                 if i % 2 == 0:
                     points = [
                         (tower_x, tower_y),
@@ -709,7 +653,6 @@ class DoomsdayScreen(BaseScreen):
                     for window in range(min(3, max_windows)):
                         win_x = tower_x + 8 + window * 15
                         win_y = tower_y + 25 + floor * 25
-                        # Ensure window is within bounds
                         if win_x + 10 <= tower_x + tower_width - 8 and win_y + 12 <= tower_y + tower_height - 10:
                             if (i + floor * 3 + window) % 4 == 0:
                                 # Flashing emergency lights
@@ -720,14 +663,12 @@ class DoomsdayScreen(BaseScreen):
                             else:
                                 pygame.draw.rect(draw_target, (10, 10, 10), (win_x, win_y, 10, 12))
 
-            # Foreground layer - closest buildings
             for i in range(7):
                 building_x = i * 175
                 building_height = 140 + (i % 3) * 25
                 building_width = 80 + (i % 2) * 15
                 building_y = horizon_y - building_height + 5
 
-                # Main structure
                 color = (22, 18, 18)
                 pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
@@ -739,7 +680,6 @@ class DoomsdayScreen(BaseScreen):
                     (building_x + building_width - shadow_width, building_y, shadow_width, building_height),
                 )
 
-                # Structural damage - hole in building
                 if i == 1 or i == 3:
                     hole_y = building_y + building_height // 3
                     hole_size = 25
@@ -766,13 +706,11 @@ class DoomsdayScreen(BaseScreen):
                                     pygame.draw.rect(draw_target, (8, 8, 8), (win_x, win_y, 12, 15))
                             elif (i + floor + window) % 3 != 0:
                                 pygame.draw.rect(draw_target, (8, 8, 8), (win_x, win_y, 12, 15))
-                                # Broken glass effect
                                 if (floor * window) % 7 == 0:
                                     pygame.draw.line(draw_target, (15, 15, 15), (win_x, win_y), (win_x + 12, win_y + 15), 1)
                             else:
                                 pygame.draw.rect(draw_target, (8, 8, 8), (win_x, win_y, 12, 15))
 
-            # Barbed wire fence in mid-distance
             fence_y = horizon_y + 50
             # Fence posts
             for x in range(0, SCREEN_WIDTH, 80):
@@ -799,9 +737,8 @@ class DoomsdayScreen(BaseScreen):
                 )
 
         elif self.current_stage_theme == 2:
-            # Stage 2: Hell's Gates - Volcanic hellscape
+            # Stage 2: Hell's Gates
 
-            # Background layer - distant small volcanoes
             for i in range(4):
                 volcano_x = 150 + i * 250
                 volcano_base_width = 120
@@ -817,7 +754,6 @@ class DoomsdayScreen(BaseScreen):
                 ]
                 pygame.draw.polygon(draw_target, (70, 35, 30), points)
 
-            # Middle layer - medium volcanoes
             for i in range(3):
                 volcano_x = 100 + i * 350
                 volcano_base_width = 160
@@ -833,20 +769,17 @@ class DoomsdayScreen(BaseScreen):
                 ]
                 pygame.draw.polygon(draw_target, (65, 30, 25), points)
 
-                # Small glow at top
                 glow_radius = 15
                 glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
                 pygame.draw.circle(glow_surface, (255, 100, 0, 60), (glow_radius, glow_radius), glow_radius)
                 draw_target.blit(glow_surface, (volcano_x - glow_radius, volcano_y - volcano_height - glow_radius))
 
-            # Foreground layer - main large volcanoes
             for i in range(2):
                 volcano_x = 200 + i * 500
                 volcano_base_width = 200
                 volcano_height = 150
                 volcano_y = horizon_y
 
-                # Main volcano shape
                 points = [
                     (volcano_x - volcano_base_width // 2, volcano_y),
                     (volcano_x - 30, volcano_y - volcano_height),
@@ -877,7 +810,6 @@ class DoomsdayScreen(BaseScreen):
             river_start_x = -50
             river_y = horizon_y + 60  # Moved closer
 
-            # Draw lava river path with flowing effect
             river_points = []
             for i in range(30):
                 x = river_start_x + i * 45
@@ -890,7 +822,6 @@ class DoomsdayScreen(BaseScreen):
             # Dark outer edge
             for i in range(len(river_points) - 1):
                 pygame.draw.line(draw_target, (100, 20, 0), river_points[i], river_points[i + 1], 25)
-            # Middle lava layer
             for i in range(len(river_points) - 1):
                 pygame.draw.line(draw_target, (200, 50, 0), river_points[i], river_points[i + 1], 20)
             # Bright inner flow
@@ -926,7 +857,6 @@ class DoomsdayScreen(BaseScreen):
                 pygame.draw.ellipse(draw_target, (200, 50, 0), lava_rect)
                 pygame.draw.ellipse(draw_target, (255, 100, 0), (pool_x + 2, pool_y + 2, pool_width - 4, pool_height - 4))
 
-                # Small bubbling effect (position fixed)
                 bubble_positions = [
                     (pool_x + pool_width // 3, pool_y + pool_height // 2),
                     (pool_x + pool_width * 2 // 3, pool_y + pool_height // 3),
@@ -952,9 +882,8 @@ class DoomsdayScreen(BaseScreen):
                 pygame.draw.line(draw_target, (20, 10, 5), (stake_x, stake_y - 20), (stake_x + 10, stake_y - 28), 2)
 
         elif self.current_stage_theme == 3:
-            # Stage 3: Demon Realm - Twisted alien dimension
+            # Stage 3: Demon Realm
 
-            # Background layer - smaller distant crystals
             for crystal in range(15):
                 crystal_x = crystal * 80
                 crystal_y = horizon_y - 30 + math.sin(pygame.time.get_ticks() * 0.001 + crystal * 0.7) * 10
@@ -1015,7 +944,6 @@ class DoomsdayScreen(BaseScreen):
                 pygame.draw.ellipse(ring_surface, color, (0, 0, ring_size * 4, ring_size * 2))
                 draw_target.blit(ring_surface, (portal_x - ring_size * 2, portal_y - ring_size))
 
-            # Fixed position alien tentacles
             tentacle_positions = [
                 (80, horizon_y + 160),
                 (220, horizon_y + 150),
@@ -1042,7 +970,6 @@ class DoomsdayScreen(BaseScreen):
                             pygame.draw.circle(draw_target, (40, 20, 60), (int(segment_x), segment_y), segment_width - 2)
 
             # Many more floating geometric shapes in background
-            # Background layer of triangles
             for shape in range(16):
                 shape_x = shape * 75
                 shape_y = horizon_y + 20 + math.sin(shape * 0.8) * 15
@@ -1058,7 +985,6 @@ class DoomsdayScreen(BaseScreen):
                     points.append((int(px), int(py)))
                 pygame.draw.polygon(draw_target, (80, 40, 120), points, 1)
 
-            # Foreground layer of larger triangles
             for shape in range(9):
                 shape_x = shape * 135
                 shape_y = horizon_y - 10 + math.sin(shape) * 20
@@ -1084,9 +1010,8 @@ class DoomsdayScreen(BaseScreen):
                 pygame.draw.polygon(draw_target, (150, 80, 200), inner_points, 1)
 
         elif self.current_stage_theme == 4:
-            # Stage 4: Final Apocalypse - Complete destruction with layered cityscape
+            # Stage 4: Final Apocalypse
 
-            # Far background layer - distant ruined skyline
             for building in range(20):
                 building_x = building * 60
                 building_width = 40 + (building % 3) * 10
@@ -1097,7 +1022,6 @@ class DoomsdayScreen(BaseScreen):
                 color = (40, 35, 35)
                 pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
-                # Some broken tops
                 if building % 3 == 0:
                     points = [
                         (building_x, building_y),
@@ -1109,7 +1033,6 @@ class DoomsdayScreen(BaseScreen):
                     ]
                     pygame.draw.polygon(draw_target, color, points)
 
-            # Middle layer - medium buildings
             for building in range(13):
                 building_x = building * 92
                 building_width = 60 + (building % 3) * 15
@@ -1118,7 +1041,6 @@ class DoomsdayScreen(BaseScreen):
 
                 color = (32, 27, 27)
 
-                # Main structure
                 pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
                 # Side shadow for depth
@@ -1149,7 +1071,6 @@ class DoomsdayScreen(BaseScreen):
                             if (building + floor + window) % 3 != 0:
                                 pygame.draw.rect(draw_target, (8, 5, 5), (win_x, win_y, 7, 10))
 
-            # Foreground layer - closest massive buildings
             for building in range(8):
                 building_x = building * 150
                 building_width = 100 + (building % 2) * 30
@@ -1298,7 +1219,6 @@ class DoomsdayScreen(BaseScreen):
                     self.sound_manager.play_one_shot_effect("stage2_fire_crackle", volume=0.05)
 
         elif self.current_stage_theme == 3:
-            # Purple mist effect
             mist_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             for i in range(3):
                 x = random.randint(0, SCREEN_WIDTH)
@@ -1314,7 +1234,6 @@ class DoomsdayScreen(BaseScreen):
             for i in range(8):
                 x = random.randint(0, SCREEN_WIDTH)
                 y = random.randint(0, int(SCREEN_HEIGHT * 0.6))
-                # Create fiery meteor effect
                 meteor_size = random.randint(3, 8)
                 # Meteor core
                 pygame.draw.circle(draw_target, (255, 100, 0), (x, y), meteor_size)
@@ -1466,7 +1385,6 @@ class DoomsdayScreen(BaseScreen):
         score_text = self.font.render(f"Score: {self.score}", True, WHITE)
         surface.blit(score_text, (10, 10))
 
-        # Wave info with stage indicator
         stage_names = {1: "The Beginning", 2: "Hell's Gates", 3: "Demon Realm", 4: "Final Apocalypse"}
         stage_name = stage_names.get(self.current_stage_theme, "Unknown")
         wave_text = self.font.render(f"Wave {self.enemy_manager.wave_number}: {stage_name}", True, WHITE)
@@ -1479,7 +1397,6 @@ class DoomsdayScreen(BaseScreen):
             combo_rect = combo_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
             surface.blit(combo_text, combo_rect)
 
-        # Wave complete message
         if self.enemy_manager.wave_complete:
             wave_complete_text = self.big_font.render(f"WAVE {self.enemy_manager.wave_number} COMPLETE!", True, (0, 255, 0))
             wave_rect = wave_complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
@@ -1680,19 +1597,16 @@ class DoomsdayScreen(BaseScreen):
     def _start_stage_music(self, stage: int):
         """Start the appropriate music for a given stage"""
         if stage >= 4:
-            # Stage 4+ uses alternating tracks
             self.stage4_alternating_mode = True
             # For stage 4+, play tracks without loops so we can detect when they finish
             self.current_music_track = self.sound_manager.get_stage_music(stage)
             self.sound_manager.play_ambient(self.current_music_track, loops=0)  # Play once
         else:
-            # Stages 1-3 use single tracks on loop
             self.stage4_alternating_mode = False
             self.current_music_track = self.sound_manager.play_stage_music(stage, loops=-1)
 
         # Start stage-specific ambient effects
         if stage == 2:
-            # Play fire ambient loop for Stage 2
             self.current_stage_ambient = "stage2_fire_ambient"
             self.sound_manager.play_stage_effect("stage2_fire_ambient", loops=-1, volume=0.08)
             print("Starting Stage 2 fire ambient")

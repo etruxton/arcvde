@@ -33,7 +33,6 @@ class InstructionsScreen(BaseScreen):
     def __init__(self, screen: pygame.Surface, camera_manager: CameraManager):
         super().__init__(screen, camera_manager)
 
-        # Initialize sound manager
         self.sound_manager = get_sound_manager()
 
         # Fonts
@@ -42,10 +41,8 @@ class InstructionsScreen(BaseScreen):
         self.text_font = pygame.font.Font(None, 32)
         self.small_font = pygame.font.Font(None, 24)
 
-        # Create back button
         self.back_button = Button(50, 50, 120, 50, "BACK", self.text_font)
 
-        # Note: shoot_pos, shoot_animation_time, shoot_animation_duration inherited from BaseScreen
 
         # Instructions content
         self.instructions = [
@@ -204,4 +201,3 @@ class InstructionsScreen(BaseScreen):
         # Draw camera feed with tracking
         self.draw_camera_with_tracking(demo_x, demo_y, demo_width, demo_height)
 
-    # Note: _handle_shoot and _draw_shoot_animation removed - using base class methods

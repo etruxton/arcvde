@@ -29,15 +29,12 @@ class LoadingScreen:
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
 
-        # Load assets
         self.logo = pygame.image.load("assets/ARCVDE-3.png")
 
-        # Scale logo to fit nicely on screen
         logo_width = min(600, SCREEN_WIDTH * 0.6)
         logo_height = int(logo_width * (self.logo.get_height() / self.logo.get_width()))
         self.logo = pygame.transform.scale(self.logo, (logo_width, logo_height))
 
-        # Animation state
         self.animation_time = 0
         self.fade_alpha = 0
         self.logo_scale = 0.5
@@ -45,7 +42,6 @@ class LoadingScreen:
         self.loading_dots = 0
         self.spin_angle = 0
 
-        # Loading phases
         self.phase = "fade_in"  # fade_in -> logo_grow -> loading -> complete
         self.phase_start_time = 0
 
@@ -63,7 +59,6 @@ class LoadingScreen:
         """Update loading screen animations"""
         self.animation_time += dt
 
-        # Update phase timing
         if self.phase == "fade_in":
             if self.animation_time < 1.0:
                 self.fade_alpha = int(255 * self.animation_time)
@@ -93,7 +88,6 @@ class LoadingScreen:
                 base_progress = min(90, (loading_time / 3.0) * 90)
                 self.progress = base_progress
             else:
-                # Complete the progress bar quickly once loading is done
                 self.progress = min(100, 90 + (loading_time - 3.0) * 100)
                 if self.progress >= 100:
                     self.phase = "complete"
@@ -104,13 +98,10 @@ class LoadingScreen:
             if complete_time > 0.5:  # Wait a bit before transitioning
                 return GAME_STATE_MENU
 
-        # Update spinning logo
         self.spin_angle += dt * 180  # 180 degrees per second
 
-        # Update loading dots animation
         self.loading_dots = int((self.animation_time * 2) % 4)
 
-        # Update particles
         self._update_particles(dt)
 
         # Add new particles more frequently and allow more particles
@@ -190,17 +181,14 @@ class LoadingScreen:
             else:
                 self.screen.blit(logo_surface, scaled_rect)
 
-        # Draw particles
         self._draw_particles()
 
-        # Loading progress and text
         if self.phase == "loading" or self.phase == "complete":
             self._draw_loading_elements()
 
     def _draw_gradient_background(self):
         """Draw a subtle gradient background"""
         for y in range(SCREEN_HEIGHT):
-            # Calculate gradient color
             factor = y / SCREEN_HEIGHT
             r = int(UI_BACKGROUND[0] + (40 - UI_BACKGROUND[0]) * factor)
             g = int(UI_BACKGROUND[1] + (40 - UI_BACKGROUND[1]) * factor)
@@ -221,7 +209,6 @@ class LoadingScreen:
 
     def _draw_loading_elements(self):
         """Draw loading progress bar and text"""
-        # Loading text with animated dots
         dots = "." * self.loading_dots
         if not self.external_loading_complete:
             if self.progress < 30:
@@ -242,7 +229,6 @@ class LoadingScreen:
         bar_x = (SCREEN_WIDTH - bar_width) // 2
         bar_y = SCREEN_HEIGHT // 2 + 180
 
-        # Background bar
         pygame.draw.rect(self.screen, DARK_GRAY, (bar_x, bar_y, bar_width, bar_height))
 
         # Progress fill with gradient effect

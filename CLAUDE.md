@@ -24,6 +24,22 @@ python -c "import sys; sys.path.insert(0, 'src'); from game.cv.finger_gun_detect
 - Keep existing comment style unless there's a functional reason to update
 - Avoid excessive commenting - let the code speak for itself when obvious
 
+### Avoid These Types of Comments:
+- Redundant explanations: `# Set variable to 5` (when code says `variable = 5`)
+- Obvious descriptions: `# Update clouds` (before `update_clouds()`)
+- AI-generated verbosity: `# Initialize base class (handles camera, hand tracker, sound manager)`
+- State-the-obvious: `# Good shot!` (in obvious success case)  
+- Overly detailed: `# Calculate max height so flower doesn't extend above ground line`
+- Implementation details: `# Using CapybaraManager instead of direct management`
+- Buffer explanations: `# Increased from 3 to 5 for buffer`
+
+### Good Comments Explain:
+- Business logic and game mechanics
+- Complex calculations or algorithms  
+- Non-obvious behavior or edge cases
+- Important architectural decisions
+- "Why" rather than "what"
+
 ## Other Tool Usage
 - File operations (Read, Write, Edit) are fine
 - Bash commands for file system operations are acceptable

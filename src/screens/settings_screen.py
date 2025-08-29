@@ -40,14 +40,11 @@ class SettingsScreen(BaseScreen):
         self.button_font = pygame.font.Font(None, 36)
         self.info_font = pygame.font.Font(None, 24)
 
-        # Create UI elements
         self._create_ui_elements()
 
-        # Settings values
         self.selected_camera = self.camera_manager.camera_id
         self.settings_changed = False
 
-        # Settings manager
         self.settings_manager = get_settings_manager()
         self.debug_mode = self.settings_manager.get("debug_mode", False)
 
@@ -77,7 +74,6 @@ class SettingsScreen(BaseScreen):
         # Test camera button
         self.test_button = Button(start_x, start_y + 150, 150, button_height, "TEST CAMERA", self.button_font)
 
-        # Apply/Save button
         self.apply_button = Button(start_x + 200, start_y + 150, 100, button_height, "APPLY", self.button_font)
 
         # Debug mode toggle button
@@ -87,7 +83,6 @@ class SettingsScreen(BaseScreen):
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
-        # Handle button events
         for button in self.all_buttons:
             if button.handle_event(event):
                 if button == self.back_button:
@@ -104,7 +99,6 @@ class SettingsScreen(BaseScreen):
                 elif button == self.debug_button:
                     self._toggle_debug_mode()
 
-        # Handle keyboard
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 if self.settings_changed:
@@ -142,7 +136,6 @@ class SettingsScreen(BaseScreen):
         # Process hand tracking
         self.process_finger_gun_tracking()
 
-        # Handle finger gun shooting as clicks
         shot_button = self.check_button_shoot(self.all_buttons)
         if shot_button:
             if shot_button == self.back_button:
@@ -166,16 +159,13 @@ class SettingsScreen(BaseScreen):
         # Clear screen
         self.screen.fill(UI_BACKGROUND)
 
-        # Draw title with vaporwave styling
         title_text = self.title_font.render("SETTINGS", True, VAPORWAVE_CYAN)
         title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
         self.screen.blit(title_text, title_rect)
 
-        # Draw camera section
         camera_title = self.section_font.render("Camera Selection", True, UI_TEXT)
         self.screen.blit(camera_title, (200, 200))
 
-        # Draw camera info
         camera_info = self.camera_manager.get_camera_info()
         current_text = (
             f"Current: Camera {camera_info['current_id']} ({camera_info['resolution'][0]}x{camera_info['resolution'][1]})"
@@ -188,13 +178,11 @@ class SettingsScreen(BaseScreen):
         selected_surface = self.info_font.render(selected_text, True, selected_color)
         self.screen.blit(selected_surface, (200, 260))
 
-        # Update finger aiming states and draw buttons
         self.update_button_finger_states(self.all_buttons)
 
         for button in self.all_buttons:
             # Highlight selected camera button
             if button in self.camera_buttons and button.camera_id == self.selected_camera:
-                # Draw selection highlight
                 highlight_rect = pygame.Rect(
                     button.rect.x - 3, button.rect.y - 3, button.rect.width + 6, button.rect.height + 6
                 )
@@ -203,7 +191,6 @@ class SettingsScreen(BaseScreen):
             # Highlight debug button if enabled
             if button == self.debug_button:
                 if self.debug_mode:
-                    # Draw green highlight for enabled
                     highlight_rect = pygame.Rect(
                         button.rect.x - 3, button.rect.y - 3, button.rect.width + 6, button.rect.height + 6
                     )
@@ -211,13 +198,11 @@ class SettingsScreen(BaseScreen):
 
             button.draw(self.screen)
 
-        # Draw debug mode status
         debug_status = "ON" if self.debug_mode else "OFF"
         debug_color = GREEN if self.debug_mode else GRAY
         status_text = self.button_font.render(f"Debug: {debug_status}", True, debug_color)
         self.screen.blit(status_text, (self.debug_button.rect.x + 220, self.debug_button.rect.y + 5))
 
-        # Draw crosshair if aiming
         if self.crosshair_pos:
             self.draw_crosshair(self.crosshair_pos, self.crosshair_color)
 
