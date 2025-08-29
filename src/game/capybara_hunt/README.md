@@ -45,6 +45,29 @@ The **`CapybaraHuntUI`** class handles:
 - Return to main menu
 - Visual crosshair targeting feedback
 
+### `renderer.py`
+**Comprehensive rendering and visual effects system**
+
+The **`CapybaraHuntRenderer`** class provides:
+- **Background creation**: Nature scene with sky gradients, mountains, hills, and pond
+- **Animated scenery**: Dynamic clouds, birds, particles, flowers, grass tufts, sun rays, and pond ripples
+- **Game UI rendering**: HUD elements (score, shots, hit markers), crosshairs, and shooting effects
+- **Screen overlays**: Pause screen, game over screen, and round completion screens
+- **Visual effects**: Punishment messages, shoot animations, and impact effects
+
+**Key Features:**
+- **Layered rendering**: Proper depth sorting for visual elements
+- **Animated elements**: Time-based updates for moving scenery components
+- **Responsive UI**: Dynamic screen adaptation and visual feedback
+- **Performance optimized**: Efficient drawing with surface caching and batched operations
+
+**Rendering Pipeline:**
+1. Static background (mountains, hills, pond)
+2. Animated scenery (clouds, birds, particles, grass)
+3. Game entities (capybaras drawn by manager)
+4. UI overlays and effects
+5. Camera feed and debug information
+
 ## Game Flow
 
 1. **Spawning**: `CapybaraManager` spawns waves of `FlyingCapybara` instances
@@ -56,10 +79,16 @@ The **`CapybaraHuntUI`** class handles:
 ## Integration
 
 These components are used by `src/screens/capybara_hunt_screen.py`, which acts as the main orchestrator, handling:
-- Scene rendering and animated backgrounds
+- Game state management and logic coordination  
 - Camera integration and hand tracking
 - Sound management and effects
-- Overall game state coordination
+- Input processing and event handling
+
+The main screen delegates specific responsibilities:
+- **Rendering**: All visual rendering handled by `CapybaraHuntRenderer`
+- **UI Management**: Button interactions handled by `CapybaraHuntUI`
+- **Game Logic**: Entity management handled by `CapybaraManager`
+- **Companion**: Emotional reactions handled by `PondBuddy`
 
 ## Design Philosophy
 
