@@ -25,6 +25,7 @@ from utils.constants import (
     DEFAULT_CAMERA_ID,
     GAME_STATE_ARCADE,
     GAME_STATE_CAPYBARA_HUNT,
+    GAME_STATE_CLAPPY_BIRD,
     GAME_STATE_INSTRUCTIONS,
     GAME_STATE_PLAYING,
     GAME_STATE_SETTINGS,
@@ -98,6 +99,15 @@ class MenuScreen(BaseScreen):
             self.button_font,
         )
 
+        self.clappy_bird_button = Button(
+            center_x,
+            start_y + 3 * (button_height + button_spacing),
+            button_width,
+            button_height,
+            "CLAPPY BIRD",
+            self.button_font,
+        )
+
         self.play_button = Button(
             center_x,
             start_y + button_height + button_spacing,
@@ -109,7 +119,7 @@ class MenuScreen(BaseScreen):
 
         self.instructions_button = Button(
             center_x,
-            start_y + 3 * (button_height + button_spacing),
+            start_y + 4 * (button_height + button_spacing),
             button_width,
             button_height,
             "HOW TO PLAY",
@@ -117,17 +127,18 @@ class MenuScreen(BaseScreen):
         )
 
         self.settings_button = Button(
-            center_x, start_y + 4 * (button_height + button_spacing), button_width, button_height, "SETTINGS", self.button_font
+            center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "SETTINGS", self.button_font
         )
 
         self.quit_button = Button(
-            center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
+            center_x, start_y + 6 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
         )
 
         self.buttons = [
             self.arcade_button,
             self.play_button,
             self.capybara_button,
+            self.clappy_bird_button,
             self.instructions_button,
             self.settings_button,
             self.quit_button,
@@ -179,6 +190,9 @@ class MenuScreen(BaseScreen):
             result = GAME_STATE_ARCADE
         elif button == self.capybara_button:
             result = GAME_STATE_CAPYBARA_HUNT
+        elif button == self.clappy_bird_button:
+            print(f"[DEBUG] Clappy Bird button clicked - transitioning to {GAME_STATE_CLAPPY_BIRD}")
+            result = GAME_STATE_CLAPPY_BIRD
         elif button == self.settings_button:
             result = GAME_STATE_SETTINGS
         elif button == self.instructions_button:

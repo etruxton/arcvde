@@ -12,6 +12,7 @@ import pygame
 
 # Local application imports
 from screens.capybara_hunt_screen import CapybaraHuntScreen
+from screens.clappy_bird_screen import ClappyBirdScreen
 from screens.doomsday_screen import DoomsdayScreen
 from screens.instructions_screen import InstructionsScreen
 from screens.loading_screen import LoadingScreen
@@ -24,6 +25,7 @@ from utils.constants import (
     FPS,
     GAME_STATE_ARCADE,
     GAME_STATE_CAPYBARA_HUNT,
+    GAME_STATE_CLAPPY_BIRD,
     GAME_STATE_INSTRUCTIONS,
     GAME_STATE_LOADING,
     GAME_STATE_MENU,
@@ -90,6 +92,8 @@ class GameManager:
             print("Doomsday screen initialized")
             self.screens[GAME_STATE_CAPYBARA_HUNT] = CapybaraHuntScreen(self.screen, self.camera_manager)
             print("Capybara Hunt screen initialized")
+            self.screens[GAME_STATE_CLAPPY_BIRD] = ClappyBirdScreen(self.screen, self.camera_manager)
+            print("Clappy Bird screen initialized")
             self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
             print("Settings screen initialized")
             self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
