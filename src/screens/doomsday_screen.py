@@ -99,6 +99,14 @@ class DoomsdayScreen(BaseScreen):
         self.music_started = False
         self.current_stage_ambient = None
 
+        # Stage transition effects
+        self.stage_transition_active = False
+        self.stage_transition_time = 0
+        self.stage_transition_duration = 1.2  # 1.2 seconds
+        self.stage_transition_type = "fade"  # fade, slide, flash
+        self.old_background = None
+        self.new_background = None
+
     def create_background(self):
         """Create a doom-like background with gradient based on current stage"""
         self.background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -250,10 +258,8 @@ class DoomsdayScreen(BaseScreen):
 
         # Update stage theme based on wave
         new_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
-        if new_theme != self.current_stage_theme:
-            self.current_stage_theme = new_theme
-            self.create_background()
-            self._start_stage_music(new_theme)
+        if new_theme != self.current_stage_theme and not self.stage_transition_active:
+            self._start_stage_transition(new_theme)
 
         # Handle Stage 4+ alternating music
         if self.current_stage_theme >= 4 and self.stage4_alternating_mode:
@@ -268,6 +274,12 @@ class DoomsdayScreen(BaseScreen):
 
         if self.muzzle_flash_time > 0:
             self.muzzle_flash_time -= dt
+
+        # Update stage transitions
+        if self.stage_transition_active:
+            self.stage_transition_time += dt
+            if self.stage_transition_time >= self.stage_transition_duration:
+                self._complete_stage_transition()
 
         # Update FPS counter
         self.fps_counter += 1
@@ -350,6 +362,187 @@ class DoomsdayScreen(BaseScreen):
             else:
                 self.sound_manager.play("enemy_hit")
 
+    def _start_stage_transition(self, new_theme: int):
+        """Start a smooth transition to a new stage"""
+        # Store the old background
+        self.old_background = self.background.copy()
+        
+        # Create the new background
+        old_theme = self.current_stage_theme
+        self.current_stage_theme = new_theme
+        self.create_background()
+        self.new_background = self.background.copy()
+        
+        # Restore old theme temporarily during transition
+        self.current_stage_theme = old_theme
+        self.background = self.old_background.copy()
+        
+        # Choose transition type based on stage
+        if new_theme == 2:
+            self.stage_transition_type = "flash"  # Hell's gates - dramatic flash
+        elif new_theme == 3:
+            self.stage_transition_type = "fade"   # Demon realm - mysterious fade
+        elif new_theme == 4:
+            self.stage_transition_type = "slide"  # Final apocalypse - sliding destruction
+        else:
+            self.stage_transition_type = "fade"
+        
+        # Start the transition
+        self.stage_transition_active = True
+        self.stage_transition_time = 0
+        
+        # Add screen shake for dramatic effect
+        self.screen_shake_time = 1.0
+        self.screen_shake_intensity = 15
+        
+        print(f"Starting stage transition from {old_theme} to {new_theme} with {self.stage_transition_type} effect")
+
+    def _complete_stage_transition(self):
+        """Complete the stage transition"""
+        # Apply the new theme
+        self.current_stage_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
+        self.background = self.new_background.copy()
+        self._start_stage_music(self.current_stage_theme)
+        
+        # Clean up transition state
+        self.stage_transition_active = False
+        self.stage_transition_time = 0
+        self.old_background = None
+        self.new_background = None
+        
+        print(f"Stage transition completed to theme {self.current_stage_theme}")
+
+    def _draw_stage_transition(self, surface: pygame.Surface):
+        """Draw the stage transition effect"""
+        if not self.stage_transition_active or not self.old_background or not self.new_background:
+            return
+            
+        # Calculate transition progress (0.0 to 1.0)
+        progress = self.stage_transition_time / self.stage_transition_duration
+        progress = min(1.0, progress)
+        
+        if self.stage_transition_type == "fade":
+            # Fade transition - blend the two backgrounds
+            # Create a copy of old background
+            transition_surface = self.old_background.copy()
+            
+            # Create new background with alpha based on progress
+            new_with_alpha = self.new_background.copy()
+            alpha = int(255 * progress)
+            fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            fade_surface.fill((0, 0, 0))
+            fade_surface.set_alpha(alpha)
+            
+            # Blend new background
+            temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            temp_surface.blit(self.new_background, (0, 0))
+            temp_surface.set_alpha(alpha)
+            
+            transition_surface.blit(temp_surface, (0, 0))
+            surface.blit(transition_surface, (0, 0))
+            
+        elif self.stage_transition_type == "flash":
+            # Flash transition - bright flash then reveal new background
+            if progress < 0.3:
+                # Flash phase - bright white
+                flash_intensity = int(255 * (progress / 0.3))
+                flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                flash_surface.fill((255, 255, 255))
+                surface.blit(self.old_background, (0, 0))
+                flash_surface.set_alpha(flash_intensity)
+                surface.blit(flash_surface, (0, 0))
+            else:
+                # Reveal phase - show new background
+                reveal_progress = (progress - 0.3) / 0.7
+                if reveal_progress < 1.0:
+                    # Fade from white to new background
+                    surface.blit(self.new_background, (0, 0))
+                    white_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                    white_overlay.fill((255, 255, 255))
+                    white_overlay.set_alpha(int(255 * (1 - reveal_progress)))
+                    surface.blit(white_overlay, (0, 0))
+                else:
+                    surface.blit(self.new_background, (0, 0))
+                    
+        elif self.stage_transition_type == "slide":
+            # Slide transition - new background slides in from right
+            slide_offset = int(SCREEN_WIDTH * (1 - progress))
+            
+            # Draw old background
+            surface.blit(self.old_background, (0, 0))
+            
+            # Draw new background sliding in
+            if slide_offset < SCREEN_WIDTH:
+                surface.blit(self.new_background, (slide_offset, 0))
+        
+        # Draw transition text overlay
+        self._draw_transition_text(surface, progress)
+
+    def _draw_transition_text(self, surface: pygame.Surface, progress: float):
+        """Draw dramatic text during stage transitions"""
+        stage_names = {
+            2: "ENTERING HELL'S GATES",
+            3: "DESCENDING TO DEMON REALM", 
+            4: "THE FINAL APOCALYPSE BEGINS"
+        }
+        
+        new_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
+        stage_text = stage_names.get(new_theme, "STAGE CHANGE")
+        
+        # Text appears and fades based on transition progress and type
+        text_alpha = 255
+        
+        if self.stage_transition_type == "flash":
+            # Text appears quickly during flash, stays visible, then fades at the end
+            if progress < 0.2:
+                text_alpha = int(255 * (progress / 0.2))
+            elif progress < 0.8:
+                text_alpha = 255  # Stay at full opacity
+            else:
+                text_alpha = int(255 * (1 - (progress - 0.8) / 0.2))
+        elif self.stage_transition_type == "fade":
+            # Text fades in quickly, stays visible, then fades at the end
+            if progress < 0.15:
+                text_alpha = int(255 * (progress / 0.15))
+            elif progress < 0.85:
+                text_alpha = 255  # Stay at full opacity
+            else:
+                text_alpha = int(255 * (1 - (progress - 0.85) / 0.15))
+        elif self.stage_transition_type == "slide":
+            # Text slides in with new background
+            slide_progress = min(1.0, progress * 1.2)  # Slightly faster than background
+            text_x_offset = int(SCREEN_WIDTH * (1 - slide_progress))
+            if text_x_offset < SCREEN_WIDTH * 0.1:  # When mostly visible
+                text_alpha = 255
+            else:
+                text_alpha = 0
+        
+        if text_alpha > 0:
+            # Create text surface with glow effect
+            text_surface = self.big_font.render(stage_text, True, (255, 100, 0))
+            
+            # Add glow effect
+            glow_surface = self.big_font.render(stage_text, True, (255, 200, 100))
+            
+            # Calculate position
+            if self.stage_transition_type == "slide":
+                text_x = max(text_x_offset, SCREEN_WIDTH // 2 - text_surface.get_width() // 2)
+            else:
+                text_x = SCREEN_WIDTH // 2 - text_surface.get_width() // 2
+            
+            text_y = SCREEN_HEIGHT // 2 - text_surface.get_height() // 2
+            
+            # Apply alpha
+            text_surface.set_alpha(text_alpha)
+            glow_surface.set_alpha(text_alpha // 2)
+            
+            # Draw glow (offset slightly)
+            surface.blit(glow_surface, (text_x + 2, text_y + 2))
+            surface.blit(glow_surface, (text_x - 2, text_y - 2))
+            
+            # Draw main text
+            surface.blit(text_surface, (text_x, text_y))
+
     def draw(self) -> None:
         """Draw the game screen"""
         # Apply screen shake
@@ -362,8 +555,11 @@ class DoomsdayScreen(BaseScreen):
         # Create drawing surface with shake
         draw_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-        # Draw background
-        draw_surface.blit(self.background, (0, 0))
+        # Draw background (or transition effect if active)
+        if self.stage_transition_active:
+            self._draw_stage_transition(draw_surface)
+        else:
+            draw_surface.blit(self.background, (0, 0))
 
         if self.paused:
             self._draw_pause_screen()
@@ -420,9 +616,33 @@ class DoomsdayScreen(BaseScreen):
         if self.settings_manager.get("debug_mode", False):
             self.draw_debug_overlay()
 
+    def _get_stage_object_alpha(self):
+        """Calculate alpha for stage objects during transitions"""
+        if not self.stage_transition_active:
+            return 255
+            
+        progress = self.stage_transition_time / self.stage_transition_duration
+        if progress < 0.5:
+            # First half: fade out old objects
+            return int(255 * (1 - progress * 2))
+        else:
+            # Second half: fade in new objects
+            return int(255 * ((progress - 0.5) * 2))
+
     def _draw_stage_background(self, surface: pygame.Surface):
         """Draw stage-specific background elements"""
         horizon_y = int(SCREEN_HEIGHT * 0.4)
+        
+        # Calculate object alpha during transitions
+        object_alpha = self._get_stage_object_alpha()
+        
+        # Create a temporary surface for alpha blending if needed
+        if object_alpha < 255:
+            temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            temp_surface.set_alpha(object_alpha)
+            draw_target = temp_surface
+        else:
+            draw_target = surface
 
         if self.current_stage_theme == 1:
             # Stage 1: The Beginning - Abandoned facility/military base
@@ -436,7 +656,7 @@ class DoomsdayScreen(BaseScreen):
 
                 # Far building silhouette
                 color = (35, 30, 30)
-                pygame.draw.rect(surface, color, (building_x, building_y, building_width, building_height))
+                pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
                 # Small windows - ensure they're within bounds
                 max_floors = (building_height - 20) // 20
@@ -451,11 +671,11 @@ class DoomsdayScreen(BaseScreen):
                             if (i + floor + window) % 3 == 0:
                                 # Flashing light effect using time
                                 if int(pygame.time.get_ticks() / 500) % 2 == 0 or (i + floor) % 4 != 0:
-                                    pygame.draw.rect(surface, (15, 15, 15), (win_x, win_y, 6, 8))
+                                    pygame.draw.rect(draw_target, (15, 15, 15), (win_x, win_y, 6, 8))
                                 else:
-                                    pygame.draw.rect(surface, (60, 50, 30), (win_x, win_y, 6, 8))  # Lit window
+                                    pygame.draw.rect(draw_target, (60, 50, 30), (win_x, win_y, 6, 8))  # Lit window
                             else:
-                                pygame.draw.rect(surface, (15, 15, 15), (win_x, win_y, 6, 8))
+                                pygame.draw.rect(draw_target, (15, 15, 15), (win_x, win_y, 6, 8))
 
             # Middle layer - medium buildings
             for i in range(10):
@@ -466,12 +686,12 @@ class DoomsdayScreen(BaseScreen):
 
                 # Tower silhouette with more detail
                 color = (28, 23, 23)
-                pygame.draw.rect(surface, color, (tower_x, tower_y, tower_width, tower_height))
+                pygame.draw.rect(draw_target, color, (tower_x, tower_y, tower_width, tower_height))
 
                 # Side shadow for depth
                 shadow_width = 8
                 pygame.draw.rect(
-                    surface, (20, 18, 18), (tower_x + tower_width - shadow_width, tower_y, shadow_width, tower_height)
+                    draw_target, (20, 18, 18), (tower_x + tower_width - shadow_width, tower_y, shadow_width, tower_height)
                 )
 
                 # Broken top variation (deterministic)
@@ -484,7 +704,7 @@ class DoomsdayScreen(BaseScreen):
                         (tower_x + tower_width, tower_y + 20),
                         (tower_x, tower_y + 20),
                     ]
-                    pygame.draw.polygon(surface, color, points)
+                    pygame.draw.polygon(draw_target, color, points)
 
                 # Windows with proper bounds checking
                 max_floors = (tower_height - 30) // 25
@@ -498,11 +718,11 @@ class DoomsdayScreen(BaseScreen):
                             if (i + floor * 3 + window) % 4 == 0:
                                 # Flashing emergency lights
                                 if int(pygame.time.get_ticks() / 300 + i) % 3 == 0:
-                                    pygame.draw.rect(surface, (80, 20, 20), (win_x, win_y, 10, 12))  # Red emergency light
+                                    pygame.draw.rect(draw_target, (80, 20, 20), (win_x, win_y, 10, 12))  # Red emergency light
                                 else:
-                                    pygame.draw.rect(surface, (10, 10, 10), (win_x, win_y, 10, 12))
+                                    pygame.draw.rect(draw_target, (10, 10, 10), (win_x, win_y, 10, 12))
                             else:
-                                pygame.draw.rect(surface, (10, 10, 10), (win_x, win_y, 10, 12))
+                                pygame.draw.rect(draw_target, (10, 10, 10), (win_x, win_y, 10, 12))
 
             # Foreground layer - closest buildings
             for i in range(7):
@@ -513,12 +733,12 @@ class DoomsdayScreen(BaseScreen):
 
                 # Main structure
                 color = (22, 18, 18)
-                pygame.draw.rect(surface, color, (building_x, building_y, building_width, building_height))
+                pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
                 # Strong side shadow for depth
                 shadow_width = 12
                 pygame.draw.rect(
-                    surface,
+                    draw_target,
                     (15, 12, 12),
                     (building_x + building_width - shadow_width, building_y, shadow_width, building_height),
                 )
@@ -528,7 +748,7 @@ class DoomsdayScreen(BaseScreen):
                     hole_y = building_y + building_height // 3
                     hole_size = 25
                     pygame.draw.ellipse(
-                        surface,
+                        draw_target,
                         (30, 20, 20),
                         (building_x + building_width // 2 - hole_size // 2, hole_y, hole_size, hole_size * 2),
                     )
@@ -545,26 +765,26 @@ class DoomsdayScreen(BaseScreen):
                                 # Flickering lights
                                 flicker = int(pygame.time.get_ticks() / 200 + i + floor) % 4
                                 if flicker == 0:
-                                    pygame.draw.rect(surface, (60, 50, 30), (win_x, win_y, 12, 15))  # Lit
+                                    pygame.draw.rect(draw_target, (60, 50, 30), (win_x, win_y, 12, 15))  # Lit
                                 else:
-                                    pygame.draw.rect(surface, (8, 8, 8), (win_x, win_y, 12, 15))
+                                    pygame.draw.rect(draw_target, (8, 8, 8), (win_x, win_y, 12, 15))
                             elif (i + floor + window) % 3 != 0:
-                                pygame.draw.rect(surface, (8, 8, 8), (win_x, win_y, 12, 15))
+                                pygame.draw.rect(draw_target, (8, 8, 8), (win_x, win_y, 12, 15))
                                 # Broken glass effect
                                 if (floor * window) % 7 == 0:
-                                    pygame.draw.line(surface, (15, 15, 15), (win_x, win_y), (win_x + 12, win_y + 15), 1)
+                                    pygame.draw.line(draw_target, (15, 15, 15), (win_x, win_y), (win_x + 12, win_y + 15), 1)
                             else:
-                                pygame.draw.rect(surface, (8, 8, 8), (win_x, win_y, 12, 15))
+                                pygame.draw.rect(draw_target, (8, 8, 8), (win_x, win_y, 12, 15))
 
             # Barbed wire fence in mid-distance
             fence_y = horizon_y + 50
             # Fence posts
             for x in range(0, SCREEN_WIDTH, 80):
-                pygame.draw.line(surface, (40, 35, 35), (x, fence_y - 30), (x, fence_y + 30), 3)
+                pygame.draw.line(draw_target, (40, 35, 35), (x, fence_y - 30), (x, fence_y + 30), 3)
             # Wire
-            pygame.draw.line(surface, (50, 45, 45), (0, fence_y - 20), (SCREEN_WIDTH, fence_y - 20), 2)
-            pygame.draw.line(surface, (50, 45, 45), (0, fence_y), (SCREEN_WIDTH, fence_y), 2)
-            pygame.draw.line(surface, (50, 45, 45), (0, fence_y + 20), (SCREEN_WIDTH, fence_y + 20), 2)
+            pygame.draw.line(draw_target, (50, 45, 45), (0, fence_y - 20), (SCREEN_WIDTH, fence_y - 20), 2)
+            pygame.draw.line(draw_target, (50, 45, 45), (0, fence_y), (SCREEN_WIDTH, fence_y), 2)
+            pygame.draw.line(draw_target, (50, 45, 45), (0, fence_y + 20), (SCREEN_WIDTH, fence_y + 20), 2)
 
             # Scattered debris and rubble
             for _ in range(8):
@@ -572,7 +792,7 @@ class DoomsdayScreen(BaseScreen):
                 debris_y = random.randint(horizon_y + 80, SCREEN_HEIGHT - 100)
                 debris_size = random.randint(10, 30)
                 pygame.draw.polygon(
-                    surface,
+                    draw_target,
                     (35, 30, 25),
                     [
                         (debris_x, debris_y),
@@ -599,7 +819,7 @@ class DoomsdayScreen(BaseScreen):
                     (volcano_x + 20, volcano_y - volcano_height),
                     (volcano_x + volcano_base_width // 2, volcano_y),
                 ]
-                pygame.draw.polygon(surface, (70, 35, 30), points)
+                pygame.draw.polygon(draw_target, (70, 35, 30), points)
 
             # Middle layer - medium volcanoes
             for i in range(3):
@@ -615,13 +835,13 @@ class DoomsdayScreen(BaseScreen):
                     (volcano_x + 25, volcano_y - volcano_height),
                     (volcano_x + volcano_base_width // 2, volcano_y),
                 ]
-                pygame.draw.polygon(surface, (65, 30, 25), points)
+                pygame.draw.polygon(draw_target, (65, 30, 25), points)
 
                 # Small glow at top
                 glow_radius = 15
                 glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
                 pygame.draw.circle(glow_surface, (255, 100, 0, 60), (glow_radius, glow_radius), glow_radius)
-                surface.blit(glow_surface, (volcano_x - glow_radius, volcano_y - volcano_height - glow_radius))
+                draw_target.blit(glow_surface, (volcano_x - glow_radius, volcano_y - volcano_height - glow_radius))
 
             # Foreground layer - main large volcanoes
             for i in range(2):
@@ -637,7 +857,7 @@ class DoomsdayScreen(BaseScreen):
                     (volcano_x + 30, volcano_y - volcano_height),
                     (volcano_x + volcano_base_width // 2, volcano_y),
                 ]
-                pygame.draw.polygon(surface, (60, 25, 20), points)
+                pygame.draw.polygon(draw_target, (60, 25, 20), points)
 
                 # Lava glow at top
                 for j in range(3):
@@ -645,7 +865,7 @@ class DoomsdayScreen(BaseScreen):
                     glow_alpha = 100 - j * 30
                     glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
                     pygame.draw.circle(glow_surface, (255, 100, 0, glow_alpha), (glow_radius, glow_radius), glow_radius)
-                    surface.blit(glow_surface, (volcano_x - glow_radius, volcano_y - volcano_height - glow_radius))
+                    draw_target.blit(glow_surface, (volcano_x - glow_radius, volcano_y - volcano_height - glow_radius))
 
                 # Smoke plume
                 for smoke in range(5):
@@ -655,7 +875,7 @@ class DoomsdayScreen(BaseScreen):
                     smoke_alpha = max(20, 80 - smoke * 15)
                     smoke_surface = pygame.Surface((smoke_size * 2, smoke_size * 2), pygame.SRCALPHA)
                     pygame.draw.circle(smoke_surface, (80, 80, 80, smoke_alpha), (smoke_size, smoke_size), smoke_size)
-                    surface.blit(smoke_surface, (smoke_x - smoke_size, smoke_y - smoke_size))
+                    draw_target.blit(smoke_surface, (smoke_x - smoke_size, smoke_y - smoke_size))
 
             # Flowing lava river
             river_start_x = -50
@@ -673,16 +893,16 @@ class DoomsdayScreen(BaseScreen):
             # Draw river with multiple passes for depth
             # Dark outer edge
             for i in range(len(river_points) - 1):
-                pygame.draw.line(surface, (100, 20, 0), river_points[i], river_points[i + 1], 25)
+                pygame.draw.line(draw_target, (100, 20, 0), river_points[i], river_points[i + 1], 25)
             # Middle lava layer
             for i in range(len(river_points) - 1):
-                pygame.draw.line(surface, (200, 50, 0), river_points[i], river_points[i + 1], 20)
+                pygame.draw.line(draw_target, (200, 50, 0), river_points[i], river_points[i + 1], 20)
             # Bright inner flow
             for i in range(len(river_points) - 1):
-                pygame.draw.line(surface, (255, 100, 0), river_points[i], river_points[i + 1], 15)
+                pygame.draw.line(draw_target, (255, 100, 0), river_points[i], river_points[i + 1], 15)
             # Hot center line
             for i in range(len(river_points) - 1):
-                pygame.draw.line(surface, (255, 200, 50), river_points[i], river_points[i + 1], 5)
+                pygame.draw.line(draw_target, (255, 200, 50), river_points[i], river_points[i + 1], 5)
 
             # Add flowing lava streaks
             for i in range(8):
@@ -693,7 +913,7 @@ class DoomsdayScreen(BaseScreen):
                     y1 = river_points[river_index][1]
                     y2 = river_points[river_index + 1][1] if river_index + 1 < len(river_points) else y1
                     y_at_pos = y1 + (y2 - y1) * t
-                    pygame.draw.ellipse(surface, (255, 255, 100), (int(streak_pos), int(y_at_pos) - 2, 20, 4))
+                    pygame.draw.ellipse(draw_target, (255, 255, 100), (int(streak_pos), int(y_at_pos) - 2, 20, 4))
 
             # Static lava pools
             lava_pool_positions = [
@@ -707,8 +927,8 @@ class DoomsdayScreen(BaseScreen):
             for pool_x, pool_y, pool_width, pool_height in lava_pool_positions:
                 # Lava pool with glow
                 lava_rect = pygame.Rect(pool_x, pool_y, pool_width, pool_height)
-                pygame.draw.ellipse(surface, (200, 50, 0), lava_rect)
-                pygame.draw.ellipse(surface, (255, 100, 0), (pool_x + 2, pool_y + 2, pool_width - 4, pool_height - 4))
+                pygame.draw.ellipse(draw_target, (200, 50, 0), lava_rect)
+                pygame.draw.ellipse(draw_target, (255, 100, 0), (pool_x + 2, pool_y + 2, pool_width - 4, pool_height - 4))
 
                 # Small bubbling effect (position fixed)
                 bubble_positions = [
@@ -717,7 +937,7 @@ class DoomsdayScreen(BaseScreen):
                 ]
                 for bx, by in bubble_positions:
                     bubble_size = 3 + math.sin(pygame.time.get_ticks() * 0.003) * 1
-                    pygame.draw.circle(surface, (255, 200, 0), (int(bx), int(by)), int(bubble_size))
+                    pygame.draw.circle(draw_target, (255, 200, 0), (int(bx), int(by)), int(bubble_size))
 
             # Static charred trees
             tree_positions = [
@@ -730,10 +950,10 @@ class DoomsdayScreen(BaseScreen):
 
             for stake_x, stake_y in tree_positions:
                 # Burnt tree trunk
-                pygame.draw.line(surface, (20, 10, 5), (stake_x, stake_y), (stake_x, stake_y - 40), 4)
+                pygame.draw.line(draw_target, (20, 10, 5), (stake_x, stake_y), (stake_x, stake_y - 40), 4)
                 # Broken branches
-                pygame.draw.line(surface, (20, 10, 5), (stake_x, stake_y - 30), (stake_x - 15, stake_y - 35), 2)
-                pygame.draw.line(surface, (20, 10, 5), (stake_x, stake_y - 20), (stake_x + 10, stake_y - 28), 2)
+                pygame.draw.line(draw_target, (20, 10, 5), (stake_x, stake_y - 30), (stake_x - 15, stake_y - 35), 2)
+                pygame.draw.line(draw_target, (20, 10, 5), (stake_x, stake_y - 20), (stake_x + 10, stake_y - 28), 2)
 
         elif self.current_stage_theme == 3:
             # Stage 3: Demon Realm - Twisted alien dimension
@@ -753,7 +973,7 @@ class DoomsdayScreen(BaseScreen):
                     (crystal_x + 7 * size_mult, crystal_y + 20 * size_mult),
                     (crystal_x + 10 * size_mult, crystal_y),
                 ]
-                pygame.draw.polygon(surface, (60, 30, 90), points)
+                pygame.draw.polygon(draw_target, (60, 30, 90), points)
 
             # Main floating crystal formations
             for crystal in range(10):
@@ -769,8 +989,8 @@ class DoomsdayScreen(BaseScreen):
                     (crystal_x + 15, crystal_y + 40),
                     (crystal_x + 20, crystal_y),
                 ]
-                pygame.draw.polygon(surface, (80, 40, 120), points)
-                pygame.draw.polygon(surface, (120, 60, 180), points, 2)
+                pygame.draw.polygon(draw_target, (80, 40, 120), points)
+                pygame.draw.polygon(draw_target, (120, 60, 180), points, 2)
 
                 # Inner glow
                 inner_points = [
@@ -779,14 +999,14 @@ class DoomsdayScreen(BaseScreen):
                     (crystal_x, crystal_y + 40),
                     (crystal_x + 10, crystal_y),
                 ]
-                pygame.draw.polygon(surface, (150, 100, 200), inner_points)
+                pygame.draw.polygon(draw_target, (150, 100, 200), inner_points)
 
                 # Energy particles around crystal
                 for particle in range(4):
                     angle = pygame.time.get_ticks() * 0.003 + particle * 1.5
                     particle_x = crystal_x + math.cos(angle) * 30
                     particle_y = crystal_y + math.sin(angle) * 30
-                    pygame.draw.circle(surface, (200, 150, 255), (int(particle_x), int(particle_y)), 2)
+                    pygame.draw.circle(draw_target, (200, 150, 255), (int(particle_x), int(particle_y)), 2)
 
             # Twisted portal/vortex in background
             portal_x = SCREEN_WIDTH // 2
@@ -797,7 +1017,7 @@ class DoomsdayScreen(BaseScreen):
                 ring_surface = pygame.Surface((ring_size * 4, ring_size * 2), pygame.SRCALPHA)
                 color = (100 + ring * 20, 50 + ring * 10, 150 + ring * 15, ring_alpha)
                 pygame.draw.ellipse(ring_surface, color, (0, 0, ring_size * 4, ring_size * 2))
-                surface.blit(ring_surface, (portal_x - ring_size * 2, portal_y - ring_size))
+                draw_target.blit(ring_surface, (portal_x - ring_size * 2, portal_y - ring_size))
 
             # Fixed position alien tentacles
             tentacle_positions = [
@@ -820,10 +1040,10 @@ class DoomsdayScreen(BaseScreen):
                     segment_x = tentacle_x + wave_offset
                     segment_width = 15 - segment * 2
                     if segment_width > 0:
-                        pygame.draw.circle(surface, (60, 30, 80), (int(segment_x), segment_y), segment_width)
+                        pygame.draw.circle(draw_target, (60, 30, 80), (int(segment_x), segment_y), segment_width)
                         # Sucker detail
                         if segment % 2 == 0:
-                            pygame.draw.circle(surface, (40, 20, 60), (int(segment_x), segment_y), segment_width - 2)
+                            pygame.draw.circle(draw_target, (40, 20, 60), (int(segment_x), segment_y), segment_width - 2)
 
             # Many more floating geometric shapes in background
             # Background layer of triangles
@@ -840,7 +1060,7 @@ class DoomsdayScreen(BaseScreen):
                     px = shape_x + math.cos(angle) * size
                     py = shape_y + math.sin(angle) * size
                     points.append((int(px), int(py)))
-                pygame.draw.polygon(surface, (80, 40, 120), points, 1)
+                pygame.draw.polygon(draw_target, (80, 40, 120), points, 1)
 
             # Foreground layer of larger triangles
             for shape in range(9):
@@ -856,7 +1076,7 @@ class DoomsdayScreen(BaseScreen):
                     px = shape_x + math.cos(angle) * size
                     py = shape_y + math.sin(angle) * size
                     points.append((int(px), int(py)))
-                pygame.draw.polygon(surface, (100, 50, 150), points, 2)
+                pygame.draw.polygon(draw_target, (100, 50, 150), points, 2)
 
                 # Inner triangle
                 inner_points = []
@@ -865,7 +1085,7 @@ class DoomsdayScreen(BaseScreen):
                     px = shape_x + math.cos(angle) * (size - 5)
                     py = shape_y + math.sin(angle) * (size - 5)
                     inner_points.append((int(px), int(py)))
-                pygame.draw.polygon(surface, (150, 80, 200), inner_points, 1)
+                pygame.draw.polygon(draw_target, (150, 80, 200), inner_points, 1)
 
         elif self.current_stage_theme == 4:
             # Stage 4: Final Apocalypse - Complete destruction with layered cityscape
@@ -879,7 +1099,7 @@ class DoomsdayScreen(BaseScreen):
 
                 # Distant buildings
                 color = (40, 35, 35)
-                pygame.draw.rect(surface, color, (building_x, building_y, building_width, building_height))
+                pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
                 # Some broken tops
                 if building % 3 == 0:
@@ -891,7 +1111,7 @@ class DoomsdayScreen(BaseScreen):
                         (building_x + building_width, building_y + 10),
                         (building_x, building_y + 10),
                     ]
-                    pygame.draw.polygon(surface, color, points)
+                    pygame.draw.polygon(draw_target, color, points)
 
             # Middle layer - medium buildings
             for building in range(13):
@@ -903,12 +1123,12 @@ class DoomsdayScreen(BaseScreen):
                 color = (32, 27, 27)
 
                 # Main structure
-                pygame.draw.rect(surface, color, (building_x, building_y, building_width, building_height))
+                pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
                 # Side shadow for depth
                 shadow_width = 6
                 pygame.draw.rect(
-                    surface,
+                    draw_target,
                     (25, 20, 20),
                     (building_x + building_width - shadow_width, building_y, shadow_width, building_height),
                 )
@@ -919,7 +1139,7 @@ class DoomsdayScreen(BaseScreen):
                     hole_y = building_y + building_height // 2
                     hole_size = 20
                     pygame.draw.ellipse(
-                        surface,
+                        draw_target,
                         (50, 35, 35),
                         (building_x + building_width // 2 - hole_size // 2, hole_y, hole_size, hole_size),
                     )
@@ -931,7 +1151,7 @@ class DoomsdayScreen(BaseScreen):
                         win_y = building_y + 8 + floor * 20
                         if win_y < building_y + building_height - 15:
                             if (building + floor + window) % 3 != 0:
-                                pygame.draw.rect(surface, (8, 5, 5), (win_x, win_y, 7, 10))
+                                pygame.draw.rect(draw_target, (8, 5, 5), (win_x, win_y, 7, 10))
 
             # Foreground layer - closest massive buildings
             for building in range(8):
@@ -954,9 +1174,9 @@ class DoomsdayScreen(BaseScreen):
                         (building_x + building_width, building_y + building_height),
                         (building_x, building_y + building_height),
                     ]
-                    pygame.draw.polygon(surface, color, points)
+                    pygame.draw.polygon(draw_target, color, points)
                 else:
-                    pygame.draw.rect(surface, color, (building_x, building_y, building_width, building_height))
+                    pygame.draw.rect(draw_target, color, (building_x, building_y, building_width, building_height))
 
                     # Multiple holes
                     for hole_num in range(2):
@@ -964,13 +1184,13 @@ class DoomsdayScreen(BaseScreen):
                         hole_x = building_x + building_width // 2 + (hole_num - 0.5) * 20
                         hole_size = 25 + hole_num * 5
                         pygame.draw.ellipse(
-                            surface, (45, 30, 30), (int(hole_x - hole_size // 2), hole_y, hole_size, int(hole_size * 1.5))
+                            draw_target, (45, 30, 30), (int(hole_x - hole_size // 2), hole_y, hole_size, int(hole_size * 1.5))
                         )
 
                 # Strong shadow for depth
                 shadow_width = 10
                 pygame.draw.rect(
-                    surface,
+                    draw_target,
                     (15, 12, 12),
                     (building_x + building_width - shadow_width, building_y, shadow_width, building_height),
                 )
@@ -982,10 +1202,10 @@ class DoomsdayScreen(BaseScreen):
                         win_y = building_y + 10 + floor * 22
                         if win_y < building_y + building_height - 20:
                             if (building * floor + window) % 4 != 0:
-                                pygame.draw.rect(surface, (5, 3, 3), (win_x, win_y, 10, 13))
+                                pygame.draw.rect(draw_target, (5, 3, 3), (win_x, win_y, 10, 13))
                                 # Cracks in some windows
                                 if (floor + window) % 5 == 0:
-                                    pygame.draw.line(surface, (10, 8, 8), (win_x, win_y), (win_x + 10, win_y + 13), 1)
+                                    pygame.draw.line(draw_target, (10, 8, 8), (win_x, win_y), (win_x + 10, win_y + 13), 1)
 
                 # Fire in some buildings
                 if building in [1, 3]:
@@ -999,7 +1219,7 @@ class DoomsdayScreen(BaseScreen):
                             flame_height = 20 + math.sin(pygame.time.get_ticks() * 0.003 + flame) * 5
                             flame_width = 15 + math.cos(pygame.time.get_ticks() * 0.004 + flame) * 3
                             pygame.draw.ellipse(
-                                surface,
+                                draw_target,
                                 (255, 150 + flame * 20, 0),
                                 (
                                     int(flame_x - flame_width // 2),
@@ -1019,8 +1239,8 @@ class DoomsdayScreen(BaseScreen):
             for crack_segments in back_crack_positions:
                 if len(crack_segments) > 1:
                     # Thin background cracks
-                    pygame.draw.lines(surface, (15, 8, 5), False, crack_segments, 2)
-                    pygame.draw.lines(surface, (180, 40, 10), False, crack_segments, 1)
+                    pygame.draw.lines(draw_target, (15, 8, 5), False, crack_segments, 2)
+                    pygame.draw.lines(draw_target, (180, 40, 10), False, crack_segments, 1)
 
             # Foreground ground cracks
             main_crack_positions = [
@@ -1051,14 +1271,24 @@ class DoomsdayScreen(BaseScreen):
             for crack_segments in main_crack_positions:
                 if len(crack_segments) > 1:
                     # Main crack
-                    pygame.draw.lines(surface, (10, 5, 0), False, crack_segments, 4)
+                    pygame.draw.lines(draw_target, (10, 5, 0), False, crack_segments, 4)
                     # Glow from within
-                    pygame.draw.lines(surface, (255, 50, 0), False, crack_segments, 2)
+                    pygame.draw.lines(draw_target, (255, 50, 0), False, crack_segments, 2)
                     # Inner bright line
-                    pygame.draw.lines(surface, (255, 150, 50), False, crack_segments, 1)
+                    pygame.draw.lines(draw_target, (255, 150, 50), False, crack_segments, 1)
 
     def _draw_stage_effects(self, surface: pygame.Surface):
         """Draw atmospheric effects based on current stage"""
+        # Calculate object alpha during transitions
+        object_alpha = self._get_stage_object_alpha()
+        
+        # Create a temporary surface for alpha blending if needed
+        if object_alpha < 255:
+            temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            temp_surface.set_alpha(object_alpha)
+            draw_target = temp_surface
+        else:
+            draw_target = surface
         if self.current_stage_theme == 2:
             # Fire particles
             for i in range(5):
@@ -1066,7 +1296,7 @@ class DoomsdayScreen(BaseScreen):
                 y = SCREEN_HEIGHT - random.randint(0, 100)
                 size = random.randint(2, 6)
                 color = random.choice([(255, 100, 0), (255, 150, 0), (255, 200, 0)])
-                pygame.draw.circle(surface, color, (x, y), size)
+                pygame.draw.circle(draw_target, color, (x, y), size)
 
                 if size >= 5 and random.random() < 0.001:
                     self.sound_manager.play_one_shot_effect("stage2_fire_crackle", volume=0.05)
@@ -1079,7 +1309,7 @@ class DoomsdayScreen(BaseScreen):
                 y = random.randint(int(SCREEN_HEIGHT * 0.4), SCREEN_HEIGHT)
                 radius = random.randint(50, 150)
                 mist_surface.fill((100, 50, 150, 20), (x - radius, y - radius, radius * 2, radius * 2))
-            surface.blit(mist_surface, (0, 0))
+            draw_target.blit(mist_surface, (0, 0))
 
         elif self.current_stage_theme == 4:
             # FINAL APOCALYPSE
@@ -1091,7 +1321,7 @@ class DoomsdayScreen(BaseScreen):
                 # Create fiery meteor effect
                 meteor_size = random.randint(3, 8)
                 # Meteor core
-                pygame.draw.circle(surface, (255, 100, 0), (x, y), meteor_size)
+                pygame.draw.circle(draw_target, (255, 100, 0), (x, y), meteor_size)
                 # Fiery trail
                 for j in range(5):
                     trail_x = x - j * 3
@@ -1099,13 +1329,13 @@ class DoomsdayScreen(BaseScreen):
                     trail_size = meteor_size - j
                     if trail_size > 0:
                         color = (255 - j * 30, 50 + j * 20, 0)
-                        pygame.draw.circle(surface, color, (trail_x, trail_y), trail_size)
+                        pygame.draw.circle(draw_target, color, (trail_x, trail_y), trail_size)
 
             # 2. Ash particles falling
             for i in range(15):
                 x = random.randint(0, SCREEN_WIDTH)
                 y = random.randint(0, SCREEN_HEIGHT)
-                pygame.draw.circle(surface, (150, 150, 150), (x, y), 1)
+                pygame.draw.circle(draw_target, (150, 150, 150), (x, y), 1)
 
             # 3. Intense lightning with screen flash
             if random.random() < 0.04:  # 4% chance
@@ -1122,15 +1352,15 @@ class DoomsdayScreen(BaseScreen):
                 for i in range(10):
                     next_x = current_x + random.randint(-30, 30)
                     next_y = current_y + SCREEN_HEIGHT // 10
-                    pygame.draw.line(surface, (255, 255, 255), (current_x, current_y), (next_x, next_y), 3)
-                    pygame.draw.line(surface, (200, 200, 255), (current_x, current_y), (next_x, next_y), 1)
+                    pygame.draw.line(draw_target, (255, 255, 255), (current_x, current_y), (next_x, next_y), 3)
+                    pygame.draw.line(draw_target, (200, 200, 255), (current_x, current_y), (next_x, next_y), 1)
                     current_x, current_y = next_x, next_y
 
                 # Screen flash
                 flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
                 flash_surface.set_alpha(60)
                 flash_surface.fill((255, 200, 150))
-                surface.blit(flash_surface, (0, 0))
+                draw_target.blit(flash_surface, (0, 0))
 
             # 4. Dark smoke clouds at top
             smoke_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -1139,7 +1369,11 @@ class DoomsdayScreen(BaseScreen):
                 y = random.randint(0, int(SCREEN_HEIGHT * 0.3))
                 radius = random.randint(40, 100)
                 smoke_surface.fill((50, 30, 20, 30), (x - radius, y - radius, radius * 2, radius * 2))
-            surface.blit(smoke_surface, (0, 0))
+            draw_target.blit(smoke_surface, (0, 0))
+        
+        # Blit the temporary surface if using alpha blending
+        if object_alpha < 255:
+            surface.blit(temp_surface, (0, 0))
 
     def _draw_floor_grid(self, surface: pygame.Surface):
         """Draw 3D floor grid for perspective"""
@@ -1360,12 +1594,13 @@ class DoomsdayScreen(BaseScreen):
         self.enemy_manager.time_between_spawns = max(1.5, 3.0 - wave_num * 0.15)
         self.enemy_manager.difficulty_multiplier = 1.0 + (wave_num - 1) * 0.10
 
-        # Update stage theme
+        # Update stage theme with transition effect
         new_theme = min(4, (wave_num - 1) // 2 + 1)
         if new_theme != self.current_stage_theme:
-            self.current_stage_theme = new_theme
+            self._start_stage_transition(new_theme)
+        else:
+            # If same stage, just update background without transition
             self.create_background()
-            # Start the appropriate music and sound effects for the new stage
             self._start_stage_music(new_theme)
 
     def _draw_pause_screen(self) -> None:
