@@ -366,35 +366,35 @@ class DoomsdayScreen(BaseScreen):
         """Start a smooth transition to a new stage"""
         # Store the old background
         self.old_background = self.background.copy()
-        
+
         # Create the new background
         old_theme = self.current_stage_theme
         self.current_stage_theme = new_theme
         self.create_background()
         self.new_background = self.background.copy()
-        
+
         # Restore old theme temporarily during transition
         self.current_stage_theme = old_theme
         self.background = self.old_background.copy()
-        
+
         # Choose transition type based on stage
         if new_theme == 2:
             self.stage_transition_type = "flash"  # Hell's gates - dramatic flash
         elif new_theme == 3:
-            self.stage_transition_type = "fade"   # Demon realm - mysterious fade
+            self.stage_transition_type = "fade"  # Demon realm - mysterious fade
         elif new_theme == 4:
             self.stage_transition_type = "slide"  # Final apocalypse - sliding destruction
         else:
             self.stage_transition_type = "fade"
-        
+
         # Start the transition
         self.stage_transition_active = True
         self.stage_transition_time = 0
-        
+
         # Add screen shake for dramatic effect
         self.screen_shake_time = 1.0
         self.screen_shake_intensity = 15
-        
+
         print(f"Starting stage transition from {old_theme} to {new_theme} with {self.stage_transition_type} effect")
 
     def _complete_stage_transition(self):
@@ -403,44 +403,44 @@ class DoomsdayScreen(BaseScreen):
         self.current_stage_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
         self.background = self.new_background.copy()
         self._start_stage_music(self.current_stage_theme)
-        
+
         # Clean up transition state
         self.stage_transition_active = False
         self.stage_transition_time = 0
         self.old_background = None
         self.new_background = None
-        
+
         print(f"Stage transition completed to theme {self.current_stage_theme}")
 
     def _draw_stage_transition(self, surface: pygame.Surface):
         """Draw the stage transition effect"""
         if not self.stage_transition_active or not self.old_background or not self.new_background:
             return
-            
+
         # Calculate transition progress (0.0 to 1.0)
         progress = self.stage_transition_time / self.stage_transition_duration
         progress = min(1.0, progress)
-        
+
         if self.stage_transition_type == "fade":
             # Fade transition - blend the two backgrounds
             # Create a copy of old background
             transition_surface = self.old_background.copy()
-            
+
             # Create new background with alpha based on progress
             new_with_alpha = self.new_background.copy()
             alpha = int(255 * progress)
             fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             fade_surface.fill((0, 0, 0))
             fade_surface.set_alpha(alpha)
-            
+
             # Blend new background
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             temp_surface.blit(self.new_background, (0, 0))
             temp_surface.set_alpha(alpha)
-            
+
             transition_surface.blit(temp_surface, (0, 0))
             surface.blit(transition_surface, (0, 0))
-            
+
         elif self.stage_transition_type == "flash":
             # Flash transition - bright flash then reveal new background
             if progress < 0.3:
@@ -463,35 +463,31 @@ class DoomsdayScreen(BaseScreen):
                     surface.blit(white_overlay, (0, 0))
                 else:
                     surface.blit(self.new_background, (0, 0))
-                    
+
         elif self.stage_transition_type == "slide":
             # Slide transition - new background slides in from right
             slide_offset = int(SCREEN_WIDTH * (1 - progress))
-            
+
             # Draw old background
             surface.blit(self.old_background, (0, 0))
-            
+
             # Draw new background sliding in
             if slide_offset < SCREEN_WIDTH:
                 surface.blit(self.new_background, (slide_offset, 0))
-        
+
         # Draw transition text overlay
         self._draw_transition_text(surface, progress)
 
     def _draw_transition_text(self, surface: pygame.Surface, progress: float):
         """Draw dramatic text during stage transitions"""
-        stage_names = {
-            2: "ENTERING HELL'S GATES",
-            3: "DESCENDING TO DEMON REALM", 
-            4: "THE FINAL APOCALYPSE BEGINS"
-        }
-        
+        stage_names = {2: "ENTERING HELL'S GATES", 3: "DESCENDING TO DEMON REALM", 4: "THE FINAL APOCALYPSE BEGINS"}
+
         new_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
         stage_text = stage_names.get(new_theme, "STAGE CHANGE")
-        
+
         # Text appears and fades based on transition progress and type
         text_alpha = 255
-        
+
         if self.stage_transition_type == "flash":
             # Text appears quickly during flash, stays visible, then fades at the end
             if progress < 0.2:
@@ -516,30 +512,30 @@ class DoomsdayScreen(BaseScreen):
                 text_alpha = 255
             else:
                 text_alpha = 0
-        
+
         if text_alpha > 0:
             # Create text surface with glow effect
             text_surface = self.big_font.render(stage_text, True, (255, 100, 0))
-            
+
             # Add glow effect
             glow_surface = self.big_font.render(stage_text, True, (255, 200, 100))
-            
+
             # Calculate position
             if self.stage_transition_type == "slide":
                 text_x = max(text_x_offset, SCREEN_WIDTH // 2 - text_surface.get_width() // 2)
             else:
                 text_x = SCREEN_WIDTH // 2 - text_surface.get_width() // 2
-            
+
             text_y = SCREEN_HEIGHT // 2 - text_surface.get_height() // 2
-            
+
             # Apply alpha
             text_surface.set_alpha(text_alpha)
             glow_surface.set_alpha(text_alpha // 2)
-            
+
             # Draw glow (offset slightly)
             surface.blit(glow_surface, (text_x + 2, text_y + 2))
             surface.blit(glow_surface, (text_x - 2, text_y - 2))
-            
+
             # Draw main text
             surface.blit(text_surface, (text_x, text_y))
 
@@ -620,7 +616,7 @@ class DoomsdayScreen(BaseScreen):
         """Calculate alpha for stage objects during transitions"""
         if not self.stage_transition_active:
             return 255
-            
+
         progress = self.stage_transition_time / self.stage_transition_duration
         if progress < 0.5:
             # First half: fade out old objects
@@ -632,10 +628,10 @@ class DoomsdayScreen(BaseScreen):
     def _draw_stage_background(self, surface: pygame.Surface):
         """Draw stage-specific background elements"""
         horizon_y = int(SCREEN_HEIGHT * 0.4)
-        
+
         # Calculate object alpha during transitions
         object_alpha = self._get_stage_object_alpha()
-        
+
         # Create a temporary surface for alpha blending if needed
         if object_alpha < 255:
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -1281,7 +1277,7 @@ class DoomsdayScreen(BaseScreen):
         """Draw atmospheric effects based on current stage"""
         # Calculate object alpha during transitions
         object_alpha = self._get_stage_object_alpha()
-        
+
         # Create a temporary surface for alpha blending if needed
         if object_alpha < 255:
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -1370,7 +1366,7 @@ class DoomsdayScreen(BaseScreen):
                 radius = random.randint(40, 100)
                 smoke_surface.fill((50, 30, 20, 30), (x - radius, y - radius, radius * 2, radius * 2))
             draw_target.blit(smoke_surface, (0, 0))
-        
+
         # Blit the temporary surface if using alpha blending
         if object_alpha < 255:
             surface.blit(temp_surface, (0, 0))

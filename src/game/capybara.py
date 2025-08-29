@@ -13,7 +13,7 @@ from typing import List, Optional, Tuple
 import pygame
 
 # Local application imports
-from utils.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from utils.constants import SCREEN_HEIGHT, SCREEN_WIDTH
 
 
 class FlyingCapybara:
@@ -860,7 +860,7 @@ class CapybaraManager:
     def update(self, dt: float, current_time: float) -> tuple[bool, bool, int]:
         """
         Update all capybaras and game state
-        
+
         Returns:
             tuple of (capybaras_removed, new_wave_spawned, escaped_count)
         """
@@ -868,14 +868,14 @@ class CapybaraManager:
         capybaras_removed = False
         new_wave_spawned = False
         escaped_count = 0
-        
+
         # Update existing capybaras
         capybaras_to_remove = []
         for capybara in self.capybaras[:]:
             should_remove = capybara.update(dt)
             if should_remove:
                 capybaras_to_remove.append(capybara)
-        
+
         # Remove escaped capybaras and track escapes
         for capybara in capybaras_to_remove:
             # Check if this capybara escaped (balloon still intact) vs was shot
@@ -902,13 +902,13 @@ class CapybaraManager:
         if self.capybaras_spawned >= self.capybaras_per_round:
             flying_capybaras = [c for c in self.capybaras if c.alive]
             falling_capybaras = [c for c in self.capybaras if not c.alive and not c.grounded and not c.shot_capybara]
-            
+
             # Round is ready when all capybaras are either landed or gone
             if len(flying_capybaras) == 0 and len(falling_capybaras) == 0 and not self.wave_active:
                 if not self.round_ready_to_complete:
                     self.round_ready_to_complete = True
                     self.round_ready_time = current_time
-                
+
                 # Check if round passes or fails after 2 second delay
                 elif self.round_ready_to_complete and current_time - self.round_ready_time >= 2.0:
                     if self.capybaras_hit >= self.required_hits:
@@ -916,16 +916,16 @@ class CapybaraManager:
                     else:
                         # Game over - failed to hit enough capybaras
                         self.game_over = True
-        
+
         return (capybaras_removed, new_wave_spawned, escaped_count)
 
     def spawn_wave(self):
         """Spawn a wave of capybaras"""
         if self.capybaras_spawned >= self.capybaras_per_round:
             return
-        
+
         self.wave_active = True
-        
+
         # Determine number of capybaras to spawn
         if self.round_number <= 2:
             num_capybaras = 1  # Always single spawn for first 2 rounds
@@ -936,23 +936,23 @@ class CapybaraManager:
                 num_capybaras = 2
             else:
                 num_capybaras = 1
-                
+
         self.current_wave_capybaras = min(num_capybaras, self.capybaras_per_round - self.capybaras_spawned)
-        
+
         # Spawn capybaras from grass area
         grass_line = self.screen_height * 2 // 3
-        
+
         for i in range(self.current_wave_capybaras):
             # Spawn in middle 60% of screen width
             start_x = random.randint(int(self.screen_width * 0.2), int(self.screen_width * 0.8))
             start_y = random.randint(grass_line, grass_line + 20)
-            
+
             # Random direction
             direction = random.choice(["left", "right", "diagonal_left", "diagonal_right"])
-            
+
             # Speed increases with round
             speed_multiplier = 1.0 + (self.round_number - 1) * 0.08
-            
+
             capybara = FlyingCapybara(start_x, start_y, direction, speed_multiplier)
             self.capybaras.append(capybara)
             self.capybaras_spawned += 1
@@ -960,7 +960,7 @@ class CapybaraManager:
     def check_hit(self, x: int, y: int) -> tuple[bool, str, int]:
         """
         Check if shot hit any capybara
-        
+
         Returns:
             (hit, target_type, score) where target_type is 'balloon', 'capybara', or 'none'
         """
@@ -968,7 +968,7 @@ class CapybaraManager:
             hit, target = capybara.check_hit(x, y)
             if hit:
                 capybara.shoot(target)
-                
+
                 if target == "balloon":
                     self.capybaras_hit += 1
                     # Score based on round number
@@ -977,7 +977,7 @@ class CapybaraManager:
                 elif target == "capybara":
                     # Penalty for shooting capybara
                     return True, "capybara", -50
-                    
+
         return False, "none", 0
 
     def draw(self, screen: pygame.Surface):
@@ -986,7 +986,7 @@ class CapybaraManager:
         # Capybaras higher up (smaller Y) should be drawn first (behind)
         # Capybaras lower down (larger Y) should be drawn last (in front)
         sorted_capybaras = sorted(self.capybaras, key=lambda c: c.y)
-        
+
         for capybara in sorted_capybaras:
             capybara.draw(screen)
 
@@ -1002,7 +1002,7 @@ class CapybaraManager:
         self.capybaras.clear()
         self.spawn_timer = 0
         self.wave_active = False
-        
+
         # Increase difficulty
         if self.round_number <= 3:
             self.required_hits = 6
@@ -1029,7 +1029,7 @@ class CapybaraManager:
     def get_flying_capybaras_count(self) -> int:
         """Get count of capybaras that are still flying"""
         return len([c for c in self.capybaras if c.alive])
-        
+
     def get_grounded_capybaras_count(self) -> int:
         """Get count of capybaras that are grounded and active"""
         return len([c for c in self.capybaras if c.grounded])

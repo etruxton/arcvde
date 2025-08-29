@@ -13,6 +13,7 @@ from typing import List, Optional, Tuple
 import pygame
 
 # Local application imports
+from game.capybara import CapybaraManager, FlyingCapybara
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import (
@@ -33,7 +34,6 @@ from utils.constants import (
 )
 from utils.sound_manager import get_sound_manager
 from utils.ui_components import Button
-from game.capybara import CapybaraManager, FlyingCapybara
 
 
 class CapybaraHuntScreen(BaseScreen):
@@ -92,7 +92,7 @@ class CapybaraHuntScreen(BaseScreen):
 
         # Capybara management - using CapybaraManager instead of direct management
         self.capybara_manager = CapybaraManager(SCREEN_WIDTH, SCREEN_HEIGHT)
-        
+
         # Remove old capybara management variables that are now handled by CapybaraManager
         # These were: self.capybaras, self.spawn_timer, self.spawn_delay, self.current_wave_capybaras, self.wave_active
 
@@ -822,10 +822,12 @@ class CapybaraHuntScreen(BaseScreen):
                     self.paused = not self.paused
             elif event.key == pygame.K_r:
                 self.reset_game()
-            elif event.key == pygame.K_RETURN and (self.game_over or self.capybara_manager.round_complete or self.capybara_manager.game_over):
+            elif event.key == pygame.K_RETURN and (
+                self.game_over or self.capybara_manager.round_complete or self.capybara_manager.game_over
+            ):
                 if self.game_over or self.capybara_manager.game_over:
                     # Process game over reaction if not already done
-                    if self.capybara_manager.game_over and not hasattr(self, '_game_over_processed'):
+                    if self.capybara_manager.game_over and not hasattr(self, "_game_over_processed"):
                         self._game_over_processed = True
                         self.game_over = True
                         self._set_pond_buddy_mood("disappointed", 5.0, 2)
@@ -860,10 +862,10 @@ class CapybaraHuntScreen(BaseScreen):
         self.capybara_manager.start_next_round()
         self.shots_remaining = 5  # Reset to 5 shots for new round
         # Remove processed flags for round completion
-        if hasattr(self, '_round_completion_processed'):
-            delattr(self, '_round_completion_processed')
-        if hasattr(self, '_game_over_processed'):
-            delattr(self, '_game_over_processed')
+        if hasattr(self, "_round_completion_processed"):
+            delattr(self, "_round_completion_processed")
+        if hasattr(self, "_game_over_processed"):
+            delattr(self, "_game_over_processed")
         self.hit_markers.clear()
         # Reset continue button for next round
         self.continue_button = None
@@ -887,17 +889,17 @@ class CapybaraHuntScreen(BaseScreen):
 
         # Update capybara manager
         capybaras_removed, new_wave_spawned, escaped_count = self.capybara_manager.update(dt, current_time)
-        
+
         # Check if manager signaled game over
-        if self.capybara_manager.game_over and not hasattr(self, '_game_over_processed'):
+        if self.capybara_manager.game_over and not hasattr(self, "_game_over_processed"):
             self._game_over_processed = True
             self.game_over = True
             self._set_pond_buddy_mood("disappointed", 5.0, 2)
-        
+
         # Refresh shots when new wave spawns (Duck Hunt style)
         if new_wave_spawned and not self.capybara_manager.round_complete and not self.game_over:
             self.shots_remaining = 5  # Reset to 5 shots per wave
-        
+
         # Handle escaped capybaras - add to hit_markers as misses (red squares)
         if escaped_count > 0 and not self.capybara_manager.round_complete and not self.game_over:
             for _ in range(escaped_count):
@@ -930,7 +932,7 @@ class CapybaraHuntScreen(BaseScreen):
         # Round completion processing is handled in draw() method
 
         # Round completion processing is now handled in draw() method when the screen is first displayed
-                
+
         # Game over is now handled by CapybaraManager in update() method above
 
         # Update FPS counter
@@ -947,7 +949,7 @@ class CapybaraHuntScreen(BaseScreen):
         """DEPRECATED: Spawning is now handled by CapybaraManager"""
         # This method is no longer used - CapybaraManager handles all spawning
         pass
-        
+
     def _old_spawn_wave_logic(self):
         """Old spawning logic - kept for reference"""
         self.wave_active = True
@@ -961,12 +963,17 @@ class CapybaraHuntScreen(BaseScreen):
             multi_spawn_chance = min(0.3 + (self.capybara_manager.round_number - 3) * 0.1, 0.8)  # Cap at 80%
 
             # Check if we should spawn 2 (and if we have at least 2 capybaras left to spawn)
-            if random.random() < multi_spawn_chance and self.capybara_manager.capybaras_spawned < self.capybara_manager.capybaras_per_round - 1:
+            if (
+                random.random() < multi_spawn_chance
+                and self.capybara_manager.capybaras_spawned < self.capybara_manager.capybaras_per_round - 1
+            ):
                 num_capybaras = 2
             else:
                 num_capybaras = 1
 
-        self.current_wave_capybaras = min(num_capybaras, self.capybara_manager.capybaras_per_round - self.capybara_manager.capybaras_spawned)
+        self.current_wave_capybaras = min(
+            num_capybaras, self.capybara_manager.capybaras_per_round - self.capybara_manager.capybaras_spawned
+        )
 
         # Spawn capybaras from grass area (2/3 down the screen)
         grass_line = SCREEN_HEIGHT * 2 // 3
@@ -1036,7 +1043,7 @@ class CapybaraHuntScreen(BaseScreen):
         # Check for hits using CapybaraManager
         hit, target, points = self.capybara_manager.check_hit(shoot_position[0], shoot_position[1])
         hit_any = hit
-        
+
         if hit:
             if target == "balloon":
                 # Good shot! Saved the capybara
@@ -1094,11 +1101,11 @@ class CapybaraHuntScreen(BaseScreen):
         if self.game_over or self.capybara_manager.game_over:
             if not self.game_over and self.capybara_manager.game_over:
                 # Process game over if screen hasn't caught up yet
-                if not hasattr(self, '_game_over_processed'):
+                if not hasattr(self, "_game_over_processed"):
                     self._game_over_processed = True
                     self.game_over = True
                     self._set_pond_buddy_mood("disappointed", 5.0, 2)
-            
+
             self._draw_game_over_screen()
             # Draw crosshair for button shooting
             if self.crosshair_pos:
@@ -1108,10 +1115,10 @@ class CapybaraHuntScreen(BaseScreen):
 
         if self.capybara_manager.round_complete:
             # Process round completion reaction if not already done
-            if not hasattr(self, '_round_completion_processed'):
+            if not hasattr(self, "_round_completion_processed"):
                 self._round_completion_processed = True
                 self.round_complete_time = pygame.time.get_ticks()
-                
+
                 # Perfect round bonus
                 if self.capybara_manager.capybaras_hit == self.capybara_manager.capybaras_per_round:
                     self.score += 1000 * self.capybara_manager.round_number
@@ -1123,7 +1130,7 @@ class CapybaraHuntScreen(BaseScreen):
                 else:
                     # Good job
                     self._set_pond_buddy_mood("proud", 3.0, 3)
-            
+
             self._draw_round_complete_screen()
             # Draw crosshair for button shooting
             if self.crosshair_pos:
@@ -1203,7 +1210,9 @@ class CapybaraHuntScreen(BaseScreen):
         pygame.draw.line(self.screen, YELLOW, (pass_line_x, meter_y - 5), (pass_line_x, meter_y + 30), 3)
 
         # Required hits text
-        req_text = self.small_font.render(f"Need {self.capybara_manager.required_hits}/{self.capybara_manager.capybaras_per_round}", True, WHITE)
+        req_text = self.small_font.render(
+            f"Need {self.capybara_manager.required_hits}/{self.capybara_manager.capybaras_per_round}", True, WHITE
+        )
         req_rect = req_text.get_rect(center=(SCREEN_WIDTH // 2, meter_y - 20))
         self.screen.blit(req_text, req_rect)
 
@@ -1358,7 +1367,9 @@ class CapybaraHuntScreen(BaseScreen):
 
         # Stats
         stats_text = self.font.render(
-            f"Hit: {self.capybara_manager.capybaras_hit}/{self.capybara_manager.capybaras_per_round} | Score: {self.score}", True, WHITE
+            f"Hit: {self.capybara_manager.capybaras_hit}/{self.capybara_manager.capybaras_per_round} | Score: {self.score}",
+            True,
+            WHITE,
         )
         stats_rect = stats_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
         self.screen.blit(stats_text, stats_rect)
@@ -1446,13 +1457,13 @@ class CapybaraHuntScreen(BaseScreen):
         self.hit_markers.clear()
         self.capybara_manager.spawn_timer = 0
         self.capybara_manager.wave_active = False
-        
+
         # Reset completion flags
         self.capybara_manager.round_complete = False
-        if hasattr(self, '_round_completion_processed'):
-            delattr(self, '_round_completion_processed')
-        if hasattr(self, '_game_over_processed'):
-            delattr(self, '_game_over_processed')
+        if hasattr(self, "_round_completion_processed"):
+            delattr(self, "_round_completion_processed")
+        if hasattr(self, "_game_over_processed"):
+            delattr(self, "_game_over_processed")
 
         # Adjust difficulty for the round
         self.capybara_manager.required_hits = min(9, 6 + (round_num - 1) // 5)
@@ -1492,11 +1503,11 @@ class CapybaraHuntScreen(BaseScreen):
 
     def _set_pond_buddy_mood(self, mood: str, duration: float = 2.0, priority: int = 1):
         """Set the pond buddy's mood with priority system
-        
+
         Priority levels:
         0 = neutral/default (lowest)
         1 = normal reactions (happy, sad, worried, etc.)
-        2 = special reactions (excited, laughing, disappointed) 
+        2 = special reactions (excited, laughing, disappointed)
         3 = round completion reactions (celebration, relieved, proud)
         """
         # Only override if new mood has higher or equal priority, or if current mood timer has expired
