@@ -13,7 +13,8 @@ from typing import List, Optional, Tuple
 import pygame
 
 # Local application imports
-from game.capybara import CapybaraManager, FlyingCapybara
+from game.capybara_hunt.capybara import CapybaraManager, FlyingCapybara
+from game.capybara_hunt.pond_buddy import PondBuddy
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import (
@@ -61,32 +62,7 @@ class CapybaraHuntScreen(BaseScreen):
         self.menu_button = None
 
         # Pond companion
-        self.pond_buddy = {
-            "x": 100,  # Center of pond
-            "y": SCREEN_HEIGHT - 70,  # In the pond - raised up a bit
-            "mood": "neutral",  # neutral, happy, sad, excited, laughing, surprised, celebration, relieved, proud, disappointed, worried
-            "mood_timer": 0,
-            "mood_duration": 2.0,
-            "mood_priority": 0,
-            "bob_offset": 0,
-            "bob_time": 0,
-            "last_hit_streak": 0,
-            "last_miss_streak": 0,
-            "animation_frame": 0,
-            "animation_timer": 0,
-            "sprite": None,
-            "speech_text": "",
-            "speech_timer": 0,
-            "speech_index": 0,
-        }
-
-        # Load pond buddy sprite
-        try:
-            self.pond_buddy["sprite"] = pygame.image.load("assets/pond_buddy.png").convert_alpha()
-            self.pond_buddy["sprite"] = pygame.transform.scale(self.pond_buddy["sprite"], (100, 100))
-        except Exception as e:
-            print(f"Could not load pond buddy sprite: {e}")
-            self.pond_buddy["sprite"] = None
+        self.pond_buddy = PondBuddy(100, SCREEN_HEIGHT - 70)
 
         self.capybara_manager = CapybaraManager(SCREEN_WIDTH, SCREEN_HEIGHT)
 
@@ -341,24 +317,24 @@ class CapybaraHuntScreen(BaseScreen):
                 attempts += 1
 
                 if valid_position:
-                flower = {
-                    "x": x,
-                    "y": y,
-                    "sway_phase": random.uniform(0, math.pi * 2),
-                    "sway_speed": random.uniform(0.5, 1.5),
-                    "height": random.randint(15, 25),  # Reduced height range
-                    "color": random.choice(
-                        [
-                            (255, 105, 180),  # Hot pink
-                            (255, 255, 0),  # Yellow
-                            (238, 130, 238),  # Violet
-                            (255, 165, 0),  # Orange
-                            (147, 112, 219),  # Purple
-                        ]
-                    ),
-                    "petal_count": random.randint(5, 8),
-                    "size": random.randint(8, 15),
-                }
+                    flower = {
+                        "x": x,
+                        "y": y,
+                        "sway_phase": random.uniform(0, math.pi * 2),
+                        "sway_speed": random.uniform(0.5, 1.5),
+                        "height": random.randint(15, 25),  # Reduced height range
+                        "color": random.choice(
+                            [
+                                (255, 105, 180),  # Hot pink
+                                (255, 255, 0),  # Yellow
+                                (238, 130, 238),  # Violet
+                                (255, 165, 0),  # Orange
+                                (147, 112, 219),  # Purple
+                            ]
+                        ),
+                        "petal_count": random.randint(5, 8),
+                        "size": random.randint(8, 15),
+                    }
                 self.flowers.append(flower)
 
         # Animated grass tufts
@@ -803,7 +779,7 @@ class CapybaraHuntScreen(BaseScreen):
                     if self.capybara_manager.game_over and not hasattr(self, "_game_over_processed"):
                         self._game_over_processed = True
                         self.game_over = True
-                        self._set_pond_buddy_mood("disappointed", 5.0, 2)
+                        self.pond_buddy.set_mood("disappointed", 5.0, 2)
                     self.reset_game()
                 elif self.capybara_manager.round_complete:
                     self.start_next_round()
@@ -844,16 +820,16 @@ class CapybaraHuntScreen(BaseScreen):
         if self.capybara_manager.round_number > 1:
             if self.capybara_manager.round_number % 5 == 0:
                 # Milestone round!
-                self._set_pond_buddy_mood("celebration", 2.0, 3)
+                self.pond_buddy.set_mood("celebration", 2.0, 3)
             else:
-                self._set_pond_buddy_mood("excited", 1.5, 2)
+                self.pond_buddy.set_mood("excited", 1.5, 2)
 
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update game state"""
         # Process hand tracking always (for button shooting)
         self._process_hand_tracking()
 
-        self._update_pond_buddy(dt)
+        self.pond_buddy.update(dt)
         self.update_scenery(dt)
 
         # Update capybara manager
@@ -863,7 +839,7 @@ class CapybaraHuntScreen(BaseScreen):
         if self.capybara_manager.game_over and not hasattr(self, "_game_over_processed"):
             self._game_over_processed = True
             self.game_over = True
-            self._set_pond_buddy_mood("disappointed", 5.0, 2)
+            self.pond_buddy.set_mood("disappointed", 5.0, 2)
 
         # Refresh shots when new wave spawns
         if new_wave_spawned and not self.capybara_manager.round_complete and not self.game_over:
@@ -873,7 +849,7 @@ class CapybaraHuntScreen(BaseScreen):
         if escaped_count > 0 and not self.capybara_manager.round_complete and not self.game_over:
             for _ in range(escaped_count):
                 self.hit_markers.append(False)
-                self._on_capybara_escape()  # Pond buddy shows worried reaction
+                self.pond_buddy.on_capybara_escape()  # Pond buddy shows worried reaction
 
         # Handle button shooting in round complete or game over states
         if self.capybara_manager.round_complete:
@@ -896,11 +872,9 @@ class CapybaraHuntScreen(BaseScreen):
         if self.paused:
             return None
 
-
         # Round completion processing is handled in draw() method
 
         # Round completion processing is handled in draw() method
-
 
         # Update FPS counter
         self.fps_counter += 1
@@ -1010,12 +984,12 @@ class CapybaraHuntScreen(BaseScreen):
             if target == "balloon":
                 self.score += points * self.capybara_manager.round_number
                 self.hit_markers.append(True)
-                self._on_capybara_hit()  # Pond buddy reacts
+                self.pond_buddy.on_capybara_hit()  # Pond buddy reacts
                 self.sound_manager.play("hit")
             elif target == "capybara":
                 self.score -= points * self.capybara_manager.round_number  # Penalty for shooting capybara
                 self.hit_markers.append(False)
-                self._on_capybara_miss()  # Pond buddy reacts
+                self.pond_buddy.on_capybara_miss()  # Pond buddy reacts
                 self.sound_manager.play("error")  # Play error sound
                 self.shoot_animation_time = pygame.time.get_ticks() - 100  # Make animation last longer
                 self.capybara_shot_message_time = pygame.time.get_ticks()  # Show warning message
@@ -1024,7 +998,7 @@ class CapybaraHuntScreen(BaseScreen):
         if not hit_any:
             # 1/4 chance for snarky speech when missing completely
             if random.random() < 1 / 4:
-                self._set_pond_buddy_mood("laughing", 2.5, 2)
+                self.pond_buddy.set_mood("laughing", 2.5, 2)
                 # This will automatically use snarky speech since it's the default
 
         # Check if wave should end (out of ammo)
@@ -1047,7 +1021,7 @@ class CapybaraHuntScreen(BaseScreen):
         # Draw capybaras (sorted by Y position for depth layering)
         self.capybara_manager.draw(self.screen)
 
-        self._draw_pond_buddy()
+        self.pond_buddy.draw(self.screen)
 
         if self.paused:
             self._draw_pause_screen()
@@ -1058,7 +1032,7 @@ class CapybaraHuntScreen(BaseScreen):
                 if not hasattr(self, "_game_over_processed"):
                     self._game_over_processed = True
                     self.game_over = True
-                    self._set_pond_buddy_mood("disappointed", 5.0, 2)
+                    self.pond_buddy.set_mood("disappointed", 5.0, 2)
 
             self._draw_game_over_screen()
             # Draw crosshair for button shooting
@@ -1076,13 +1050,13 @@ class CapybaraHuntScreen(BaseScreen):
                 if self.capybara_manager.capybaras_hit == self.capybara_manager.capybaras_per_round:
                     self.score += 1000 * self.capybara_manager.round_number
                     # Pond buddy celebrates perfect round
-                    self._set_pond_buddy_mood("celebration", 4.0, 3)
+                    self.pond_buddy.set_mood("celebration", 4.0, 3)
                 elif self.capybara_manager.capybaras_hit == self.capybara_manager.required_hits:
                     # Just barely made it
-                    self._set_pond_buddy_mood("relieved", 3.0, 3)
+                    self.pond_buddy.set_mood("relieved", 3.0, 3)
                 else:
                     # Good job
-                    self._set_pond_buddy_mood("proud", 3.0, 3)
+                    self.pond_buddy.set_mood("proud", 3.0, 3)
 
             self._draw_round_complete_screen()
             # Draw crosshair for button shooting
@@ -1419,481 +1393,3 @@ class CapybaraHuntScreen(BaseScreen):
         # Adjust difficulty for the round
         self.capybara_manager.required_hits = min(9, 6 + (round_num - 1) // 5)
         self.capybara_manager.spawn_delay = max(1.0, 2.0 - round_num * 0.1)
-
-    def _update_pond_buddy(self, dt: float):
-        """Update pond buddy animations and mood"""
-        # Update mood timer
-        if self.pond_buddy["mood_timer"] > 0:
-            self.pond_buddy["mood_timer"] -= dt
-            if self.pond_buddy["mood_timer"] <= 0:
-                self.pond_buddy["mood"] = "neutral"
-                self.pond_buddy["mood_priority"] = 0  # Reset priority when mood expires
-                self.pond_buddy["last_hit_streak"] = 0
-                self.pond_buddy["last_miss_streak"] = 0
-
-        # Update speech timer
-        if self.pond_buddy["speech_timer"] > 0:
-            self.pond_buddy["speech_timer"] -= dt
-            if self.pond_buddy["speech_timer"] <= 0:
-                self.pond_buddy["speech_text"] = ""
-
-        # Random idle reactions when neutral
-        if self.pond_buddy["mood"] == "neutral" and random.random() < 0.01:  # Small chance each frame
-            idle_moods = ["surprised", "happy"]
-            self._set_pond_buddy_mood(random.choice(idle_moods), random.uniform(0.5, 1.5))
-
-        # Bobbing animation
-        self.pond_buddy["bob_time"] += dt
-        self.pond_buddy["bob_offset"] = math.sin(self.pond_buddy["bob_time"] * 2) * 3
-
-        # Animation frame update for expressions
-        self.pond_buddy["animation_timer"] += dt
-        if self.pond_buddy["animation_timer"] > 0.2:
-            self.pond_buddy["animation_timer"] = 0
-            self.pond_buddy["animation_frame"] = (self.pond_buddy["animation_frame"] + 1) % 2
-
-    def _set_pond_buddy_mood(self, mood: str, duration: float = 2.0, priority: int = 1):
-        """Set the pond buddy's mood with priority system
-
-        Priority levels:
-        0 = neutral/default (lowest)
-        1 = normal reactions (happy, sad, worried, etc.)
-        2 = special reactions (excited, laughing, disappointed)
-        3 = round completion reactions (celebration, relieved, proud)
-        """
-        if priority >= self.pond_buddy["mood_priority"] or self.pond_buddy["mood_timer"] <= 0:
-            self.pond_buddy["mood"] = mood
-            self.pond_buddy["mood_timer"] = duration
-            self.pond_buddy["mood_priority"] = priority
-            self.pond_buddy["animation_frame"] = 0
-
-            if mood == "laughing":
-                self._set_pond_buddy_speech(duration, "snarky")
-
-    def _set_pond_buddy_speech(self, duration: float, speech_type: str = "snarky"):
-        """Set speech text for the pond buddy"""
-        if speech_type == "snarky":
-            speech_options = [
-                "Haha! Try again!",
-                "Oops! That was close!",
-                "Nice aim... NOT!",
-                "Maybe try glasses?",
-                "Balloons: 1, You: 0",
-                "Better luck next time!",
-                "That was... interesting!",
-                "So close, yet so far!",
-                "Swing and a miss!",
-                "Whoosh! Right past it!",
-            ]
-            index_key = "snarky_index"
-        else:  # encouraging
-            speech_options = [
-                "Nice shot!",
-                "Great aim!",
-                "You're getting good!",
-                "Balloon defeated!",
-                "Balloons: 0, You: 1!",
-                "Keep it up!",
-                "Bullseye!",
-                "Viva la Capybara!",
-                "You're on fire!",
-                "Cap-tastic!",
-            ]
-            index_key = "encouraging_index"
-
-        # Initialize index if it doesn't exist
-        if index_key not in self.pond_buddy:
-            self.pond_buddy[index_key] = 0
-
-        # Cycle through different speeches each time
-        self.pond_buddy["speech_text"] = speech_options[self.pond_buddy[index_key]]
-        self.pond_buddy["speech_timer"] = duration
-        self.pond_buddy[index_key] = (self.pond_buddy[index_key] + 1) % len(speech_options)
-
-    def _draw_speech_bubble(self):
-        """Draw speech bubble above pond buddy"""
-        if not self.pond_buddy["speech_text"] or self.pond_buddy["speech_timer"] <= 0:
-            return
-
-        bubble_x = self.pond_buddy["x"] + 50  # Offset to the right so it doesn't overlap
-        bubble_y = self.pond_buddy["y"] - 60  # Above the buddy
-
-        # Render the text
-        font = pygame.font.Font(None, 24)
-        text_surface = font.render(self.pond_buddy["speech_text"], True, (0, 0, 0))
-        text_rect = text_surface.get_rect()
-
-        # Bubble dimensions
-        padding = 10
-        bubble_width = text_rect.width + padding * 2
-        bubble_height = text_rect.height + padding * 2
-
-        # Draw bubble background (white with black border)
-        bubble_rect = pygame.Rect(bubble_x - bubble_width // 2, bubble_y - bubble_height, bubble_width, bubble_height)
-        pygame.draw.rect(self.screen, (255, 255, 255), bubble_rect)
-        pygame.draw.rect(self.screen, (0, 0, 0), bubble_rect, 2)
-
-        # Draw bubble tail pointing to pond buddy
-        tail_tip_x = self.pond_buddy["x"] + 30
-        tail_tip_y = self.pond_buddy["y"] - 20
-        tail_base_x = bubble_x - 10
-        tail_base_y = bubble_y
-
-        # Triangle for speech bubble tail
-        tail_points = [(tail_tip_x, tail_tip_y), (tail_base_x - 8, tail_base_y), (tail_base_x + 8, tail_base_y)]
-        pygame.draw.polygon(self.screen, (255, 255, 255), tail_points)
-        pygame.draw.polygon(self.screen, (0, 0, 0), tail_points, 2)
-
-        # Draw text centered in bubble
-        text_x = bubble_x - text_rect.width // 2
-        text_y = bubble_y - bubble_height + padding
-        self.screen.blit(text_surface, (text_x, text_y))
-
-    def _on_capybara_hit(self):
-        """Called when player successfully hits a capybara"""
-        self.pond_buddy["last_hit_streak"] += 1
-        self.pond_buddy["last_miss_streak"] = 0
-
-        # 1/5 chance to give encouraging speech for any balloon hit
-        if random.random() < 1 / 5:
-            self._set_pond_buddy_mood("laughing", 2.5)
-            # Override with encouraging speech
-            self._set_pond_buddy_speech(2.5, "encouraging")
-        elif self.pond_buddy["last_hit_streak"] >= 5:
-            # Amazing streak!
-            self._set_pond_buddy_mood("celebration", 3.5, 2)
-        elif self.pond_buddy["last_hit_streak"] >= 3:
-            self._set_pond_buddy_mood("excited", 3.0, 2)
-        elif self.pond_buddy["last_hit_streak"] == 1:
-            self._set_pond_buddy_mood("happy", 1.5, 1)
-
-    def _on_capybara_miss(self):
-        """Called when player shoots capybara instead of balloon"""
-        self.pond_buddy["last_miss_streak"] += 1
-        self.pond_buddy["last_hit_streak"] = 0
-
-        # 1/3 chance to laugh with snarky speech on any miss
-        if random.random() < 1 / 3:
-            self._set_pond_buddy_mood("laughing", 2.5)
-        elif self.pond_buddy["last_miss_streak"] >= 3:
-            self._set_pond_buddy_mood("disappointed", 2.0, 2)
-        else:
-            self._set_pond_buddy_mood("sad", 1.5, 1)
-
-    def _on_capybara_escape(self):
-        """Called when a capybara escapes (flies away)"""
-        # Show worried expression when capybara escapes
-        self._set_pond_buddy_mood("worried", 1.5, 1)
-
-    def _draw_pond_buddy(self):
-        """Draw the pond companion"""
-        x = self.pond_buddy["x"]
-        y = self.pond_buddy["y"] + self.pond_buddy["bob_offset"]
-        mood = self.pond_buddy["mood"]
-
-        # Draw the pond buddy sprite if loaded
-        if self.pond_buddy["sprite"]:
-            # Calculate sprite position (centered on x, y)
-            sprite_rect = self.pond_buddy["sprite"].get_rect()
-            sprite_rect.center = (int(x), int(y))
-            self.screen.blit(self.pond_buddy["sprite"], sprite_rect)
-
-            # Now draw facial expressions on top of the sprite
-            # Adjusting positions based on the sprite's face area (scaled for 100x100)
-            face_x = x + 2
-            face_y = y - 20
-
-            # Draw face based on mood
-            eye_color = (0, 0, 0)
-
-            if mood == "neutral":
-                # Normal eyes - farther apart (scaled for larger sprite)
-                pygame.draw.circle(self.screen, eye_color, (int(face_x - 15), int(face_y)), 5)
-                pygame.draw.circle(self.screen, eye_color, (int(face_x + 15), int(face_y)), 5)
-
-            elif mood == "happy":
-                # Happy eyes (curved) - draw multiple passes to fill gaps
-                left_eye_rect = (int(face_x - 20), int(face_y - 3), 12, 12)
-                right_eye_rect = (int(face_x + 8), int(face_y - 3), 12, 12)
-                pygame.draw.arc(self.screen, eye_color, left_eye_rect, 0, math.pi, 3)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (left_eye_rect[0], left_eye_rect[1] + 1, left_eye_rect[2], left_eye_rect[3]),
-                    0,
-                    math.pi,
-                    3,
-                )
-                pygame.draw.arc(self.screen, eye_color, right_eye_rect, 0, math.pi, 3)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (right_eye_rect[0], right_eye_rect[1] + 1, right_eye_rect[2], right_eye_rect[3]),
-                    0,
-                    math.pi,
-                    3,
-                )
-                # Smile (upward curve) - draw multiple passes to fill gaps
-                rect = (int(face_x - 14), int(face_y + 7), 28, 16)
-                pygame.draw.arc(self.screen, eye_color, rect, math.pi, 2 * math.pi, 2)
-                # Draw again with slight offset to fill gaps
-                pygame.draw.arc(self.screen, eye_color, (rect[0], rect[1] - 1, rect[2], rect[3]), math.pi, 2 * math.pi, 2)
-
-            elif mood == "sad":
-                # Sad eyes (small) - scaled up
-                pygame.draw.circle(self.screen, eye_color, (int(face_x - 15), int(face_y)), 3)
-                pygame.draw.circle(self.screen, eye_color, (int(face_x + 15), int(face_y)), 3)
-                # Frown (downward curve) - draw multiple passes to fill gaps
-                rect = (int(face_x - 14), int(face_y + 18), 28, 14)
-                pygame.draw.arc(self.screen, eye_color, rect, 0, math.pi, 3)
-                # Draw again with slight offset to fill gaps
-                pygame.draw.arc(self.screen, eye_color, (rect[0], rect[1] + 1, rect[2], rect[3]), 0, math.pi, 3)
-
-            elif mood == "excited":
-                # Star eyes
-                frame = self.pond_buddy["animation_frame"]
-                if frame == 0:
-                    # Wide eyes - scaled up
-                    pygame.draw.circle(self.screen, eye_color, (int(face_x - 15), int(face_y)), 6)
-                    pygame.draw.circle(self.screen, eye_color, (int(face_x + 15), int(face_y)), 6)
-                    pygame.draw.circle(self.screen, WHITE, (int(face_x - 13), int(face_y - 2)), 3)
-                    pygame.draw.circle(self.screen, WHITE, (int(face_x + 17), int(face_y - 2)), 3)
-                else:
-                    # Sparkle effect - scaled up
-                    pygame.draw.circle(self.screen, (255, 215, 0), (int(face_x - 15), int(face_y)), 5)
-                    pygame.draw.circle(self.screen, (255, 215, 0), (int(face_x + 15), int(face_y)), 5)
-                # Big smile - draw multiple passes to fill gaps
-                rect = (int(face_x - 18), int(face_y + 7), 36, 20)
-                pygame.draw.arc(self.screen, eye_color, rect, math.pi, 2 * math.pi, 2)
-                # Draw again with slight offset to fill gaps
-                pygame.draw.arc(self.screen, eye_color, (rect[0], rect[1] - 1, rect[2], rect[3]), math.pi, 2 * math.pi, 2)
-
-            elif mood == "laughing":
-                # Closed eyes (laughing) - draw multiple passes to fill gaps
-                left_eye_rect = (int(face_x - 20), int(face_y), 12, 6)
-                right_eye_rect = (int(face_x + 8), int(face_y), 12, 6)
-                pygame.draw.arc(self.screen, eye_color, left_eye_rect, math.pi, 2 * math.pi, 2)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (left_eye_rect[0], left_eye_rect[1] - 1, left_eye_rect[2], left_eye_rect[3]),
-                    math.pi,
-                    2 * math.pi,
-                    2,
-                )
-                pygame.draw.arc(self.screen, eye_color, right_eye_rect, math.pi, 2 * math.pi, 2)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (right_eye_rect[0], right_eye_rect[1] - 1, right_eye_rect[2], right_eye_rect[3]),
-                    math.pi,
-                    2 * math.pi,
-                    2,
-                )
-                # Wide open mouth - lowered (laughing mouth isn't a smile)
-                if self.pond_buddy["animation_frame"] == 0:
-                    pygame.draw.ellipse(self.screen, eye_color, (int(face_x - 10), int(face_y + 14), 20, 14))
-                    pygame.draw.ellipse(self.screen, (255, 192, 203), (int(face_x - 7), int(face_y + 16), 14, 9))
-                else:
-                    # Draw multiple passes to fill gaps
-                    rect = (int(face_x - 14), int(face_y + 7), 28, 16)
-                    pygame.draw.arc(self.screen, eye_color, rect, math.pi, 2 * math.pi, 2)
-                    pygame.draw.arc(self.screen, eye_color, (rect[0], rect[1] - 1, rect[2], rect[3]), math.pi, 2 * math.pi, 2)
-
-            elif mood == "surprised":
-                # Wide eyes - scaled up
-                pygame.draw.circle(self.screen, WHITE, (int(face_x - 15), int(face_y)), 8)
-                pygame.draw.circle(self.screen, WHITE, (int(face_x + 15), int(face_y)), 8)
-                pygame.draw.circle(self.screen, eye_color, (int(face_x - 15), int(face_y)), 5)
-                pygame.draw.circle(self.screen, eye_color, (int(face_x + 15), int(face_y)), 5)
-                # O mouth - filled black circle - lowered
-                pygame.draw.circle(self.screen, eye_color, (int(face_x), int(face_y + 16)), 7)
-
-            elif mood == "celebration":
-                # Jumping animation
-                jump_offset = abs(math.sin(self.pond_buddy["animation_timer"] * 10)) * 5
-                face_y -= jump_offset
-                # Star eyes - scaled up
-                for eye_x in [-15, 15]:
-                    cx = int(face_x + eye_x)
-                    cy = int(face_y)
-                    # Draw star shape - scaled up
-                    pygame.draw.line(self.screen, (255, 215, 0), (cx - 5, cy), (cx + 5, cy), 3)
-                    pygame.draw.line(self.screen, (255, 215, 0), (cx, cy - 5), (cx, cy + 5), 3)
-                    pygame.draw.line(self.screen, (255, 215, 0), (cx - 4, cy - 4), (cx + 4, cy + 4), 2)
-                    pygame.draw.line(self.screen, (255, 215, 0), (cx - 4, cy + 4), (cx + 4, cy - 4), 2)
-                # Huge smile - draw multiple passes to fill gaps
-                rect = (int(face_x - 20), int(face_y + 5), 40, 24)
-                pygame.draw.arc(self.screen, eye_color, rect, math.pi, 2 * math.pi, 3)
-                # Draw again with slight offset to fill gaps
-                pygame.draw.arc(self.screen, eye_color, (rect[0], rect[1] - 1, rect[2], rect[3]), math.pi, 2 * math.pi, 3)
-                # Party hat (triangle on top of head) - scaled up
-                hat_color = (255, 20, 147) if self.pond_buddy["animation_frame"] == 0 else (16, 231, 245)
-                pygame.draw.polygon(
-                    self.screen,
-                    hat_color,
-                    [
-                        (int(face_x), int(face_y - 40)),
-                        (int(face_x - 14), int(face_y - 20)),
-                        (int(face_x + 14), int(face_y - 20)),
-                    ],
-                )
-
-            elif mood == "relieved":
-                # Half-closed eyes (relief) - draw multiple passes to fill gaps
-                left_eye_rect = (int(face_x - 18), int(face_y - 2), 10, 8)
-                right_eye_rect = (int(face_x + 8), int(face_y - 2), 10, 8)
-                pygame.draw.arc(self.screen, eye_color, left_eye_rect, math.pi, 2 * math.pi, 3)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (left_eye_rect[0], left_eye_rect[1] - 1, left_eye_rect[2], left_eye_rect[3]),
-                    math.pi,
-                    2 * math.pi,
-                    3,
-                )
-                pygame.draw.arc(self.screen, eye_color, right_eye_rect, math.pi, 2 * math.pi, 3)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (right_eye_rect[0], right_eye_rect[1] - 1, right_eye_rect[2], right_eye_rect[3]),
-                    math.pi,
-                    2 * math.pi,
-                    3,
-                )
-                # Slight smile - draw multiple passes to fill gaps
-                rect = (int(face_x - 14), int(face_y + 7), 28, 16)
-                pygame.draw.arc(self.screen, eye_color, rect, math.pi, 2 * math.pi, 2)
-                pygame.draw.arc(self.screen, eye_color, (rect[0], rect[1] - 1, rect[2], rect[3]), math.pi, 2 * math.pi, 2)
-                # Sweat drop - teardrop shape (rounded cone)
-                sweat_color = (100, 180, 255)  # Bright blue
-                drop_x = int(face_x + 28)
-                drop_y = int(face_y - 14)
-
-                # Draw teardrop shape - combination of circle bottom and triangle top
-                # Bottom circle (the rounded part)
-                pygame.draw.circle(self.screen, sweat_color, (drop_x, drop_y), 6)
-
-                # Top triangle/cone that connects smoothly to circle
-                # Draw multiple triangles to create smooth transition
-                for i in range(6):
-                    width = 6 - i  # Gradually narrow from circle width to point
-                    y_offset = i * 2
-                    pygame.draw.polygon(
-                        self.screen,
-                        sweat_color,
-                        [
-                            (drop_x, drop_y - 6 - y_offset - 2),  # Top point (gets higher)
-                            (drop_x - width, drop_y - y_offset),  # Left base
-                            (drop_x + width, drop_y - y_offset),  # Right base
-                        ],
-                    )
-
-                # Add white highlight for glossy effect
-                pygame.draw.circle(self.screen, WHITE, (drop_x - 2, drop_y - 2), 2)
-                pygame.draw.circle(self.screen, (200, 230, 255), (drop_x - 1, drop_y - 4), 1)
-
-            elif mood == "proud":
-                # Confident eyes - scaled up
-                pygame.draw.circle(self.screen, eye_color, (int(face_x - 15), int(face_y)), 5)
-                pygame.draw.circle(self.screen, eye_color, (int(face_x + 15), int(face_y)), 5)
-                pygame.draw.circle(self.screen, WHITE, (int(face_x - 13), int(face_y - 2)), 2)
-                pygame.draw.circle(self.screen, WHITE, (int(face_x + 17), int(face_y - 2)), 2)
-                # Smug smile - draw multiple passes to fill gaps
-                rect = (int(face_x - 14), int(face_y + 7), 28, 14)
-                pygame.draw.arc(self.screen, eye_color, rect, math.pi * 1.2, math.pi * 1.8, 3)
-                pygame.draw.arc(
-                    self.screen, eye_color, (rect[0], rect[1] - 1, rect[2], rect[3]), math.pi * 1.2, math.pi * 1.8, 3
-                )
-                # Raised eyebrow effect - draw multiple passes to fill gaps
-                left_brow_rect = (int(face_x - 20), int(face_y - 7), 14, 7)
-                right_brow_rect = (int(face_x + 6), int(face_y - 7), 14, 7)
-                pygame.draw.arc(self.screen, eye_color, left_brow_rect, 0, math.pi, 2)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (left_brow_rect[0], left_brow_rect[1] + 1, left_brow_rect[2], left_brow_rect[3]),
-                    0,
-                    math.pi,
-                    3,
-                )
-                pygame.draw.arc(self.screen, eye_color, right_brow_rect, 0, math.pi, 2)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (right_brow_rect[0], right_brow_rect[1] + 1, right_brow_rect[2], right_brow_rect[3]),
-                    0,
-                    math.pi,
-                    3,
-                )
-
-            elif mood == "disappointed":
-                # Sad droopy eyes - draw multiple passes to fill gaps
-                left_eye_rect = (int(face_x - 18), int(face_y + 2), 10, 7)
-                right_eye_rect = (int(face_x + 8), int(face_y + 2), 10, 7)
-                pygame.draw.arc(self.screen, eye_color, left_eye_rect, 0, math.pi, 3)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (left_eye_rect[0], left_eye_rect[1] + 1, left_eye_rect[2], left_eye_rect[3]),
-                    0,
-                    math.pi,
-                    3,
-                )
-                pygame.draw.arc(self.screen, eye_color, right_eye_rect, 0, math.pi, 3)
-                pygame.draw.arc(
-                    self.screen,
-                    eye_color,
-                    (right_eye_rect[0], right_eye_rect[1] + 1, right_eye_rect[2], right_eye_rect[3]),
-                    0,
-                    math.pi,
-                    3,
-                )
-                # Frown - draw multiple passes to fill gaps
-                rect = (int(face_x - 14), int(face_y + 18), 28, 14)
-                pygame.draw.arc(self.screen, eye_color, rect, 0, math.pi, 3)
-                pygame.draw.arc(self.screen, eye_color, (rect[0], rect[1] + 1, rect[2], rect[3]), 0, math.pi, 3)
-                # Tear drop animation - scaled up
-                if self.pond_buddy["animation_frame"] == 0:
-                    pygame.draw.circle(self.screen, (135, 206, 250), (int(face_x - 20), int(face_y + 5)), 3)
-                else:
-                    pygame.draw.circle(self.screen, (135, 206, 250), (int(face_x - 20), int(face_y + 10)), 3)
-
-            elif mood == "worried":
-                # Worried expression - raised eyebrows and wavy mouth
-                # Wide concerned eyes
-                pygame.draw.circle(self.screen, eye_color, (int(face_x - 15), int(face_y)), 5)
-                pygame.draw.circle(self.screen, eye_color, (int(face_x + 15), int(face_y)), 5)
-                pygame.draw.circle(self.screen, WHITE, (int(face_x - 13), int(face_y - 1)), 2)
-                pygame.draw.circle(self.screen, WHITE, (int(face_x + 17), int(face_y - 1)), 2)
-
-                # Raised worried eyebrows (tilted)
-                left_brow_rect = (int(face_x - 18), int(face_y - 8), 12, 6)
-                right_brow_rect = (int(face_x + 6), int(face_y - 8), 12, 6)
-                pygame.draw.arc(self.screen, eye_color, left_brow_rect, math.pi * 0.2, math.pi * 0.8, 3)
-                pygame.draw.arc(self.screen, eye_color, right_brow_rect, math.pi * 0.2, math.pi * 0.8, 3)
-
-                # Wavy worried mouth - lowered
-                pygame.draw.line(
-                    self.screen, eye_color, (int(face_x - 10), int(face_y + 18)), (int(face_x - 5), int(face_y + 16)), 3
-                )
-                pygame.draw.line(
-                    self.screen, eye_color, (int(face_x - 5), int(face_y + 16)), (int(face_x), int(face_y + 18)), 3
-                )
-                pygame.draw.line(
-                    self.screen, eye_color, (int(face_x), int(face_y + 18)), (int(face_x + 5), int(face_y + 16)), 3
-                )
-                pygame.draw.line(
-                    self.screen, eye_color, (int(face_x + 5), int(face_y + 16)), (int(face_x + 10), int(face_y + 18)), 3
-                )
-        else:
-            # Fallback if no sprite is loaded - draw simple circle buddy
-            body_color = (101, 67, 33)  # Brown
-            pygame.draw.circle(self.screen, body_color, (int(x), int(y)), 25)
-            pygame.draw.circle(self.screen, (139, 90, 43), (int(x), int(y)), 25, 3)  # Border
-            # Simple neutral face
-            pygame.draw.circle(self.screen, (0, 0, 0), (int(x - 8), int(y - 5)), 3)
-            pygame.draw.circle(self.screen, (0, 0, 0), (int(x + 8), int(y - 5)), 3)
-
-        # Draw speech bubble if pond buddy is talking
-        self._draw_speech_bubble()

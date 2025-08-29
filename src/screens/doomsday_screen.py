@@ -67,7 +67,6 @@ class DoomsdayScreen(BaseScreen):
         self.last_shoot_time = 0
         self.rapid_fire_count = 0
 
-
         # Screen effects
         self.damage_flash_time = 0
         self.screen_shake_time = 0

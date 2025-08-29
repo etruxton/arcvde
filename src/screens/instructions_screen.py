@@ -43,7 +43,6 @@ class InstructionsScreen(BaseScreen):
 
         self.back_button = Button(50, 50, 120, 50, "BACK", self.text_font)
 
-
         # Instructions content
         self.instructions = [
             {
@@ -200,4 +199,3 @@ class InstructionsScreen(BaseScreen):
 
         # Draw camera feed with tracking
         self.draw_camera_with_tracking(demo_x, demo_y, demo_width, demo_height)
-
