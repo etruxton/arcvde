@@ -15,6 +15,7 @@ import pygame
 # Local application imports
 from game.capybara_hunt.capybara import CapybaraManager, FlyingCapybara
 from game.capybara_hunt.pond_buddy import PondBuddy
+from game.capybara_hunt.ui_manager import CapybaraHuntUI
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import (
@@ -34,7 +35,6 @@ from utils.constants import (
     YELLOW,
 )
 from utils.sound_manager import get_sound_manager
-from utils.ui_components import Button
 
 
 class CapybaraHuntScreen(BaseScreen):
@@ -56,10 +56,8 @@ class CapybaraHuntScreen(BaseScreen):
         self.round_complete_time = 0
         self.paused = False
 
-        # UI Buttons
-        self.continue_button = None
-        self.retry_button = None
-        self.menu_button = None
+        # UI Manager
+        self.ui_manager = CapybaraHuntUI(self.font)
 
         # Pond companion
         self.pond_buddy = PondBuddy(100, SCREEN_HEIGHT - 70)
@@ -732,19 +730,19 @@ class CapybaraHuntScreen(BaseScreen):
             if event.button == 1:  # Left click
                 mouse_pos = pygame.mouse.get_pos()
 
-                # Check continue button
-                if self.capybara_manager.round_complete and self.continue_button:
-                    if self.continue_button.rect.collidepoint(mouse_pos):
-                        self.start_next_round()
-                        return None
+                # Handle UI button clicks
+                action = self.ui_manager.handle_mouse_button_click(
+                    mouse_pos, self.capybara_manager.round_complete, self.game_over
+                )
 
-                # Check retry and menu buttons
-                if self.game_over:
-                    if self.retry_button and self.retry_button.rect.collidepoint(mouse_pos):
-                        self.reset_game()
-                        return None
-                    if self.menu_button and self.menu_button.rect.collidepoint(mouse_pos):
-                        return GAME_STATE_MENU
+                if action == "continue":
+                    self.start_next_round()
+                    return None
+                elif action == "retry":
+                    self.reset_game()
+                    return None
+                elif action == "menu":
+                    return GAME_STATE_MENU
 
         if event.type == pygame.KEYDOWN:
             # Handle console input when active
@@ -800,9 +798,7 @@ class CapybaraHuntScreen(BaseScreen):
         self.hand_tracker.reset_tracking_state()
         self.shoot_pos = None
         self.crosshair_pos = None
-        self.continue_button = None
-        self.retry_button = None
-        self.menu_button = None
+        self.ui_manager.reset_buttons()
 
     def start_next_round(self) -> None:
         """Start the next round"""
@@ -813,8 +809,8 @@ class CapybaraHuntScreen(BaseScreen):
         if hasattr(self, "_game_over_processed"):
             delattr(self, "_game_over_processed")
         self.hit_markers.clear()
-        # Reset continue button for next round
-        self.continue_button = None
+        # Reset UI buttons for next round
+        self.ui_manager.reset_buttons()
 
         # Pond buddy gets excited for new round
         if self.capybara_manager.round_number > 1:
@@ -852,21 +848,24 @@ class CapybaraHuntScreen(BaseScreen):
                 self.pond_buddy.on_capybara_escape()  # Pond buddy shows worried reaction
 
         # Handle button shooting in round complete or game over states
-        if self.capybara_manager.round_complete:
-            if self.continue_button and self.shoot_detected:
-                if self._check_button_hit(self.continue_button):
-                    self.shoot_detected = False
-                    self.start_next_round()
-            return None
+        if self.shoot_detected and (self.capybara_manager.round_complete or self.game_over):
+            action = self.ui_manager.handle_shooting_buttons(
+                self.crosshair_pos, self.sound_manager, self.capybara_manager.round_complete, self.game_over
+            )
 
-        if self.game_over:
-            if self.shoot_detected:
-                if self.retry_button and self._check_button_hit(self.retry_button):
-                    self.shoot_detected = False
-                    self.reset_game()
-                elif self.menu_button and self._check_button_hit(self.menu_button):
-                    self.shoot_detected = False
-                    return GAME_STATE_MENU
+            if action == "continue":
+                self.shoot_detected = False
+                self.start_next_round()
+                return None
+            elif action == "retry":
+                self.shoot_detected = False
+                self.reset_game()
+                return None
+            elif action == "menu":
+                self.shoot_detected = False
+                return GAME_STATE_MENU
+
+        if self.capybara_manager.round_complete or self.game_over:
             return None
 
         if self.paused:
@@ -956,14 +955,6 @@ class CapybaraHuntScreen(BaseScreen):
             if self.shoot_detected and self.shots_remaining > 0:
                 self._handle_shoot(self.crosshair_pos)
                 self.shoot_detected = False  # Reset after handling
-
-    def _check_button_hit(self, button: Button) -> bool:
-        """Check if crosshair is over button and shooting"""
-        if self.crosshair_pos and button and button.rect.collidepoint(self.crosshair_pos):
-            # Play shoot sound
-            self.sound_manager.play("shoot")
-            return True
-        return False
 
     def _handle_shoot(self, shoot_position: tuple) -> None:
         """Handle shooting action"""
@@ -1248,33 +1239,13 @@ class CapybaraHuntScreen(BaseScreen):
             text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + i * 40))
             self.screen.blit(text, text_rect)
 
-        # Create shootable buttons
-        button_width = 150
-        button_height = 50
-        button_y = SCREEN_HEIGHT // 2 + 180
-
-        # Retry button
-        if not self.retry_button:
-            self.retry_button = Button(
-                SCREEN_WIDTH // 2 - button_width - 20, button_y, button_width, button_height, "RETRY", self.font
-            )
-        self.retry_button.draw(self.screen)
-
-        # Menu button
-        if not self.menu_button:
-            self.menu_button = Button(SCREEN_WIDTH // 2 + 20, button_y, button_width, button_height, "MENU", self.font)
-        self.menu_button.draw(self.screen)
-
-        # Highlight buttons if aimed at
-        if self.crosshair_pos:
-            if self.retry_button.rect.collidepoint(self.crosshair_pos):
-                pygame.draw.rect(self.screen, UI_ACCENT, self.retry_button.rect, 3)
-            if self.menu_button.rect.collidepoint(self.crosshair_pos):
-                pygame.draw.rect(self.screen, UI_ACCENT, self.menu_button.rect, 3)
+        # Always ensure game over buttons are created fresh
+        self.ui_manager.create_game_over_buttons(SCREEN_HEIGHT)
+        self.ui_manager.draw_game_over_buttons(self.screen, self.crosshair_pos)
 
         # Instructions
         instruction_text = self.small_font.render("Shoot a button to continue", True, WHITE)
-        instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH // 2, button_y + 70))
+        instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 250))
         self.screen.blit(instruction_text, instruction_rect)
 
     def _draw_round_complete_screen(self):
@@ -1301,24 +1272,13 @@ class CapybaraHuntScreen(BaseScreen):
         stats_rect = stats_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
         self.screen.blit(stats_text, stats_rect)
 
-        # Create shootable continue button
-        button_width = 200
-        button_height = 60
-        button_y = SCREEN_HEIGHT // 2 + 80
-
-        if not self.continue_button:
-            self.continue_button = Button(
-                SCREEN_WIDTH // 2 - button_width // 2, button_y, button_width, button_height, "CONTINUE", self.font
-            )
-        self.continue_button.draw(self.screen)
-
-        # Highlight button if aimed at
-        if self.crosshair_pos and self.continue_button.rect.collidepoint(self.crosshair_pos):
-            pygame.draw.rect(self.screen, UI_ACCENT, self.continue_button.rect, 3)
+        # Always ensure continue button is created fresh
+        self.ui_manager.create_continue_button(SCREEN_HEIGHT)
+        self.ui_manager.draw_continue_button(self.screen, self.crosshair_pos)
 
         # Instructions
         instruction_text = self.small_font.render("Shoot the button to continue", True, WHITE)
-        instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH // 2, button_y + 80))
+        instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 160))
         self.screen.blit(instruction_text, instruction_rect)
 
     def _execute_console_command(self):
