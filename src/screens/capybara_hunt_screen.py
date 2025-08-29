@@ -33,820 +33,7 @@ from utils.constants import (
 )
 from utils.sound_manager import get_sound_manager
 from utils.ui_components import Button
-
-
-class FlyingCapybara:
-    """A flying capybara target in the game"""
-
-    # Class variables to store loaded sprites (shared by all instances)
-    sprites_loaded = False
-    sprite_frames = []
-    laydown_sprite_frames = []  # Sprites for laying down animation
-    sleeping_sprite_frames = []  # Sprites for sleeping animation (plays after laying down)
-    sit_sprite_frames = []  # Sprites for sitting animation
-    chilling_sprite_frames = []  # Sprites for chilling animation (plays after sitting down)
-    frontkick_sprite_frames = []  # Sprites for front kick animation
-    standing_sprite_frames = []  # Sprites for standing animation
-    sprite_size = (80, 80)  # Keep sprites square since originals are square
-
-    def __init__(self, start_x: float, start_y: float, direction: str, speed_multiplier: float = 1.0):
-        """
-        Initialize a flying capybara
-
-        Args:
-            start_x: Starting X position
-            start_y: Starting Y position
-            direction: Flight direction ('left', 'right', 'diagonal_left', 'diagonal_right')
-            speed_multiplier: Speed multiplier for difficulty
-        """
-        self.x = start_x
-        self.y = start_y
-        self.direction = direction
-        self.speed_multiplier = speed_multiplier
-
-        # Visual properties
-        self.size = 80
-        self.color = (139, 90, 43)  # Brown color for capybara
-        self.alive = True  # Balloon is intact
-        self.hit_time = None
-        self.fall_speed = 0
-        self.walking = False  # Whether capybara is walking on ground
-        self.standing = False  # Whether capybara is standing still
-        self.grounded = False  # Whether capybara has landed on ground
-        self.ground_y = 0  # Y position when grounded
-        self.walk_direction = 1  # 1 for right, -1 for left
-        self.walk_speed = 50  # Slower speed for walking
-        self.shot_capybara = False  # True if player shot capybara instead of balloon
-
-        # Laying down state
-        self.laying_down = False
-        self.laying_animation_frame = 0
-        self.laying_animation_timer = 0
-        self.laying_animation_speed = 0.1  # Seconds per frame
-        self.laying_animation_playing = False  # True when transitioning to/from laying
-        self.laying_animation_reverse = False  # True when getting up
-
-        # Sleeping state (plays after laying down)
-        self.sleeping = False
-        self.sleeping_frame = 0
-        self.sleeping_timer = 0
-        self.sleeping_speed = 0.15  # Slightly slower for breathing effect
-        self.sleeping_forward = True  # Direction of animation (0->4 or 4->0)
-
-        # Sitting state
-        self.sitting = False
-        self.sit_animation_frame = 0
-        self.sit_animation_timer = 0
-        self.sit_animation_speed = 0.1  # Seconds per frame
-        self.sit_animation_playing = False  # True when transitioning to/from sitting
-        self.sit_animation_reverse = False  # True when standing up
-
-        # Chilling state (plays after sitting down)
-        self.chilling = False
-        self.chilling_frame = 0
-        self.chilling_timer = 0
-        self.chilling_speed = 0.15  # Slightly slower for relaxed effect
-
-        # Front kick state
-        self.kicking = False
-        self.kick_animation_frame = 0
-        self.kick_animation_timer = 0
-        self.kick_animation_speed = 0.08  # Slightly faster animation
-        self.kick_loops_completed = 0
-        self.kick_loops_target = 1  # Will be randomized when kicking starts
-
-        # Standing state
-        self.standing_animation_frame = 0
-        self.standing_animation_timer = 0
-        self.standing_animation_speed = 0.15  # Slower for idle animation
-
-        self.time_until_action = random.uniform(2.0, 5.0)  # Time before next action
-
-        # Balloon properties
-        self.balloon_color = random.choice(
-            [
-                (255, 100, 100),  # Red
-                (100, 255, 100),  # Green
-                (100, 100, 255),  # Blue
-                (255, 255, 100),  # Yellow
-                (255, 100, 255),  # Magenta
-                (100, 255, 255),  # Cyan
-                (255, 180, 100),  # Orange
-                (200, 100, 255),  # Purple
-            ]
-        )
-        self.balloon_radius = 35
-        self.string_wave = 0  # For string animation
-        self.balloon_popped = False
-
-        # Flight properties
-        self.base_speed = 150  # pixels per second (reduced for better gameplay)
-        self.vertical_speed = 0
-        self.flight_time = 0
-        self.escape_time = random.uniform(4.0, 6.0)  # More time before escaping
-
-        # Set initial velocities based on direction
-        if direction == "left":
-            self.vx = -self.base_speed * speed_multiplier
-            self.vy = random.uniform(-80, -120) * speed_multiplier  # Upward movement
-        elif direction == "right":
-            self.vx = self.base_speed * speed_multiplier
-            self.vy = random.uniform(-80, -120) * speed_multiplier  # Upward movement
-        elif direction == "diagonal_left":
-            self.vx = -self.base_speed * 0.6 * speed_multiplier  # Slower horizontal
-            self.vy = -self.base_speed * 0.8 * speed_multiplier  # More vertical
-        else:  # diagonal_right
-            self.vx = self.base_speed * 0.6 * speed_multiplier  # Slower horizontal
-            self.vy = -self.base_speed * 0.8 * speed_multiplier  # More vertical
-
-        # Animation
-        self.float_timer = 0
-        self.float_amplitude = 5  # How much the balloon bobs
-        self.sprite_frame_index = 0
-        self.sprite_animation_timer = 0
-        self.sprite_animation_speed = 0.1  # Seconds per frame
-
-        # Load sprites if not already loaded
-        self.load_sprites()
-
-        # Determine if sprite should be flipped based on direction
-        self.flip_sprite = direction in ["right", "diagonal_right"]
-
-    @classmethod
-    def load_sprites(cls):
-        """Load capybara sprite images (only once for all instances)"""
-        if not cls.sprites_loaded:
-            try:
-                # Load running sprite frames
-                for i in range(5):  # 0 to 4
-                    sprite_path = f"assets/running_capybara/running-capybara-{i}.png"
-                    if os.path.exists(sprite_path):
-                        sprite = pygame.image.load(sprite_path)
-                        # Scale sprite to consistent size
-                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
-                        cls.sprite_frames.append(sprite)
-                    else:
-                        print(f"Warning: Sprite not found: {sprite_path}")
-
-                # Load laydown sprite frames
-                for i in range(5):  # 0 to 4
-                    sprite_path = f"assets/laydown_capybara/frame_{i}_delay-0.1s.png"
-                    if os.path.exists(sprite_path):
-                        sprite = pygame.image.load(sprite_path)
-                        # Scale sprite to consistent size
-                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
-                        cls.laydown_sprite_frames.append(sprite)
-                    else:
-                        print(f"Warning: Laydown sprite not found: {sprite_path}")
-
-                # Load sleeping sprite frames (plays after laying down)
-                for i in range(5):  # 0 to 4
-                    sprite_path = f"assets/sleeping_capybara/frame_{i}_delay-0.1s.png"
-                    if os.path.exists(sprite_path):
-                        sprite = pygame.image.load(sprite_path)
-                        # Scale sprite to consistent size
-                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
-                        cls.sleeping_sprite_frames.append(sprite)
-                    else:
-                        print(f"Warning: Sleeping sprite not found: {sprite_path}")
-
-                # Load sit sprite frames
-                for i in range(5):  # 0 to 4
-                    sprite_path = f"assets/sit_capybara/frame_{i}_delay-0.1s.png"
-                    if os.path.exists(sprite_path):
-                        sprite = pygame.image.load(sprite_path)
-                        # Scale sprite to consistent size
-                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
-                        cls.sit_sprite_frames.append(sprite)
-                    else:
-                        print(f"Warning: Sit sprite not found: {sprite_path}")
-
-                # Load chilling sprite frames (plays after sitting down)
-                for i in range(5):  # 0 to 4
-                    sprite_path = f"assets/chilling_capybara/frame_{i}_delay-0.1s.png"
-                    if os.path.exists(sprite_path):
-                        sprite = pygame.image.load(sprite_path)
-                        # Scale sprite to consistent size
-                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
-                        cls.chilling_sprite_frames.append(sprite)
-                    else:
-                        print(f"Warning: Chilling sprite not found: {sprite_path}")
-
-                # Load front kick sprite frames
-                for i in range(5):  # 0 to 4
-                    sprite_path = f"assets/frontkick_capybara/frame_{i}_delay-0.1s.png"
-                    if os.path.exists(sprite_path):
-                        sprite = pygame.image.load(sprite_path)
-                        # Scale sprite to consistent size
-                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
-                        cls.frontkick_sprite_frames.append(sprite)
-                    else:
-                        print(f"Warning: Front kick sprite not found: {sprite_path}")
-
-                # Load standing sprite frames
-                for i in range(5):  # 0 to 4
-                    sprite_path = f"assets/standing_capybara/frame_{i}_delay-0.1s.png"
-                    if os.path.exists(sprite_path):
-                        sprite = pygame.image.load(sprite_path)
-                        # Scale sprite to consistent size
-                        sprite = pygame.transform.scale(sprite, cls.sprite_size)
-                        cls.standing_sprite_frames.append(sprite)
-                    else:
-                        print(f"Warning: Standing sprite not found: {sprite_path}")
-
-                if cls.sprite_frames:
-                    cls.sprites_loaded = True
-                    print(
-                        f"Loaded {len(cls.sprite_frames)} running, {len(cls.laydown_sprite_frames)} laydown, {len(cls.sit_sprite_frames)} sit, {len(cls.frontkick_sprite_frames)} kick, {len(cls.standing_sprite_frames)} standing sprites"
-                    )
-                else:
-                    print("Warning: No capybara sprites loaded")
-            except Exception as e:
-                print(f"Error loading sprites: {e}")
-                cls.sprites_loaded = False
-
-    def update(self, dt: float) -> bool:
-        """
-        Update capybara position and state
-
-        Returns:
-            True if capybara should be removed (escaped or fell off screen)
-        """
-        self.flight_time += dt
-
-        # Update sprite animation based on state
-        if self.alive and self.sprite_frames:
-            # Flying capybara - always use running animation
-            self.sprite_animation_timer += dt
-            if self.sprite_animation_timer > self.sprite_animation_speed:
-                self.sprite_animation_timer = 0
-                self.sprite_frame_index = (self.sprite_frame_index + 1) % len(self.sprite_frames)
-        elif self.standing and self.__class__.standing_sprite_frames:
-            # Standing animation for grounded capybaras
-            self.standing_animation_timer += dt
-            if self.standing_animation_timer > self.standing_animation_speed:
-                self.standing_animation_timer = 0
-                self.standing_animation_frame = (self.standing_animation_frame + 1) % len(
-                    self.__class__.standing_sprite_frames
-                )
-        elif self.walking and self.sprite_frames:
-            # Walking animation for grounded capybaras
-            self.sprite_animation_timer += dt
-            if self.sprite_animation_timer > self.sprite_animation_speed:
-                self.sprite_animation_timer = 0
-                self.sprite_frame_index = (self.sprite_frame_index + 1) % len(self.sprite_frames)
-
-        # Update balloon float animation
-        self.float_timer += dt
-        self.string_wave = math.sin(self.float_timer * 3) * 2  # Gentle string waving
-
-        if self.alive:
-            # Balloon is intact - float with balloon
-            self.x += self.vx * dt
-            self.y += self.vy * dt
-
-            # Add bobbing motion from balloon
-            self.y += math.sin(self.float_timer * 2) * self.float_amplitude * dt
-
-            # Check if escaped off screen
-            if self.flight_time > self.escape_time:
-                # Start flying upward to escape
-                self.vy = max(self.vy - 150 * dt, -300)
-
-            # Check boundaries
-            if self.x < -100 or self.x > SCREEN_WIDTH + 100:
-                return True  # Escaped horizontally
-            if self.y < -100:
-                return True  # Escaped vertically
-
-            # Keep above ground level
-            if self.y > SCREEN_HEIGHT - 150:
-                self.y = SCREEN_HEIGHT - 150
-                self.vy = min(self.vy, 0)
-
-        elif self.grounded:
-            # Capybara is on ground - maintain Y position
-            self.y = self.ground_y  # Always keep at ground level
-            self.time_until_action -= dt
-
-            # Handle laying down animation transitions
-            if self.laying_animation_playing:
-                self.laying_animation_timer += dt
-                if self.laying_animation_timer > self.laying_animation_speed:
-                    self.laying_animation_timer = 0
-
-                    if self.laying_animation_reverse:
-                        # Getting up animation (play frames in reverse)
-                        if self.laying_animation_frame > 0:
-                            self.laying_animation_frame -= 1
-                        else:
-                            # Finished getting up - choose to stand or walk
-                            self.laying_animation_playing = False
-                            self.laying_down = False
-                            self.sleeping = False  # Stop sleeping when getting up
-                            if random.random() < 0.25:  # 25% chance to stand after getting up
-                                self.standing = True
-                                self.walking = False
-                            else:
-                                self.standing = False
-                                self.walking = True
-                            self.time_until_action = random.uniform(2.0, 5.0)
-                    else:
-                        # Laying down animation
-                        if self.laying_animation_frame < len(self.laydown_sprite_frames) - 1:
-                            self.laying_animation_frame += 1
-                        else:
-                            # Finished laying down - start sleeping
-                            self.laying_animation_playing = False
-                            self.laying_down = True
-                            self.sleeping = True
-                            self.sleeping_frame = 0
-                            self.sleeping_forward = True
-                            self.sleeping_timer = 0
-                            self.time_until_action = random.uniform(3.0, 6.0)  # Stay down longer
-
-            # Handle sleeping animation (breathing loop)
-            if self.sleeping and self.laying_down:
-                self.sleeping_timer += dt
-                if self.sleeping_timer > self.sleeping_speed:
-                    self.sleeping_timer = 0
-
-                    # Animation goes 0->1->2->3->4->3->2->1->0 and loops
-                    if self.sleeping_forward:
-                        self.sleeping_frame += 1
-                        if self.sleeping_frame >= len(self.sleeping_sprite_frames) - 1:
-                            self.sleeping_frame = len(self.sleeping_sprite_frames) - 1
-                            self.sleeping_forward = False
-                    else:
-                        self.sleeping_frame -= 1
-                        if self.sleeping_frame <= 0:
-                            self.sleeping_frame = 0
-                            self.sleeping_forward = True
-
-            # Handle chilling animation (simple loop)
-            if self.chilling and self.sitting:
-                self.chilling_timer += dt
-                if self.chilling_timer > self.chilling_speed:
-                    self.chilling_timer = 0
-                    # Simple loop: 0->1->2->3->4->0
-                    self.chilling_frame = (self.chilling_frame + 1) % len(self.chilling_sprite_frames)
-
-            # Handle kicking animation
-            elif self.kicking:
-                self.kick_animation_timer += dt
-                if self.kick_animation_timer > self.kick_animation_speed:
-                    self.kick_animation_timer = 0
-                    self.kick_animation_frame += 1
-
-                    # Check if we completed a loop
-                    if self.kick_animation_frame >= len(self.frontkick_sprite_frames):
-                        self.kick_animation_frame = 0
-                        self.kick_loops_completed += 1
-
-                        # Check if we've done enough loops
-                        if self.kick_loops_completed >= self.kick_loops_target:
-                            # Finished kicking - choose to stand or walk
-                            self.kicking = False
-                            self.kick_loops_completed = 0
-                            if random.random() < 0.25:  # 25% chance to stand after kicking
-                                self.standing = True
-                                self.walking = False
-                            else:
-                                self.standing = False
-                                self.walking = True
-                            self.time_until_action = random.uniform(2.0, 5.0)
-
-            # Handle sitting animation transitions
-            elif self.sit_animation_playing:
-                self.sit_animation_timer += dt
-                if self.sit_animation_timer > self.sit_animation_speed:
-                    self.sit_animation_timer = 0
-
-                    if self.sit_animation_reverse:
-                        # Standing up animation (play frames in reverse)
-                        if self.sit_animation_frame > 0:
-                            self.sit_animation_frame -= 1
-                        else:
-                            # Finished standing up - choose to stand or walk
-                            self.sit_animation_playing = False
-                            self.sitting = False
-                            self.chilling = False  # Make sure chilling is stopped
-                            if random.random() < 0.25:  # 25% chance to stand after sitting
-                                self.standing = True
-                                self.walking = False
-                            else:
-                                self.standing = False
-                                self.walking = True
-                            self.time_until_action = random.uniform(2.0, 5.0)
-                    else:
-                        # Sitting down animation
-                        if self.sit_animation_frame < len(self.sit_sprite_frames) - 1:
-                            self.sit_animation_frame += 1
-                        else:
-                            # Finished sitting down - start chilling
-                            self.sit_animation_playing = False
-                            self.sitting = True
-                            self.chilling = True
-                            self.chilling_frame = 0
-                            self.chilling_timer = 0
-                            self.time_until_action = random.uniform(2.0, 4.0)  # Sit for a moderate time
-
-            # Decide on next action (only if not already animating)
-            if (
-                self.time_until_action <= 0
-                and not self.laying_animation_playing
-                and not self.sit_animation_playing
-                and not self.kicking
-            ):
-                if self.laying_down:
-                    # Start getting up from laying
-                    self.sleeping = False  # Stop sleeping when starting to get up
-                    self.laying_animation_playing = True
-                    self.laying_animation_reverse = True
-                    self.laying_animation_frame = len(self.laydown_sprite_frames) - 1
-                elif self.sitting:
-                    # Start standing up from sitting
-                    self.chilling = False  # Stop chilling when starting to get up
-                    self.sit_animation_playing = True
-                    self.sit_animation_reverse = True
-                    self.sit_animation_frame = len(self.sit_sprite_frames) - 1
-                else:
-                    # Decide what to do next based on current state
-                    action_roll = random.random()
-
-                    if self.standing:
-                        # Standing capybara can: start walking, kick, lay down, or sit
-                        if action_roll < 0.25:  # 25% chance to start walking
-                            self.standing = False
-                            self.walking = True
-                            self.time_until_action = random.uniform(2.0, 5.0)
-                        elif action_roll < 0.40:  # 15% chance to kick
-                            self.standing = False  # Clear standing state
-                            self.walking = False
-                            self.kicking = True
-                            self.kick_animation_frame = 0
-                            self.kick_loops_completed = 0
-                            self.kick_loops_target = 3
-                        elif action_roll < 0.55:  # 15% chance to lay down
-                            self.standing = False  # Clear standing state
-                            self.walking = False
-                            self.laying_animation_playing = True
-                            self.laying_animation_reverse = False
-                            self.laying_animation_frame = 0
-                        elif action_roll < 0.70:  # 15% chance to sit
-                            self.standing = False  # Clear standing state
-                            self.walking = False
-                            self.sit_animation_playing = True
-                            self.sit_animation_reverse = False
-                            self.sit_animation_frame = 0
-                        else:
-                            # Keep standing, reset timer
-                            self.time_until_action = random.uniform(2.0, 5.0)
-
-                    elif self.walking:
-                        # Walking capybara can: stand, kick, lay down, or sit
-                        if action_roll < 0.20:  # 20% chance to stand
-                            self.walking = False
-                            self.standing = True
-                            self.time_until_action = random.uniform(2.0, 5.0)
-                        elif action_roll < 0.35:  # 15% chance to kick
-                            self.walking = False  # Clear walking state
-                            self.standing = False
-                            self.kicking = True
-                            self.kick_animation_frame = 0
-                            self.kick_loops_completed = 0
-                            self.kick_loops_target = 3
-                        elif action_roll < 0.50:  # 15% chance to lay down
-                            self.walking = False  # Clear walking state
-                            self.standing = False
-                            self.laying_animation_playing = True
-                            self.laying_animation_reverse = False
-                            self.laying_animation_frame = 0
-                        elif action_roll < 0.65:  # 15% chance to sit
-                            self.walking = False  # Clear walking state
-                            self.standing = False
-                            self.sit_animation_playing = True
-                            self.sit_animation_reverse = False
-                            self.sit_animation_frame = 0
-                        else:
-                            # Keep walking, reset timer
-                            self.time_until_action = random.uniform(2.0, 5.0)
-
-            # Only move if walking and not doing any special action
-            if (
-                self.walking
-                and not self.laying_down
-                and not self.laying_animation_playing
-                and not self.sitting
-                and not self.sit_animation_playing
-                and not self.kicking
-            ):
-                # Calculate new position
-                new_x = self.x + self.walk_speed * self.walk_direction * dt
-
-                # Check pond boundaries (pond is at bottom left)
-                # Pond parameters from init_scenery
-                pond_center_x = 100
-                pond_center_y = SCREEN_HEIGHT - 40
-                pond_width = 280
-                pond_height = 140
-                pond_left = pond_center_x - pond_width // 2 - 20  # Add buffer
-                pond_right = pond_center_x + pond_width // 2 + 20  # Add buffer
-                pond_top = pond_center_y - pond_height // 2 - 10  # Add buffer
-
-                # Check if capybara would walk into pond area
-                in_pond_x = pond_left < new_x < pond_right
-                in_pond_y = self.y > pond_top  # Capybara is low enough to be near pond
-
-                if in_pond_x and in_pond_y:
-                    # Turn around instead of walking into pond
-                    self.walk_direction *= -1
-                    self.flip_sprite = self.walk_direction > 0
-                else:
-                    # Safe to move
-                    self.x = new_x
-
-                # Turn around at screen edges
-                if self.x <= 50:
-                    self.walk_direction = 1
-                    self.flip_sprite = True
-                elif self.x >= SCREEN_WIDTH - 50:
-                    self.walk_direction = -1
-                    self.flip_sprite = False
-
-            # Keep current Y position (already set when landing)
-
-        else:
-            # Falling after balloon popped or shot
-            if self.shot_capybara:
-                # Shot capybara falls faster and off screen
-                self.fall_speed += 800 * dt  # Faster gravity for shot capybaras
-                self.y += self.fall_speed * dt
-
-                # Slight horizontal drift while falling
-                self.x += random.uniform(-20, 20) * dt
-
-                # Remove when fallen off screen
-                if self.y > SCREEN_HEIGHT + self.size:
-                    return True  # Remove from game
-            else:
-                # Balloon was popped - gentler fall
-                self.fall_speed += 300 * dt  # Gentler gravity
-                self.y += self.fall_speed * dt
-
-                # Check if hit ground (use pre-determined ground level)
-                if self.y >= self.ground_y:
-                    self.y = self.ground_y
-                    self.grounded = True
-
-                    # Check if capybara landed in pond area
-                    pond_center_x = 100
-                    pond_center_y = SCREEN_HEIGHT - 60
-                    pond_width = 150
-                    pond_height = 100
-                    pond_left = pond_center_x - pond_width // 2
-                    pond_right = pond_center_x + pond_width // 2
-                    pond_top = pond_center_y - pond_height // 2 - 10
-
-                    # If landed in pond, teleport to right edge + 10px
-                    if pond_left < self.x < pond_right and self.y > pond_top:
-                        self.x = pond_right + 10  # Move to right of pond + 10px
-                        print(f"Capybara rescued from pond! Moved to x={self.x}")
-
-                    # Randomly choose to stand or walk when landing
-                    if random.random() < 0.2:  # 20% chance to stand
-                        self.standing = True
-                        self.walking = False
-                    else:
-                        self.walking = True
-                        self.standing = False
-                    self.walk_direction = random.choice([-1, 1])
-                    self.flip_sprite = self.walk_direction > 0
-
-        return False
-
-    def check_hit(self, x: int, y: int) -> tuple[bool, str]:
-        """Check if shot hit the balloon or capybara
-
-        Returns:
-            (hit, target) where target is 'balloon', 'capybara', or 'none'
-        """
-        if not self.alive or self.balloon_popped:
-            return False, "none"
-
-        # Check balloon hit first (above capybara)
-        balloon_y = self.y - self.size // 2 - 40  # Balloon is above capybara
-        balloon_distance = math.sqrt((x - self.x) ** 2 + (y - balloon_y) ** 2)
-        if balloon_distance < self.balloon_radius:
-            return True, "balloon"
-
-        # Check capybara hit
-        capybara_distance = math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
-        if capybara_distance < self.size // 2:
-            return True, "capybara"
-
-        return False, "none"
-
-    def shoot(self, target: str):
-        """Handle shooting the balloon or capybara"""
-        if target == "balloon":
-            self.alive = False
-            self.balloon_popped = True
-            self.hit_time = time.time()
-            self.fall_speed = 0
-            # Set random landing position when balloon is popped
-            self.ground_y = random.randint(575, 700)
-        elif target == "capybara":
-            self.alive = False
-            self.balloon_popped = True
-            self.shot_capybara = True
-            self.hit_time = time.time()
-            self.fall_speed = 0
-            # Shot capybaras also get a random landing position
-            self.ground_y = random.randint(575, 700)
-
-    def draw(self, screen: pygame.Surface):
-        """Draw the capybara with balloon"""
-        # Check if capybara is on ground
-        if self.grounded:
-            # Draw grounded capybara (walking, standing, or doing actions)
-            self._draw_walking_capybara(screen)
-        elif not self.alive:
-            # Draw falling/dead capybara
-            self._draw_dead_capybara(screen)
-        else:
-            # Draw flying capybara with balloon
-            self._draw_flying_capybara(screen)
-
-    def _draw_flying_capybara(self, screen: pygame.Surface):
-        """Draw a flying capybara with balloon"""
-        x, y = int(self.x), int(self.y)
-
-        # Draw balloon string first (behind balloon)
-        balloon_x = x
-        balloon_y = y - self.size // 2 - 40  # Balloon is above capybara
-
-        # Draw wavy string from capybara to balloon
-        string_points = []
-        num_segments = 8
-        for i in range(num_segments + 1):
-            t = i / num_segments
-            string_x = x + self.string_wave * math.sin(t * math.pi) * (1 - t)  # Less wave at top
-            string_y = y - t * (self.size // 2 + 40)
-            string_points.append((string_x, string_y))
-
-        # Draw string
-        for i in range(len(string_points) - 1):
-            pygame.draw.line(screen, (100, 100, 100), string_points[i], string_points[i + 1], 2)
-
-        # Draw balloon shadow
-        shadow_offset = 3
-        pygame.draw.circle(
-            screen, (50, 50, 50, 100), (balloon_x + shadow_offset, balloon_y + shadow_offset), self.balloon_radius
-        )
-
-        # Draw balloon
-        pygame.draw.circle(screen, self.balloon_color, (balloon_x, balloon_y), self.balloon_radius)
-
-        # Draw balloon highlight
-        highlight_x = balloon_x - self.balloon_radius // 3
-        highlight_y = balloon_y - self.balloon_radius // 3
-        pygame.draw.circle(screen, (255, 255, 255, 150), (highlight_x, highlight_y), self.balloon_radius // 4)
-
-        # Draw capybara sprite
-        if self.sprites_loaded and self.sprite_frames:
-            # Get current sprite frame
-            sprite = self.sprite_frames[self.sprite_frame_index]
-
-            # Flip sprite if moving right
-            if self.flip_sprite:
-                sprite = pygame.transform.flip(sprite, True, False)
-
-            # Draw sprite centered at position
-            sprite_rect = sprite.get_rect(center=(x, y))
-            screen.blit(sprite, sprite_rect)
-        else:
-            # Fallback to simple drawn capybara if sprites not loaded
-            body_rect = pygame.Rect(x - self.size // 2, y - self.size // 3, self.size, self.size * 2 // 3)
-            pygame.draw.ellipse(screen, self.color, body_rect)
-            pygame.draw.ellipse(screen, (100, 60, 30), body_rect, 2)
-
-            # Head (circle)
-            head_size = self.size // 2
-            head_x = x - self.size // 2 - head_size // 2 if self.vx < 0 else x + self.size // 2 - head_size // 2
-            pygame.draw.circle(screen, self.color, (head_x, y - self.size // 4), head_size // 2)
-            pygame.draw.circle(screen, (100, 60, 30), (head_x, y - self.size // 4), head_size // 2, 2)
-
-    def _draw_walking_capybara(self, screen: pygame.Surface):
-        """Draw a walking capybara on the ground"""
-        x, y = int(self.x), int(self.y)
-
-        # Draw sprite if available
-        if self.sprites_loaded:
-            sprite = None
-
-            # Choose sprite based on state (priority: kicking > laying > sitting > standing > walking)
-            if self.kicking:
-                # Use front kick sprite
-                if self.__class__.frontkick_sprite_frames:
-                    sprite = self.__class__.frontkick_sprite_frames[self.kick_animation_frame]
-                    # Front kick sprites face west by default, flip if facing east
-                    if self.flip_sprite:
-                        sprite = pygame.transform.flip(sprite, True, False)
-            elif self.laying_down or self.laying_animation_playing:
-                # Use sleeping sprite if sleeping, otherwise laydown sprite
-                if self.sleeping and self.__class__.sleeping_sprite_frames:
-                    sprite = self.__class__.sleeping_sprite_frames[self.sleeping_frame]
-                    # Sleeping sprites face west by default, flip if facing east
-                    if self.flip_sprite:
-                        sprite = pygame.transform.flip(sprite, True, False)
-                elif self.__class__.laydown_sprite_frames:
-                    sprite = self.__class__.laydown_sprite_frames[self.laying_animation_frame]
-                    # Laydown sprites face west by default, flip if facing east
-                    if self.flip_sprite:
-                        sprite = pygame.transform.flip(sprite, True, False)
-            elif self.sitting or self.sit_animation_playing:
-                # Use chilling sprite if chilling, otherwise sit sprite
-                if self.chilling and self.__class__.chilling_sprite_frames:
-                    sprite = self.__class__.chilling_sprite_frames[self.chilling_frame]
-                    # Chilling sprites face west by default, flip if facing east
-                    if self.flip_sprite:
-                        sprite = pygame.transform.flip(sprite, True, False)
-                elif self.__class__.sit_sprite_frames:
-                    sprite = self.__class__.sit_sprite_frames[self.sit_animation_frame]
-                    # Sit sprites face west by default, flip if facing east
-                    if self.flip_sprite:
-                        sprite = pygame.transform.flip(sprite, True, False)
-            elif self.standing:
-                # Use standing sprite
-                if self.__class__.standing_sprite_frames:
-                    sprite = self.__class__.standing_sprite_frames[self.standing_animation_frame]
-                    # Standing sprites face west by default, flip if facing east
-                    if self.flip_sprite:
-                        sprite = pygame.transform.flip(sprite, True, False)
-            elif self.walking and self.sprite_frames:
-                # Use walking sprite
-                sprite = self.sprite_frames[self.sprite_frame_index]
-                # Flip sprite if moving right
-                if self.flip_sprite:
-                    sprite = pygame.transform.flip(sprite, True, False)
-
-            if sprite:
-                # Draw sprite centered at position
-                sprite_rect = sprite.get_rect(center=(x, y))
-                screen.blit(sprite, sprite_rect)
-                return
-
-        # Fallback to simple drawn capybara if sprites not loaded
-        body_rect = pygame.Rect(x - self.size // 2, y - self.size // 3, self.size, self.size * 2 // 3)
-        pygame.draw.ellipse(screen, self.color, body_rect)
-        pygame.draw.ellipse(screen, (100, 60, 30), body_rect, 2)
-
-    def _draw_dead_capybara(self, screen: pygame.Surface):
-        """Draw a falling/dead capybara (shot capybara or safely landed)"""
-        x, y = int(self.x), int(self.y)
-
-        # Draw sprite if available
-        if self.sprites_loaded and self.sprite_frames:
-            # Keep animating sprite while falling
-            self.sprite_animation_timer += 0.016  # Approximate dt
-            if self.sprite_animation_timer > self.sprite_animation_speed:
-                self.sprite_animation_timer = 0
-                self.sprite_frame_index = (self.sprite_frame_index + 1) % len(self.sprite_frames)
-
-            # Get current sprite frame
-            sprite = self.sprite_frames[self.sprite_frame_index]
-
-            # Flip sprite if needed
-            if self.flip_sprite:
-                sprite = pygame.transform.flip(sprite, True, False)
-
-            # Only rotate if capybara was shot (not for safe landing)
-            if self.shot_capybara:
-                angle = (time.time() - self.hit_time) * 180  # Rotate while falling
-                sprite = pygame.transform.rotate(sprite, angle)
-
-            # Draw sprite centered at position
-            sprite_rect = sprite.get_rect(center=(x, y))
-            screen.blit(sprite, sprite_rect)
-        else:
-            # Fallback to simple drawn capybara
-            body_rect = pygame.Rect(x - self.size // 2, y - self.size // 3, self.size, self.size * 2 // 3)
-            pygame.draw.ellipse(screen, self.color, body_rect)
-            pygame.draw.ellipse(screen, (100, 60, 30), body_rect, 2)
-
-        # Draw X eyes only if capybara was shot (not if balloon was popped)
-        if self.shot_capybara:
-            eye_size = 12  # Bigger X for emphasis
-            eye_offset = 15
-
-            # X eyes (dead) - positioned relative to center
-            pygame.draw.line(
-                screen, (255, 0, 0), (x - eye_size, y - eye_offset - eye_size), (x + eye_size, y - eye_offset + eye_size), 4
-            )
-            pygame.draw.line(
-                screen, (255, 0, 0), (x - eye_size, y - eye_offset + eye_size), (x + eye_size, y - eye_offset - eye_size), 4
-            )
+from game.capybara import CapybaraManager, FlyingCapybara
 
 
 class CapybaraHuntScreen(BaseScreen):
@@ -863,18 +50,10 @@ class CapybaraHuntScreen(BaseScreen):
         self.huge_font = pygame.font.Font(None, 120)
 
         # Game state
-        self.round_number = 1
         self.score = 0
         self.shots_remaining = 5  # Increased from 3 to 5 for buffer
-        self.capybaras_per_round = 10
-        self.capybaras_spawned = 0
-        self.capybaras_hit = 0
-        self.required_hits = 6  # Start with 6/10 required
         self.game_over = False
-        self.round_complete = False
         self.round_complete_time = 0
-        self.round_ready_to_complete = False  # Track when round is ready to complete
-        self.round_ready_time = 0  # Time when round became ready
         self.paused = False
 
         # UI Buttons for shooting
@@ -889,6 +68,7 @@ class CapybaraHuntScreen(BaseScreen):
             "mood": "neutral",  # neutral, happy, sad, excited, laughing, surprised, celebration, relieved, proud, disappointed, worried
             "mood_timer": 0,
             "mood_duration": 2.0,  # How long each mood lasts
+            "mood_priority": 0,  # Priority level for mood override (higher = harder to override)
             "bob_offset": 0,  # For bobbing animation
             "bob_time": 0,
             "last_hit_streak": 0,  # Track consecutive hits
@@ -910,12 +90,11 @@ class CapybaraHuntScreen(BaseScreen):
             print(f"Could not load pond buddy sprite: {e}")
             self.pond_buddy["sprite"] = None
 
-        # Capybara management
-        self.capybaras: List[FlyingCapybara] = []
-        self.spawn_timer = 0
-        self.spawn_delay = 2.0  # Seconds between spawns
-        self.current_wave_capybaras = 0  # Capybaras in current wave (1 or 2)
-        self.wave_active = False
+        # Capybara management - using CapybaraManager instead of direct management
+        self.capybara_manager = CapybaraManager(SCREEN_WIDTH, SCREEN_HEIGHT)
+        
+        # Remove old capybara management variables that are now handled by CapybaraManager
+        # These were: self.capybaras, self.spawn_timer, self.spawn_delay, self.current_wave_capybaras, self.wave_active
 
         # Shooting state
         self.shoot_pos = None
@@ -1605,7 +784,7 @@ class CapybaraHuntScreen(BaseScreen):
                 mouse_pos = pygame.mouse.get_pos()
 
                 # Check continue button
-                if self.round_complete and self.continue_button:
+                if self.capybara_manager.round_complete and self.continue_button:
                     if self.continue_button.rect.collidepoint(mouse_pos):
                         self.start_next_round()
                         return None
@@ -1639,14 +818,19 @@ class CapybaraHuntScreen(BaseScreen):
             if event.key == pygame.K_ESCAPE:
                 return GAME_STATE_MENU
             elif event.key == pygame.K_p or event.key == pygame.K_SPACE:
-                if not self.game_over and not self.round_complete:
+                if not self.game_over and not self.capybara_manager.round_complete:
                     self.paused = not self.paused
             elif event.key == pygame.K_r:
                 self.reset_game()
-            elif event.key == pygame.K_RETURN and (self.game_over or self.round_complete):
-                if self.game_over:
+            elif event.key == pygame.K_RETURN and (self.game_over or self.capybara_manager.round_complete or self.capybara_manager.game_over):
+                if self.game_over or self.capybara_manager.game_over:
+                    # Process game over reaction if not already done
+                    if self.capybara_manager.game_over and not hasattr(self, '_game_over_processed'):
+                        self._game_over_processed = True
+                        self.game_over = True
+                        self._set_pond_buddy_mood("disappointed", 5.0, 2)
                     self.reset_game()
-                elif self.round_complete:
+                elif self.capybara_manager.round_complete:
                     self.start_next_round()
             elif event.key == pygame.K_SLASH and self.paused:  # Open console with /
                 self.console_active = True
@@ -1656,21 +840,12 @@ class CapybaraHuntScreen(BaseScreen):
 
     def reset_game(self) -> None:
         """Reset the entire game"""
-        self.round_number = 1
         self.score = 0
         self.shots_remaining = 5  # Reset to 5 shots
-        self.capybaras_per_round = 10
-        self.capybaras_spawned = 0
-        self.capybaras_hit = 0
-        self.required_hits = 6
         self.game_over = False
-        self.round_complete = False
-        self.round_ready_to_complete = False
-        self.round_ready_time = 0
-        self.capybaras.clear()
+        self.round_complete_time = 0
+        self.capybara_manager.reset_game()
         self.hit_markers.clear()
-        self.spawn_timer = 0
-        self.wave_active = False
         self.hand_tracker.reset_tracking_state()
         self.shoot_pos = None
         self.crosshair_pos = None
@@ -1681,31 +856,25 @@ class CapybaraHuntScreen(BaseScreen):
 
     def start_next_round(self) -> None:
         """Start the next round"""
-        self.round_number += 1
-        self.capybaras_spawned = 0
-        self.capybaras_hit = 0
+        # Starting next round
+        self.capybara_manager.start_next_round()
         self.shots_remaining = 5  # Reset to 5 shots for new round
-        self.round_complete = False
-        self.round_ready_to_complete = False
-        self.round_ready_time = 0
-        self.capybaras.clear()  # Clear capybaras when starting new round
+        # Remove processed flags for round completion
+        if hasattr(self, '_round_completion_processed'):
+            delattr(self, '_round_completion_processed')
+        if hasattr(self, '_game_over_processed'):
+            delattr(self, '_game_over_processed')
         self.hit_markers.clear()
-        self.spawn_timer = 0
-        self.wave_active = False
         # Reset continue button for next round
         self.continue_button = None
 
-        # Increase difficulty (slower progression)
-        self.required_hits = min(9, 6 + (self.round_number - 1) // 5)  # More gradual increase
-        self.spawn_delay = max(1.0, 2.0 - self.round_number * 0.1)  # Faster spawns
-
         # Pond buddy gets excited for new round
-        if self.round_number > 1:
-            if self.round_number % 5 == 0:
+        if self.capybara_manager.round_number > 1:
+            if self.capybara_manager.round_number % 5 == 0:
                 # Milestone round!
-                self._set_pond_buddy_mood("celebration", 2.0)
+                self._set_pond_buddy_mood("celebration", 2.0, 3)
             else:
-                self._set_pond_buddy_mood("excited", 1.5)
+                self._set_pond_buddy_mood("excited", 1.5, 2)
 
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update game state"""
@@ -1716,25 +885,27 @@ class CapybaraHuntScreen(BaseScreen):
         self._update_pond_buddy(dt)
         self.update_scenery(dt)
 
-        # Always update capybara animations (even during round complete/game over)
-        capybaras_to_remove = []
-        for capybara in self.capybaras:
-            if capybara.update(dt):
-                capybaras_to_remove.append(capybara)
-                # Only count misses during active gameplay
-                if not self.round_complete and not self.game_over:
-                    if capybara.alive and not hasattr(capybara, "already_counted"):
-                        # Missed (escaped) - only count if not already counted
-                        self.hit_markers.append(False)
-                        capybara.already_counted = True
-                        # Pond buddy reacts to the escape
-                        self._on_capybara_escape()
-
-        for capybara in capybaras_to_remove:
-            self.capybaras.remove(capybara)
+        # Update capybara manager
+        capybaras_removed, new_wave_spawned, escaped_count = self.capybara_manager.update(dt, current_time)
+        
+        # Check if manager signaled game over
+        if self.capybara_manager.game_over and not hasattr(self, '_game_over_processed'):
+            self._game_over_processed = True
+            self.game_over = True
+            self._set_pond_buddy_mood("disappointed", 5.0, 2)
+        
+        # Refresh shots when new wave spawns (Duck Hunt style)
+        if new_wave_spawned and not self.capybara_manager.round_complete and not self.game_over:
+            self.shots_remaining = 5  # Reset to 5 shots per wave
+        
+        # Handle escaped capybaras - add to hit_markers as misses (red squares)
+        if escaped_count > 0 and not self.capybara_manager.round_complete and not self.game_over:
+            for _ in range(escaped_count):
+                self.hit_markers.append(False)  # False = miss = red square
+                self._on_capybara_escape()  # Pond buddy shows worried reaction
 
         # Handle button shooting in round complete or game over states
-        if self.round_complete:
+        if self.capybara_manager.round_complete:
             if self.continue_button and self.shoot_detected:
                 if self._check_button_hit(self.continue_button):
                     self.shoot_detected = False
@@ -1754,55 +925,13 @@ class CapybaraHuntScreen(BaseScreen):
         if self.paused:
             return None
 
-        # Spawn capybaras (only during active gameplay)
-        if not self.wave_active and self.capybaras_spawned < self.capybaras_per_round:
-            self.spawn_timer += dt
-            if self.spawn_timer >= self.spawn_delay:
-                self.spawn_wave()
-                self.spawn_timer = 0
+        # Spawning is now handled by CapybaraManager in the update call above
 
-        # Check if wave is complete (all capybaras either escaped or balloon popped)
-        if self.wave_active:
-            flying_capybaras = [c for c in self.capybaras if c.alive]
-            if len(flying_capybaras) == 0:
-                self.wave_active = False
-                self.shots_remaining = 5  # Reset shots for next wave
+        # Round completion processing is handled in draw() method
 
-        # Check round completion (when all capybaras spawned and no flying/falling ones left)
-        if self.capybaras_spawned >= self.capybaras_per_round:
-            flying_capybaras = [c for c in self.capybaras if c.alive]
-            # Falling capybaras are those that are not alive, not grounded, and not shot
-            falling_capybaras = [c for c in self.capybaras if not c.alive and not c.grounded and not c.shot_capybara]
-
-            # First check if round is ready (all capybaras are either landed or gone)
-            if len(flying_capybaras) == 0 and len(falling_capybaras) == 0 and not self.wave_active:
-                if not self.round_ready_to_complete:
-                    self.round_ready_to_complete = True
-                    self.round_ready_time = time.time()
-
-                # Wait 0.5 seconds before showing continue screen
-                if time.time() - self.round_ready_time >= 0.5:
-                    # Don't clear capybaras here - let them stay visible
-                    # They'll be cleared when continue is clicked
-
-                    if self.capybaras_hit >= self.required_hits:
-                        self.round_complete = True
-                        self.round_complete_time = time.time()
-                        # Perfect round bonus
-                        if self.capybaras_hit == self.capybaras_per_round:
-                            self.score += 1000 * self.round_number
-                            # Pond buddy celebrates perfect round
-                            self._set_pond_buddy_mood("celebration", 4.0)
-                        elif self.capybaras_hit == self.required_hits:
-                            # Just barely made it
-                            self._set_pond_buddy_mood("relieved", 3.0)
-                        else:
-                            # Good job
-                            self._set_pond_buddy_mood("proud", 3.0)
-                    else:
-                        self.game_over = True
-                        # Pond buddy reacts to game over
-                        self._set_pond_buddy_mood("disappointed", 5.0)
+        # Round completion processing is now handled in draw() method when the screen is first displayed
+                
+        # Game over is now handled by CapybaraManager in update() method above
 
         # Update FPS counter
         self.fps_counter += 1
@@ -1815,24 +944,29 @@ class CapybaraHuntScreen(BaseScreen):
         return None
 
     def spawn_wave(self):
-        """Spawn a wave of 1 or 2 capybaras"""
+        """DEPRECATED: Spawning is now handled by CapybaraManager"""
+        # This method is no longer used - CapybaraManager handles all spawning
+        pass
+        
+    def _old_spawn_wave_logic(self):
+        """Old spawning logic - kept for reference"""
         self.wave_active = True
 
         # Determine number of capybaras based on round with increasing chance
-        if self.round_number <= 2:
+        if self.capybara_manager.round_number <= 2:
             num_capybaras = 1
         else:
             # Calculate chance for multiple spawn (increases with rounds)
             # Round 3: 30% chance, Round 4: 40%, Round 5: 50%, etc.
-            multi_spawn_chance = min(0.3 + (self.round_number - 3) * 0.1, 0.8)  # Cap at 80%
+            multi_spawn_chance = min(0.3 + (self.capybara_manager.round_number - 3) * 0.1, 0.8)  # Cap at 80%
 
             # Check if we should spawn 2 (and if we have at least 2 capybaras left to spawn)
-            if random.random() < multi_spawn_chance and self.capybaras_spawned < self.capybaras_per_round - 1:
+            if random.random() < multi_spawn_chance and self.capybara_manager.capybaras_spawned < self.capybara_manager.capybaras_per_round - 1:
                 num_capybaras = 2
             else:
                 num_capybaras = 1
 
-        self.current_wave_capybaras = min(num_capybaras, self.capybaras_per_round - self.capybaras_spawned)
+        self.current_wave_capybaras = min(num_capybaras, self.capybara_manager.capybaras_per_round - self.capybara_manager.capybaras_spawned)
 
         # Spawn capybaras from grass area (2/3 down the screen)
         grass_line = SCREEN_HEIGHT * 2 // 3
@@ -1861,11 +995,11 @@ class CapybaraHuntScreen(BaseScreen):
                 direction = random.choice(["left", "diagonal_left", "diagonal_left"])
 
             # Speed increases with round (more gradual)
-            speed_multiplier = 1.0 + (self.round_number - 1) * 0.08  # 8% increase per round instead of 15%
+            speed_multiplier = 1.0 + (self.capybara_manager.round_number - 1) * 0.08  # 8% increase per round instead of 15%
 
             capybara = FlyingCapybara(start_x, start_y, direction, speed_multiplier)
-            self.capybaras.append(capybara)
-            self.capybaras_spawned += 1
+            self.capybara_manager.capybaras.append(capybara)
+            self.capybara_manager.capybaras_spawned += 1
 
     def _process_hand_tracking(self) -> None:
         """Process hand tracking and shooting detection"""
@@ -1873,7 +1007,7 @@ class CapybaraHuntScreen(BaseScreen):
         self.process_finger_gun_tracking()
 
         # Only handle shooting in active game
-        if not self.game_over and not self.round_complete and not self.paused:
+        if not self.game_over and not self.capybara_manager.round_complete and not self.paused:
             # Check if we should shoot
             if self.shoot_detected and self.shots_remaining > 0:
                 self._handle_shoot(self.crosshair_pos)
@@ -1889,7 +1023,7 @@ class CapybaraHuntScreen(BaseScreen):
 
     def _handle_shoot(self, shoot_position: tuple) -> None:
         """Handle shooting action"""
-        if self.shots_remaining <= 0 or not self.wave_active:
+        if self.shots_remaining <= 0 or self.capybara_manager.round_complete:
             return
 
         self.shoot_pos = shoot_position
@@ -1899,46 +1033,38 @@ class CapybaraHuntScreen(BaseScreen):
         # Play shoot sound
         self.sound_manager.play("shoot")
 
-        # Check for hits
-        hit_any = False
-        for capybara in self.capybaras:
-            hit, target = capybara.check_hit(shoot_position[0], shoot_position[1])
-            if hit:
-                if target == "balloon":
-                    # Good shot! Saved the capybara
-                    capybara.shoot("balloon")
-                    capybara.already_counted = True  # Mark as counted
-                    self.score += 100 * self.round_number
-                    self.capybaras_hit += 1
-                    self.hit_markers.append(True)
-                    self._on_capybara_hit()  # Pond buddy reacts
-                    self.sound_manager.play("hit")
-                    hit_any = True
-                elif target == "capybara":
-                    # Bad shot! Shot the capybara instead of balloon
-                    capybara.shoot("capybara")
-                    capybara.already_counted = True  # Mark as counted
-                    self.score -= 200 * self.round_number  # Penalty for shooting capybara
-                    self.hit_markers.append(False)  # Mark as miss
-                    self._on_capybara_miss()  # Pond buddy reacts
-                    self.sound_manager.play("error")  # Play error sound
-                    # Flash the screen red for visual feedback
-                    self.shoot_animation_time = pygame.time.get_ticks() - 100  # Make animation last longer
-                    self.capybara_shot_message_time = pygame.time.get_ticks()  # Show warning message
-                    hit_any = True
-                break
+        # Check for hits using CapybaraManager
+        hit, target, points = self.capybara_manager.check_hit(shoot_position[0], shoot_position[1])
+        hit_any = hit
+        
+        if hit:
+            if target == "balloon":
+                # Good shot! Saved the capybara
+                self.score += points * self.capybara_manager.round_number
+                self.hit_markers.append(True)
+                self._on_capybara_hit()  # Pond buddy reacts
+                self.sound_manager.play("hit")
+            elif target == "capybara":
+                # Bad shot! Shot the capybara instead of balloon
+                self.score -= points * self.capybara_manager.round_number  # Penalty for shooting capybara
+                self.hit_markers.append(False)  # Mark as miss
+                self._on_capybara_miss()  # Pond buddy reacts
+                self.sound_manager.play("error")  # Play error sound
+                # Flash the screen red for visual feedback
+                self.shoot_animation_time = pygame.time.get_ticks() - 100  # Make animation last longer
+                self.capybara_shot_message_time = pygame.time.get_ticks()  # Show warning message
 
         # If we didn't hit anything, it's a complete miss
         if not hit_any:
             # 1/4 chance for snarky speech when missing completely
             if random.random() < 1 / 4:
-                self._set_pond_buddy_mood("laughing", 2.5)
+                self._set_pond_buddy_mood("laughing", 2.5, 2)
                 # This will automatically use snarky speech since it's the default
 
         # Check if wave should end (out of ammo)
         if self.shots_remaining == 0:
             # Mark ALL remaining flying capybaras in this wave as missed
-            flying_in_wave = [c for c in self.capybaras if c.alive and not hasattr(c, "already_counted")]
+            flying_in_wave = [c for c in self.capybara_manager.capybaras if c.alive and not hasattr(c, "already_counted")]
             for capybara in flying_in_wave:
                 self.hit_markers.append(False)
                 capybara.already_counted = True  # Mark so we don't count it again when it escapes
@@ -1955,11 +1081,8 @@ class CapybaraHuntScreen(BaseScreen):
 
         # Always draw capybaras and pond buddy (even during round complete/game over)
         # Draw capybaras (sorted by Y position for depth layering)
-        # Capybaras with lower Y values (higher up) are drawn first (behind)
-        # Capybaras with higher Y values (lower down) are drawn last (in front)
-        sorted_capybaras = sorted(self.capybaras, key=lambda c: c.y)
-        for capybara in sorted_capybaras:
-            capybara.draw(self.screen)
+        # Draw all capybaras using CapybaraManager
+        self.capybara_manager.draw(self.screen)
 
         # Draw pond buddy (after capybaras so it appears in front)
         self._draw_pond_buddy()
@@ -1968,7 +1091,14 @@ class CapybaraHuntScreen(BaseScreen):
             self._draw_pause_screen()
             return
 
-        if self.game_over:
+        if self.game_over or self.capybara_manager.game_over:
+            if not self.game_over and self.capybara_manager.game_over:
+                # Process game over if screen hasn't caught up yet
+                if not hasattr(self, '_game_over_processed'):
+                    self._game_over_processed = True
+                    self.game_over = True
+                    self._set_pond_buddy_mood("disappointed", 5.0, 2)
+            
             self._draw_game_over_screen()
             # Draw crosshair for button shooting
             if self.crosshair_pos:
@@ -1976,7 +1106,24 @@ class CapybaraHuntScreen(BaseScreen):
             self._draw_camera_feed()
             return
 
-        if self.round_complete:
+        if self.capybara_manager.round_complete:
+            # Process round completion reaction if not already done
+            if not hasattr(self, '_round_completion_processed'):
+                self._round_completion_processed = True
+                self.round_complete_time = pygame.time.get_ticks()
+                
+                # Perfect round bonus
+                if self.capybara_manager.capybaras_hit == self.capybara_manager.capybaras_per_round:
+                    self.score += 1000 * self.capybara_manager.round_number
+                    # Pond buddy celebrates perfect round
+                    self._set_pond_buddy_mood("celebration", 4.0, 3)
+                elif self.capybara_manager.capybaras_hit == self.capybara_manager.required_hits:
+                    # Just barely made it
+                    self._set_pond_buddy_mood("relieved", 3.0, 3)
+                else:
+                    # Good job
+                    self._set_pond_buddy_mood("proud", 3.0, 3)
+            
             self._draw_round_complete_screen()
             # Draw crosshair for button shooting
             if self.crosshair_pos:
@@ -2028,7 +1175,7 @@ class CapybaraHuntScreen(BaseScreen):
         self.screen.blit(score_text, (10, 10))
 
         # Round
-        round_text = self.font.render(f"Round: {self.round_number}", True, WHITE)
+        round_text = self.font.render(f"Round: {self.capybara_manager.round_number}", True, WHITE)
         self.screen.blit(round_text, (10, 50))
 
         # Shots remaining
@@ -2042,7 +1189,7 @@ class CapybaraHuntScreen(BaseScreen):
         meter_y = SCREEN_HEIGHT - 80
 
         # Draw hit markers
-        for i in range(self.capybaras_per_round):
+        for i in range(self.capybara_manager.capybaras_per_round):
             x = meter_x + i * 30
             if i < len(self.hit_markers):
                 color = GREEN if self.hit_markers[i] else (255, 0, 0)
@@ -2052,11 +1199,11 @@ class CapybaraHuntScreen(BaseScreen):
             pygame.draw.rect(self.screen, BLACK, (x, meter_y, 25, 25), 2)
 
         # Draw pass line
-        pass_line_x = meter_x + (self.required_hits - 1) * 30 + 25
+        pass_line_x = meter_x + (self.capybara_manager.required_hits - 1) * 30 + 25
         pygame.draw.line(self.screen, YELLOW, (pass_line_x, meter_y - 5), (pass_line_x, meter_y + 30), 3)
 
         # Required hits text
-        req_text = self.small_font.render(f"Need {self.required_hits}/{self.capybaras_per_round}", True, WHITE)
+        req_text = self.small_font.render(f"Need {self.capybara_manager.required_hits}/{self.capybara_manager.capybaras_per_round}", True, WHITE)
         req_rect = req_text.get_rect(center=(SCREEN_WIDTH // 2, meter_y - 20))
         self.screen.blit(req_text, req_rect)
 
@@ -2086,7 +1233,7 @@ class CapybaraHuntScreen(BaseScreen):
 
             self.screen.blit(warning_text, warning_rect)
 
-            penalty_text = self.font.render(f"-{200 * self.round_number} points!", True, (255, 100, 100))
+            penalty_text = self.font.render(f"-{200 * self.capybara_manager.round_number} points!", True, (255, 100, 100))
             penalty_rect = penalty_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
             self.screen.blit(penalty_text, penalty_rect)
 
@@ -2156,8 +1303,8 @@ class CapybaraHuntScreen(BaseScreen):
         # Stats
         stats = [
             f"Final Score: {self.score}",
-            f"Rounds Completed: {self.round_number - 1}",
-            f"Capybaras Hit: {self.capybaras_hit}/{self.capybaras_per_round}",
+            f"Rounds Completed: {self.capybara_manager.round_number - 1}",
+            f"Capybaras Hit: {self.capybara_manager.capybaras_hit}/{self.capybara_manager.capybaras_per_round}",
         ]
 
         for i, stat in enumerate(stats):
@@ -2202,16 +1349,16 @@ class CapybaraHuntScreen(BaseScreen):
         self.screen.blit(overlay, (0, 0))
 
         # Check for perfect round
-        if self.capybaras_hit == self.capybaras_per_round:
-            complete_text = self.big_font.render(f"PERFECT!! +{1000 * self.round_number}", True, YELLOW)
+        if self.capybara_manager.capybaras_hit == self.capybara_manager.capybaras_per_round:
+            complete_text = self.big_font.render(f"PERFECT!! +{1000 * self.capybara_manager.round_number}", True, YELLOW)
         else:
-            complete_text = self.big_font.render(f"ROUND {self.round_number} COMPLETE!", True, GREEN)
+            complete_text = self.big_font.render(f"ROUND {self.capybara_manager.round_number} COMPLETE!", True, GREEN)
         complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
         self.screen.blit(complete_text, complete_rect)
 
         # Stats
         stats_text = self.font.render(
-            f"Hit: {self.capybaras_hit}/{self.capybaras_per_round} | Score: {self.score}", True, WHITE
+            f"Hit: {self.capybara_manager.capybaras_hit}/{self.capybara_manager.capybaras_per_round} | Score: {self.score}", True, WHITE
         )
         stats_rect = stats_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
         self.screen.blit(stats_text, stats_rect)
@@ -2261,22 +1408,23 @@ class CapybaraHuntScreen(BaseScreen):
 
         elif command == "/perfect":
             # Set current round to perfect score
-            self.capybaras_hit = self.capybaras_per_round
-            self.hit_markers = [True] * self.capybaras_per_round
+            self.capybara_manager.capybaras_hit = self.capybara_manager.capybaras_per_round
+            self.hit_markers = [True] * self.capybara_manager.capybaras_per_round
             self.console_message = "Perfect round activated"
 
         elif command == "/miss":
             # Force a miss for testing game over
-            self.capybaras_hit = 0
-            self.hit_markers = [False] * self.capybaras_per_round
+            self.capybara_manager.capybaras_hit = 0
+            self.hit_markers = [False] * self.capybara_manager.capybaras_per_round
             self.console_message = "Forced miss - prepare for game over"
 
         elif command == "/skip":
             # Skip to round complete
-            if not self.round_complete and not self.game_over:
-                self.capybaras_spawned = self.capybaras_per_round
-                self.capybaras.clear()
-                self.wave_active = False
+            if not self.capybara_manager.round_complete and not self.game_over:
+                # Force completion in the manager
+                self.capybara_manager.capybaras_spawned = self.capybara_manager.capybaras_per_round
+                self.capybara_manager.capybaras.clear()
+                self.capybara_manager.wave_active = False
                 self.console_message = "Skipped to round end"
             else:
                 self.console_message = "Cannot skip - round already complete"
@@ -2288,21 +1436,27 @@ class CapybaraHuntScreen(BaseScreen):
 
     def _jump_to_round(self, round_num: int):
         """Jump directly to a specific round"""
-        # Reset game state
-        self.round_number = round_num
-        self.capybaras_spawned = 0
-        self.capybaras_hit = 0
+        # Reset game state using CapybaraManager
+        self.capybara_manager.round_number = round_num
+        self.capybara_manager.capybaras_spawned = 0
+        self.capybara_manager.capybaras_hit = 0
         self.shots_remaining = 3
-        self.round_complete = False
         self.game_over = False
-        self.capybaras.clear()
+        self.capybara_manager.capybaras.clear()
         self.hit_markers.clear()
-        self.spawn_timer = 0
-        self.wave_active = False
+        self.capybara_manager.spawn_timer = 0
+        self.capybara_manager.wave_active = False
+        
+        # Reset completion flags
+        self.capybara_manager.round_complete = False
+        if hasattr(self, '_round_completion_processed'):
+            delattr(self, '_round_completion_processed')
+        if hasattr(self, '_game_over_processed'):
+            delattr(self, '_game_over_processed')
 
         # Adjust difficulty for the round
-        self.required_hits = min(9, 6 + (round_num - 1) // 5)
-        self.spawn_delay = max(1.0, 2.0 - round_num * 0.1)
+        self.capybara_manager.required_hits = min(9, 6 + (round_num - 1) // 5)
+        self.capybara_manager.spawn_delay = max(1.0, 2.0 - round_num * 0.1)
 
     def _update_pond_buddy(self, dt: float):
         """Update pond buddy animations and mood"""
@@ -2311,6 +1465,7 @@ class CapybaraHuntScreen(BaseScreen):
             self.pond_buddy["mood_timer"] -= dt
             if self.pond_buddy["mood_timer"] <= 0:
                 self.pond_buddy["mood"] = "neutral"
+                self.pond_buddy["mood_priority"] = 0  # Reset priority when mood expires
                 self.pond_buddy["last_hit_streak"] = 0
                 self.pond_buddy["last_miss_streak"] = 0
 
@@ -2335,15 +1490,25 @@ class CapybaraHuntScreen(BaseScreen):
             self.pond_buddy["animation_timer"] = 0
             self.pond_buddy["animation_frame"] = (self.pond_buddy["animation_frame"] + 1) % 2
 
-    def _set_pond_buddy_mood(self, mood: str, duration: float = 2.0):
-        """Set the pond buddy's mood"""
-        self.pond_buddy["mood"] = mood
-        self.pond_buddy["mood_timer"] = duration
-        self.pond_buddy["animation_frame"] = 0
+    def _set_pond_buddy_mood(self, mood: str, duration: float = 2.0, priority: int = 1):
+        """Set the pond buddy's mood with priority system
+        
+        Priority levels:
+        0 = neutral/default (lowest)
+        1 = normal reactions (happy, sad, worried, etc.)
+        2 = special reactions (excited, laughing, disappointed) 
+        3 = round completion reactions (celebration, relieved, proud)
+        """
+        # Only override if new mood has higher or equal priority, or if current mood timer has expired
+        if priority >= self.pond_buddy["mood_priority"] or self.pond_buddy["mood_timer"] <= 0:
+            self.pond_buddy["mood"] = mood
+            self.pond_buddy["mood_timer"] = duration
+            self.pond_buddy["mood_priority"] = priority
+            self.pond_buddy["animation_frame"] = 0
 
-        # Set speech text for laughing mood
-        if mood == "laughing":
-            self._set_pond_buddy_speech(duration, "snarky")
+            # Set speech text for laughing mood
+            if mood == "laughing":
+                self._set_pond_buddy_speech(duration, "snarky")
 
     def _set_pond_buddy_speech(self, duration: float, speech_type: str = "snarky"):
         """Set speech text for the pond buddy"""
@@ -2439,11 +1604,11 @@ class CapybaraHuntScreen(BaseScreen):
             self._set_pond_buddy_speech(2.5, "encouraging")
         elif self.pond_buddy["last_hit_streak"] >= 5:
             # Amazing streak!
-            self._set_pond_buddy_mood("celebration", 3.5)
+            self._set_pond_buddy_mood("celebration", 3.5, 2)
         elif self.pond_buddy["last_hit_streak"] >= 3:
-            self._set_pond_buddy_mood("excited", 3.0)
+            self._set_pond_buddy_mood("excited", 3.0, 2)
         elif self.pond_buddy["last_hit_streak"] == 1:
-            self._set_pond_buddy_mood("happy", 1.5)
+            self._set_pond_buddy_mood("happy", 1.5, 1)
 
     def _on_capybara_miss(self):
         """Called when player shoots capybara instead of balloon"""
@@ -2454,14 +1619,14 @@ class CapybaraHuntScreen(BaseScreen):
         if random.random() < 1 / 3:
             self._set_pond_buddy_mood("laughing", 2.5)
         elif self.pond_buddy["last_miss_streak"] >= 3:
-            self._set_pond_buddy_mood("disappointed", 2.0)
+            self._set_pond_buddy_mood("disappointed", 2.0, 2)
         else:
-            self._set_pond_buddy_mood("sad", 1.5)
+            self._set_pond_buddy_mood("sad", 1.5, 1)
 
     def _on_capybara_escape(self):
         """Called when a capybara escapes (flies away)"""
         # Show worried expression when capybara escapes
-        self._set_pond_buddy_mood("worried", 1.5)
+        self._set_pond_buddy_mood("worried", 1.5, 1)
 
     def _draw_pond_buddy(self):
         """Draw the pond companion"""
