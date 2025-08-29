@@ -471,7 +471,6 @@ class CapybaraHuntRenderer:
 
             # Create gradient effect for rays
             for j in range(3):
-                alpha = 100 - j * 30
                 width = 3 - j
                 color = (255, 253, 184)
                 start_radius = 40 + j * 5
@@ -834,9 +833,7 @@ class CapybaraHuntRenderer:
             screen.blit(console_text, (console_rect.x + 10, console_rect.y + 10))
 
             # Console hint
-            hint_text = small_font.render(
-                "Commands: /round #, /score #, /perfect, /miss | ESC to cancel", True, (200, 200, 200)
-            )
+            hint_text = small_font.render("Commands: /round # | ESC to cancel", True, (200, 200, 200))
             hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, console_rect.bottom + 20))
             screen.blit(hint_text, hint_rect)
         else:

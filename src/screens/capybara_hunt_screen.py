@@ -16,6 +16,7 @@ import pygame
 from game.capybara_hunt.capybara import CapybaraManager, FlyingCapybara
 from game.capybara_hunt.pond_buddy import PondBuddy
 from game.capybara_hunt.renderer import CapybaraHuntRenderer
+from game.capybara_hunt.state_manager import CapybaraHuntState
 from game.capybara_hunt.ui_manager import CapybaraHuntUI
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
@@ -50,12 +51,8 @@ class CapybaraHuntScreen(BaseScreen):
         self.big_font = pygame.font.Font(None, 72)
         self.huge_font = pygame.font.Font(None, 120)
 
-        # Game state
-        self.score = 0
-        self.shots_remaining = 5
-        self.game_over = False
-        self.round_complete_time = 0
-        self.paused = False
+        # Game state manager
+        self.state = CapybaraHuntState()
 
         # UI Manager
         self.ui_manager = CapybaraHuntUI(self.font)
@@ -73,9 +70,6 @@ class CapybaraHuntScreen(BaseScreen):
         self.shoot_animation_time = 0
         self.shoot_animation_duration = 200
         self.capybara_shot_message_time = 0
-
-        # Hit tracking for round
-        self.hit_markers = []
 
         # Performance tracking
         self.fps_counter = 0
@@ -97,14 +91,24 @@ class CapybaraHuntScreen(BaseScreen):
 
                 # Handle UI button clicks
                 action = self.ui_manager.handle_mouse_button_click(
-                    mouse_pos, self.capybara_manager.round_complete, self.game_over
+                    mouse_pos, self.capybara_manager.round_complete, self.state.is_game_over(self.capybara_manager)
                 )
 
                 if action == "continue":
-                    self.start_next_round()
+                    self.state.start_next_round()
+                    self.capybara_manager.start_next_round()
+                    self.hand_tracker.reset_tracking_state()
+                    self.shoot_pos = None
+                    self.crosshair_pos = None
+                    self.ui_manager.reset_buttons()
                     return None
                 elif action == "retry":
-                    self.reset_game()
+                    self.state.reset_game()
+                    self.capybara_manager.reset_game()
+                    self.hand_tracker.reset_tracking_state()
+                    self.shoot_pos = None
+                    self.crosshair_pos = None
+                    self.ui_manager.reset_buttons()
                     return None
                 elif action == "menu":
                     return GAME_STATE_MENU
@@ -130,60 +134,41 @@ class CapybaraHuntScreen(BaseScreen):
             if event.key == pygame.K_ESCAPE:
                 return GAME_STATE_MENU
             elif event.key == pygame.K_p or event.key == pygame.K_SPACE:
-                if not self.game_over and not self.capybara_manager.round_complete:
-                    self.paused = not self.paused
+                if not self.state.is_game_over(self.capybara_manager) and not self.capybara_manager.round_complete:
+                    self.state.toggle_pause()
             elif event.key == pygame.K_r:
-                self.reset_game()
+                self.state.reset_game()
+                self.capybara_manager.reset_game()
+                self.hand_tracker.reset_tracking_state()
+                self.shoot_pos = None
+                self.crosshair_pos = None
+                self.ui_manager.reset_buttons()
             elif event.key == pygame.K_RETURN and (
-                self.game_over or self.capybara_manager.round_complete or self.capybara_manager.game_over
+                self.state.is_game_over(self.capybara_manager)
+                or self.capybara_manager.round_complete
+                or self.capybara_manager.game_over
             ):
-                if self.game_over or self.capybara_manager.game_over:
-                    # Process game over reaction if not already done
-                    if self.capybara_manager.game_over and not hasattr(self, "_game_over_processed"):
-                        self._game_over_processed = True
-                        self.game_over = True
-                        self.pond_buddy.set_mood("disappointed", 5.0, 2)
-                    self.reset_game()
+                if self.state.is_game_over(self.capybara_manager) or self.capybara_manager.game_over:
+                    # Reset entire game
+                    self.state.reset_game()
+                    self.capybara_manager.reset_game()
+                    self.hand_tracker.reset_tracking_state()
+                    self.shoot_pos = None
+                    self.crosshair_pos = None
+                    self.ui_manager.reset_buttons()
                 elif self.capybara_manager.round_complete:
-                    self.start_next_round()
-            elif event.key == pygame.K_SLASH and self.paused:  # Open console with /
+                    # Start next round
+                    self.state.start_next_round()
+                    self.capybara_manager.start_next_round()
+                    self.hand_tracker.reset_tracking_state()
+                    self.shoot_pos = None
+                    self.crosshair_pos = None
+                    self.ui_manager.reset_buttons()
+            elif event.key == pygame.K_SLASH and self.state.is_paused():  # Open console with /
                 self.console_active = True
                 self.console_input = "/"
 
         return None
-
-    def reset_game(self) -> None:
-        """Reset the entire game"""
-        self.score = 0
-        self.shots_remaining = 5  # Reset to 5 shots
-        self.game_over = False
-        self.round_complete_time = 0
-        self.capybara_manager.reset_game()
-        self.hit_markers.clear()
-        self.hand_tracker.reset_tracking_state()
-        self.shoot_pos = None
-        self.crosshair_pos = None
-        self.ui_manager.reset_buttons()
-
-    def start_next_round(self) -> None:
-        """Start the next round"""
-        self.capybara_manager.start_next_round()
-        self.shots_remaining = 5
-        if hasattr(self, "_round_completion_processed"):
-            delattr(self, "_round_completion_processed")
-        if hasattr(self, "_game_over_processed"):
-            delattr(self, "_game_over_processed")
-        self.hit_markers.clear()
-        # Reset UI buttons for next round
-        self.ui_manager.reset_buttons()
-
-        # Pond buddy gets excited for new round
-        if self.capybara_manager.round_number > 1:
-            if self.capybara_manager.round_number % 5 == 0:
-                # Milestone round!
-                self.pond_buddy.set_mood("celebration", 2.0, 3)
-            else:
-                self.pond_buddy.set_mood("excited", 1.5, 2)
 
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update game state"""
@@ -196,44 +181,62 @@ class CapybaraHuntScreen(BaseScreen):
         # Update capybara manager
         capybaras_removed, new_wave_spawned, escaped_count = self.capybara_manager.update(dt, current_time)
 
-        # Check if manager signaled game over
-        if self.capybara_manager.game_over and not hasattr(self, "_game_over_processed"):
-            self._game_over_processed = True
-            self.game_over = True
-            self.pond_buddy.set_mood("disappointed", 5.0, 2)
+        # Let state manager handle game over transition
+        self.state.handle_game_over_transition(self.capybara_manager, self.pond_buddy)
 
         # Refresh shots when new wave spawns
-        if new_wave_spawned and not self.capybara_manager.round_complete and not self.game_over:
-            self.shots_remaining = 5
+        if (
+            new_wave_spawned
+            and not self.capybara_manager.round_complete
+            and not self.state.is_game_over(self.capybara_manager)
+        ):
+            self.state.shots_remaining = 5
 
         # Handle escaped capybaras - add to hit_markers as misses (red squares)
-        if escaped_count > 0 and not self.capybara_manager.round_complete and not self.game_over:
+        if (
+            escaped_count > 0
+            and not self.capybara_manager.round_complete
+            and not self.state.is_game_over(self.capybara_manager)
+        ):
             for _ in range(escaped_count):
-                self.hit_markers.append(False)
+                self.state.add_hit_marker(False)
                 self.pond_buddy.on_capybara_escape()  # Pond buddy shows worried reaction
 
         # Handle button shooting in round complete or game over states
-        if self.shoot_detected and (self.capybara_manager.round_complete or self.game_over):
+        if self.shoot_detected and self.state.can_shoot_buttons(self.capybara_manager):
             action = self.ui_manager.handle_shooting_buttons(
-                self.crosshair_pos, self.sound_manager, self.capybara_manager.round_complete, self.game_over
+                self.crosshair_pos,
+                self.sound_manager,
+                self.capybara_manager.round_complete,
+                self.state.is_game_over(self.capybara_manager),
             )
 
             if action == "continue":
                 self.shoot_detected = False
-                self.start_next_round()
+                self.state.start_next_round()
+                self.capybara_manager.start_next_round()
+                self.hand_tracker.reset_tracking_state()
+                self.shoot_pos = None
+                self.crosshair_pos = None
+                self.ui_manager.reset_buttons()
                 return None
             elif action == "retry":
                 self.shoot_detected = False
-                self.reset_game()
+                self.state.reset_game()
+                self.capybara_manager.reset_game()
+                self.hand_tracker.reset_tracking_state()
+                self.shoot_pos = None
+                self.crosshair_pos = None
+                self.ui_manager.reset_buttons()
                 return None
             elif action == "menu":
                 self.shoot_detected = False
                 return GAME_STATE_MENU
 
-        if self.capybara_manager.round_complete or self.game_over:
+        if self.capybara_manager.round_complete or self.state.is_game_over(self.capybara_manager):
             return None
 
-        if self.paused:
+        if self.state.is_paused():
             return None
 
         # Round completion processing is handled in draw() method
@@ -315,20 +318,24 @@ class CapybaraHuntScreen(BaseScreen):
         # Use base class method for tracking
         self.process_finger_gun_tracking()
 
-        if not self.game_over and not self.capybara_manager.round_complete and not self.paused:
+        if (
+            not self.state.is_game_over(self.capybara_manager)
+            and not self.capybara_manager.round_complete
+            and not self.state.is_paused()
+        ):
             # Check if we should shoot
-            if self.shoot_detected and self.shots_remaining > 0:
+            if self.shoot_detected and self.state.shots_remaining > 0:
                 self._handle_shoot(self.crosshair_pos)
                 self.shoot_detected = False  # Reset after handling
 
     def _handle_shoot(self, shoot_position: tuple) -> None:
         """Handle shooting action"""
-        if self.shots_remaining <= 0 or self.capybara_manager.round_complete:
+        if self.state.shots_remaining <= 0 or self.capybara_manager.round_complete:
             return
 
         self.shoot_pos = shoot_position
         self.shoot_animation_time = pygame.time.get_ticks()
-        self.shots_remaining -= 1
+        self.state.consume_shot()
 
         # Play shoot sound
         self.sound_manager.play("shoot")
@@ -338,13 +345,14 @@ class CapybaraHuntScreen(BaseScreen):
 
         if hit:
             if target == "balloon":
-                self.score += points * self.capybara_manager.round_number
-                self.hit_markers.append(True)
+                self.state.score += points * self.capybara_manager.round_number
+                self.state.add_hit_marker(True)
                 self.pond_buddy.on_capybara_hit()  # Pond buddy reacts
                 self.sound_manager.play("hit")
             elif target == "capybara":
-                self.score -= points * self.capybara_manager.round_number  # Penalty for shooting capybara
-                self.hit_markers.append(False)
+                # Use state manager to handle penalty
+                self.state.handle_capybara_shot_penalty(self.capybara_manager)
+                self.state.add_hit_marker(False)
                 self.pond_buddy.on_capybara_miss()  # Pond buddy reacts
                 self.sound_manager.play("error")  # Play error sound
                 self.shoot_animation_time = pygame.time.get_ticks() - 100  # Make animation last longer
@@ -358,10 +366,10 @@ class CapybaraHuntScreen(BaseScreen):
                 # This will automatically use snarky speech since it's the default
 
         # Check if wave should end (out of ammo)
-        if self.shots_remaining == 0:
+        if self.state.shots_remaining == 0:
             flying_in_wave = [c for c in self.capybara_manager.capybaras if c.alive and not hasattr(c, "already_counted")]
             for capybara in flying_in_wave:
-                self.hit_markers.append(False)
+                self.state.add_hit_marker(False)
                 capybara.already_counted = True  # Mark so we don't count it again when it escapes
                 # Force them to escape
                 capybara.flight_time = 10  # Make them fly away immediately
@@ -379,7 +387,7 @@ class CapybaraHuntScreen(BaseScreen):
 
         self.pond_buddy.draw(self.screen)
 
-        if self.paused:
+        if self.state.should_show_pause_screen():
             self.renderer.draw_pause_screen(
                 self.screen,
                 self.console_active,
@@ -392,16 +400,13 @@ class CapybaraHuntScreen(BaseScreen):
             )
             return
 
-        if self.game_over or self.capybara_manager.game_over:
-            if not self.game_over and self.capybara_manager.game_over:
-                if not hasattr(self, "_game_over_processed"):
-                    self._game_over_processed = True
-                    self.game_over = True
-                    self.pond_buddy.set_mood("disappointed", 5.0, 2)
+        if self.state.should_show_game_over_screen(self.capybara_manager):
+            # Let state manager handle any needed processing
+            self.state.handle_game_over_transition(self.capybara_manager, self.pond_buddy)
 
             self.renderer.draw_game_over_screen(
                 self.screen,
-                self.score,
+                self.state.score,
                 self.capybara_manager.round_number,
                 self.capybara_manager.capybaras_hit,
                 self.capybara_manager.capybaras_per_round,
@@ -419,26 +424,13 @@ class CapybaraHuntScreen(BaseScreen):
             self.draw_camera_with_tracking(CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT)
             return
 
-        if self.capybara_manager.round_complete:
-            # Process round completion reaction if not already done
-            if not hasattr(self, "_round_completion_processed"):
-                self._round_completion_processed = True
-                self.round_complete_time = pygame.time.get_ticks()
-
-                if self.capybara_manager.capybaras_hit == self.capybara_manager.capybaras_per_round:
-                    self.score += 1000 * self.capybara_manager.round_number
-                    # Pond buddy celebrates perfect round
-                    self.pond_buddy.set_mood("celebration", 4.0, 3)
-                elif self.capybara_manager.capybaras_hit == self.capybara_manager.required_hits:
-                    # Just barely made it
-                    self.pond_buddy.set_mood("relieved", 3.0, 3)
-                else:
-                    # Good job
-                    self.pond_buddy.set_mood("proud", 3.0, 3)
+        if self.state.should_show_round_complete_screen(self.capybara_manager):
+            # Let state manager handle round completion processing
+            self.state.handle_round_completion(self.capybara_manager, self.pond_buddy)
 
             self.renderer.draw_round_complete_screen(
                 self.screen,
-                self.score,
+                self.state.score,
                 self.capybara_manager.round_number,
                 self.capybara_manager.capybaras_hit,
                 self.capybara_manager.capybaras_per_round,
@@ -470,10 +462,10 @@ class CapybaraHuntScreen(BaseScreen):
         # Draw UI
         self.renderer.draw_hud(
             self.screen,
-            self.score,
-            self.shots_remaining,
+            self.state.score,
+            self.state.shots_remaining,
             self.capybara_manager.round_number,
-            self.hit_markers,
+            self.state.hit_markers,
             self.capybara_manager.capybaras_per_round,
             self.capybara_manager.required_hits,
             self.current_fps,
@@ -508,38 +500,8 @@ class CapybaraHuntScreen(BaseScreen):
             except Exception:
                 self.console_message = "Invalid round number"
 
-        elif command.startswith("/score "):
-            try:
-                score = int(command.split()[1])
-                self.score = max(0, score)
-                self.console_message = f"Score set to {self.score}"
-            except Exception:
-                self.console_message = "Invalid score"
-
-        elif command == "/perfect":
-            self.capybara_manager.capybaras_hit = self.capybara_manager.capybaras_per_round
-            self.hit_markers = [True] * self.capybara_manager.capybaras_per_round
-            self.console_message = "Perfect round activated"
-
-        elif command == "/miss":
-            # Force a miss for testing game over
-            self.capybara_manager.capybaras_hit = 0
-            self.hit_markers = [False] * self.capybara_manager.capybaras_per_round
-            self.console_message = "Forced miss - prepare for game over"
-
-        elif command == "/skip":
-            # Skip to round complete
-            if not self.capybara_manager.round_complete and not self.game_over:
-                # Force completion in the manager
-                self.capybara_manager.capybaras_spawned = self.capybara_manager.capybaras_per_round
-                self.capybara_manager.capybaras.clear()
-                self.capybara_manager.wave_active = False
-                self.console_message = "Skipped to round end"
-            else:
-                self.console_message = "Cannot skip - round already complete"
-
         else:
-            self.console_message = "Unknown command. Try: /round #, /score #, /perfect, /miss, /skip"
+            self.console_message = "Unknown command. Try: /round #"
 
         self.console_message_time = time.time()
 
@@ -548,10 +510,10 @@ class CapybaraHuntScreen(BaseScreen):
         self.capybara_manager.round_number = round_num
         self.capybara_manager.capybaras_spawned = 0
         self.capybara_manager.capybaras_hit = 0
-        self.shots_remaining = 3
-        self.game_over = False
+        self.state.shots_remaining = 3
+        self.state.game_over = False
         self.capybara_manager.capybaras.clear()
-        self.hit_markers.clear()
+        self.state.hit_markers.clear()
         self.capybara_manager.spawn_timer = 0
         self.capybara_manager.wave_active = False
 

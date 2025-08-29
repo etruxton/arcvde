@@ -68,6 +68,30 @@ The **`CapybaraHuntRenderer`** class provides:
 4. UI overlays and effects
 5. Camera feed and debug information
 
+### `state_manager.py`
+**Game state management and flow control system**
+
+The **`CapybaraHuntState`** class manages:
+- **Core state variables**: Score, shots remaining, game over, pause, round completion time
+- **State transitions**: Game resets, round progression, pause/resume functionality
+- **State validation**: Shooting permissions, UI screen display logic, game flow control
+- **State processing**: Round completion handling, game over transitions, performance-based reactions
+- **Hit tracking**: Round progress markers and performance analytics
+
+**Key Features:**
+- **Centralized state**: All game state in one managed location
+- **State queries**: Clean boolean methods for state checking (`can_shoot()`, `is_paused()`, etc.)
+- **Transition safety**: Processing flags prevent duplicate state transitions
+- **Performance tracking**: Hit markers and scoring with penalty system
+- **Reactive system**: Automatic pond buddy mood management based on game events
+
+**State Flow:**
+1. **Initial state**: Fresh game with default values
+2. **Active gameplay**: Shooting validation, hit tracking, score management
+3. **Round transitions**: Completion processing, score bonuses, reaction triggers
+4. **Game over handling**: Penalty calculations, final state management
+5. **Reset capabilities**: Clean state restoration for new games
+
 ## Game Flow
 
 1. **Spawning**: `CapybaraManager` spawns waves of `FlyingCapybara` instances
@@ -87,6 +111,7 @@ These components are used by `src/screens/capybara_hunt_screen.py`, which acts a
 The main screen delegates specific responsibilities:
 - **Rendering**: All visual rendering handled by `CapybaraHuntRenderer`
 - **UI Management**: Button interactions handled by `CapybaraHuntUI`
+- **State Management**: Game state and flow control handled by `CapybaraHuntState`
 - **Game Logic**: Entity management handled by `CapybaraManager`
 - **Companion**: Emotional reactions handled by `PondBuddy`
 
