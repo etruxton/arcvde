@@ -14,7 +14,7 @@ import cv2
 import pygame
 
 # Local application imports
-from game.enemy import Enemy
+from game.doomsday.enemy import Enemy
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import (
