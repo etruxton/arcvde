@@ -1,5 +1,5 @@
 """
-Enemy system for arcade-style shooting game with doom-like perspective
+Enemy system for doomsday shooting game with doom-like perspective
 """
 
 # Standard library imports

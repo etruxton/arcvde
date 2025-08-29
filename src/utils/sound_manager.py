@@ -49,11 +49,12 @@ class SoundManager:
             "capybara_hunt": "DayAndNight-modified.ogg",  # Music for Capybara Hunt mode
             "boss_battle": "boss_battle_8_metal_loop.ogg",  # Legacy - keep for compatibility
             # Stage-specific music for Doomsday mode
-            "stage1_music": "boss_battle_3_alternate.ogg",  # Stage 1 music
-            "stage2_music": "Boss Battle 4 V1.ogg",  # Stage 2 music
-            "stage3_music": "Boss Battle 6 V1.ogg",  # Stage 3 music
-            "stage4_music1": "boss_battle_8_retro_01_loop.ogg",  # Stage 4+ first track
-            "stage4_music2": "boss_battle_8_retro_02_loop.ogg",  # Stage 4+ second track
+            "stage1_music": "boss_battle_3_alternate.ogg",
+            "stage2_music": "Boss Battle 4 V1.ogg",
+            "stage3_music": "Boss Battle 6 V1.ogg",
+            "stage4_music1": "boss_battle_8_retro_01_loop.ogg",
+            "stage4_music2": "boss_battle_8_retro_02_loop.ogg",
+            "stage4_music3": "boss_battle_8_metal_loop.ogg",
             # Stage atmospheric sound effects
             "stage2_fire_crackle": "stage2_fire_crackle.wav",
             "stage2_fire_ambient": "stage2_fire_ambient.wav",
@@ -170,7 +171,9 @@ class SoundManager:
         """Get the next track in the Stage 4+ alternating sequence"""
         if current_track == "stage4_music1":
             return "stage4_music2"
-        else:
+        elif current_track == "stage4_music2":
+            return "stage4_music3"
+        else:  # stage4_music3 or any other value
             return "stage4_music1"
 
     def is_ambient_finished(self) -> bool:

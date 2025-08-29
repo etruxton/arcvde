@@ -22,8 +22,8 @@ from utils.camera_manager import CameraManager
 from utils.constants import (
     DEFAULT_CAMERA_ID,
     FPS,
-    GAME_STATE_ARCADE,
     GAME_STATE_CAPYBARA_HUNT,
+    GAME_STATE_DOOMSDAY,
     GAME_STATE_INSTRUCTIONS,
     GAME_STATE_LOADING,
     GAME_STATE_MENU,
@@ -86,8 +86,21 @@ class GameManager:
             print("Menu screen initialized")
             self.screens[GAME_STATE_PLAYING] = TargetPracticeScreen(self.screen, self.camera_manager)
             print("Target Practice screen initialized")
-            self.screens[GAME_STATE_ARCADE] = DoomsdayScreen(self.screen, self.camera_manager)
-            print("Doomsday screen initialized")
+            print("About to initialize Doomsday screen...")
+            try:
+                print("Creating DoomsdayScreen instance...")
+                doomsday_screen = DoomsdayScreen(self.screen, self.camera_manager)
+                print("DoomsdayScreen created successfully")
+                self.screens[GAME_STATE_DOOMSDAY] = doomsday_screen
+                print("Doomsday screen initialized and added to screens")
+            except Exception as e:
+                print(f"ERROR: Failed to initialize Doomsday screen: {e}")
+                print(f"Exception type: {type(e)}")
+                # Standard library imports
+                import traceback
+
+                traceback.print_exc()
+                raise  # Re-raise to stop initialization
             self.screens[GAME_STATE_CAPYBARA_HUNT] = CapybaraHuntScreen(self.screen, self.camera_manager)
             print("Capybara Hunt screen initialized")
             self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
@@ -126,6 +139,8 @@ class GameManager:
 
     def change_state(self, new_state: str) -> None:
         """Change the current game state"""
+        print(f"change_state called with: {new_state}")
+        print(f"Available screens: {list(self.screens.keys())}")
         if new_state in self.screens:
             print(f"Changing state from {self.current_state} to {new_state}")
             old_state = self.current_state
@@ -138,7 +153,7 @@ class GameManager:
             sound_manager = get_sound_manager()
 
             # When leaving Doomsday, stop the music and sound effects immediately
-            if old_state == GAME_STATE_ARCADE:
+            if old_state == GAME_STATE_DOOMSDAY:
                 sound_manager.stop_ambient(fade_ms=100)  # Quick fade
                 sound_manager.stop_stage_effect(fade_ms=100)  # Stop any stage effects
 
@@ -162,7 +177,7 @@ class GameManager:
                     sound_manager.play_ambient("capybara_hunt")
 
             # When entering Doomsday, let the doomsday screen handle its own music
-            elif new_state == GAME_STATE_ARCADE:
+            elif new_state == GAME_STATE_DOOMSDAY:
                 pass  # Doomsday screen will manage its own stage-specific music
 
             # Reset game screens when entering gameplay
@@ -170,8 +185,8 @@ class GameManager:
                 target_practice_screen = self.screens[GAME_STATE_PLAYING]
                 if hasattr(target_practice_screen, "reset_game"):
                     target_practice_screen.reset_game()
-            elif new_state == GAME_STATE_ARCADE:
-                doomsday_screen = self.screens[GAME_STATE_ARCADE]
+            elif new_state == GAME_STATE_DOOMSDAY:
+                doomsday_screen = self.screens[GAME_STATE_DOOMSDAY]
                 if hasattr(doomsday_screen, "reset_game"):
                     doomsday_screen.reset_game()
             elif new_state == GAME_STATE_CAPYBARA_HUNT:

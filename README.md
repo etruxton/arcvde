@@ -208,4 +208,8 @@ Planned additions to ARCVDE:
   - Source: https://opengameart.org/content/boss-battle-8-retro
   - License: CC0 (Public Domain)
 
+- **Stage 4+ Metal**: "Boss Battle 8 Metal" by nene (third alternating track)
+  - Source: https://opengameart.org/content/boss-battle-8-metal
+  - License: CC0 (Public Domain)
+
 ---

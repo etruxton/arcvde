@@ -14,6 +14,7 @@ import pygame
 
 # Local application imports
 from game.doomsday.enemy import EnemyManager
+from game.doomsday.stage_manager import StageManager
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import (
@@ -86,89 +87,22 @@ class DoomsdayScreen(BaseScreen):
         self.console_message = ""
         self.console_message_time = 0
 
-        self.current_stage_theme = 1
-        self.create_background()
+        # Stage management system
+        self.stage_manager = StageManager(self.sound_manager, self.trigger_screen_shake)
 
-        self.current_music_track = None
-        self.stage4_alternating_mode = False
+        # Music tracking
         self.music_started = False
-        self.current_stage_ambient = None
 
-        # Stage transition effects
-        self.stage_transition_active = False
-        self.stage_transition_time = 0
-        self.stage_transition_duration = 1.2  # 1.2 seconds
-        self.stage_transition_type = "fade"  # fade, slide, flash
-        self.old_background = None
-        self.new_background = None
+    def trigger_screen_shake(self, duration: float, intensity: int) -> None:
+        """Trigger screen shake effect (called by stage manager)"""
+        self.screen_shake_time = duration
+        self.screen_shake_intensity = intensity
+        print(f"Screen shake triggered: {duration}s at intensity {intensity}")
 
-    def create_background(self):
-        """Create a doom-like background with gradient based on current stage"""
-        self.background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-
-        # Define color themes for different stages
-        themes = {
-            1: {  # Stage 1-2: Classic Doom brown/gray
-                "sky_base": (30, 20, 20),
-                "sky_end": (50, 35, 35),
-                "ground_base": (40, 30, 25),
-                "ground_end": (70, 50, 40),
-                "horizon": (60, 40, 40),
-                "grid": (40, 30, 30),
-            },
-            2: {  # Stage 3-4: Hellish red
-                "sky_base": (40, 10, 10),
-                "sky_end": (80, 20, 20),
-                "ground_base": (60, 20, 15),
-                "ground_end": (100, 40, 30),
-                "horizon": (120, 30, 30),
-                "grid": (60, 20, 20),
-            },
-            3: {  # Stage 5-6: Demonic purple/dark
-                "sky_base": (20, 10, 30),
-                "sky_end": (40, 20, 60),
-                "ground_base": (30, 15, 40),
-                "ground_end": (60, 30, 80),
-                "horizon": (80, 40, 100),
-                "grid": (40, 20, 50),
-            },
-            4: {  # Stage 7+: Apocalyptic orange/black
-                "sky_base": (30, 15, 5),
-                "sky_end": (60, 30, 10),
-                "ground_base": (40, 20, 5),
-                "ground_end": (80, 40, 15),
-                "horizon": (100, 50, 20),
-                "grid": (50, 25, 10),
-            },
-        }
-
-        theme = themes.get(self.current_stage_theme, themes[1])
-
-        for y in range(SCREEN_HEIGHT):
-            # progress = y / SCREEN_HEIGHT
-
-            if y < SCREEN_HEIGHT * 0.4:  # Sky
-                sky_progress = y / (SCREEN_HEIGHT * 0.4)
-                color = (
-                    int(theme["sky_base"][0] + (theme["sky_end"][0] - theme["sky_base"][0]) * sky_progress),
-                    int(theme["sky_base"][1] + (theme["sky_end"][1] - theme["sky_base"][1]) * sky_progress),
-                    int(theme["sky_base"][2] + (theme["sky_end"][2] - theme["sky_base"][2]) * sky_progress),
-                )
-            else:  # Ground
-                ground_progress = (y - SCREEN_HEIGHT * 0.4) / (SCREEN_HEIGHT * 0.6)
-                color = (
-                    int(theme["ground_base"][0] + (theme["ground_end"][0] - theme["ground_base"][0]) * ground_progress),
-                    int(theme["ground_base"][1] + (theme["ground_end"][1] - theme["ground_base"][1]) * ground_progress),
-                    int(theme["ground_base"][2] + (theme["ground_end"][2] - theme["ground_base"][2]) * ground_progress),
-                )
-
-            pygame.draw.line(self.background, color, (0, y), (SCREEN_WIDTH, y))
-
-        pygame.draw.line(
-            self.background, theme["horizon"], (0, int(SCREEN_HEIGHT * 0.4)), (SCREEN_WIDTH, int(SCREEN_HEIGHT * 0.4)), 2
-        )
-
-        self.grid_color = theme["grid"]
+    @property
+    def background(self):
+        """Get current background from stage manager"""
+        return self.stage_manager.get_background()
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
@@ -220,12 +154,8 @@ class DoomsdayScreen(BaseScreen):
         self.damage_flash_time = 0
         self.screen_shake_time = 0
 
-        self.current_stage_theme = 1
-        self.stage4_alternating_mode = False
+        self.stage_manager.reset()
         self.music_started = False
-        self.current_stage_ambient = None
-        self.sound_manager.stop_stage_effect()
-        self.create_background()
 
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update game state"""
@@ -234,7 +164,8 @@ class DoomsdayScreen(BaseScreen):
 
         if not self.music_started:
             self.music_started = True
-            self._start_stage_music(1)
+            # Start initial stage music via stage manager
+            self.stage_manager._start_stage_music(self.stage_manager.current_stage_theme)
 
         self.game_time += dt
 
@@ -243,12 +174,9 @@ class DoomsdayScreen(BaseScreen):
         if damage > 0:
             self.take_damage(damage)
 
-        new_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
-        if new_theme != self.current_stage_theme and not self.stage_transition_active:
-            self._start_stage_transition(new_theme)
-
-        if self.current_stage_theme >= 4 and self.stage4_alternating_mode:
-            self._handle_stage4_music_alternation()
+        # Update stage progression and transitions
+        self.stage_manager.update_stage_progression(self.enemy_manager.wave_number)
+        self.stage_manager.update(dt)
 
         if self.damage_flash_time > 0:
             self.damage_flash_time -= dt
@@ -258,11 +186,6 @@ class DoomsdayScreen(BaseScreen):
 
         if self.muzzle_flash_time > 0:
             self.muzzle_flash_time -= dt
-
-        if self.stage_transition_active:
-            self.stage_transition_time += dt
-            if self.stage_transition_time >= self.stage_transition_duration:
-                self._complete_stage_transition()
 
         self.fps_counter += 1
         self.fps_timer += dt
@@ -342,28 +265,28 @@ class DoomsdayScreen(BaseScreen):
     def _start_stage_transition(self, new_theme: int):
         """Start a smooth transition to a new stage"""
         # Store the old background
-        self.old_background = self.background.copy()
+        self.stage_manager.old_background = self.background.copy()
 
         # Create the new background
-        old_theme = self.current_stage_theme
-        self.current_stage_theme = new_theme
+        old_theme = self.stage_manager.current_stage_theme
+        self.stage_manager.current_stage_theme = new_theme
         self.create_background()
-        self.new_background = self.background.copy()
+        self.stage_manager.new_background = self.background.copy()
 
-        self.current_stage_theme = old_theme
-        self.background = self.old_background.copy()
+        self.stage_manager.current_stage_theme = old_theme
+        self.background = self.stage_manager.old_background.copy()
 
         if new_theme == 2:
-            self.stage_transition_type = "flash"  # Hell's gates - dramatic flash
+            self.stage_manager.stage_transition_type = "flash"  # Hell's gates - dramatic flash
         elif new_theme == 3:
-            self.stage_transition_type = "fade"
+            self.stage_manager.stage_transition_type = "fade"
         elif new_theme == 4:
-            self.stage_transition_type = "slide"  # Final apocalypse - sliding destruction
+            self.stage_manager.stage_transition_type = "slide"  # Final apocalypse - sliding destruction
         else:
-            self.stage_transition_type = "fade"
+            self.stage_manager.stage_transition_type = "fade"
 
-        self.stage_transition_active = True
-        self.stage_transition_time = 0
+        self.stage_manager.stage_transition_active = True
+        self.stage_manager.stage_transition_time = 0
 
         self.screen_shake_time = 1.0
         self.screen_shake_intensity = 15
@@ -373,30 +296,33 @@ class DoomsdayScreen(BaseScreen):
     def _complete_stage_transition(self):
         """Complete the stage transition"""
         # Apply the new theme
-        self.current_stage_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
-        self.background = self.new_background.copy()
-        self._start_stage_music(self.current_stage_theme)
+        self.stage_manager.current_stage_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
+        self.background = self.stage_manager.new_background.copy()
+        self._start_stage_music(self.stage_manager.current_stage_theme)
 
-        self.stage_transition_active = False
-        self.stage_transition_time = 0
-        self.old_background = None
-        self.new_background = None
+        self.stage_manager.stage_transition_active = False
+        self.stage_manager.stage_transition_time = 0
+        self.stage_manager.old_background = None
+        self.stage_manager.new_background = None
 
-        print(f"Stage transition completed to theme {self.current_stage_theme}")
+        print(f"Stage transition completed to theme {self.stage_manager.current_stage_theme}")
 
     def _draw_stage_transition(self, surface: pygame.Surface):
         """Draw the stage transition effect"""
-        if not self.stage_transition_active or not self.old_background or not self.new_background:
+        if (
+            not self.stage_manager.stage_transition_active
+            or not self.stage_manager.old_background
+            or not self.stage_manager.new_background
+        ):
             return
 
-        progress = self.stage_transition_time / self.stage_transition_duration
+        progress = self.stage_manager.stage_transition_time / self.stage_manager.stage_transition_duration
         progress = min(1.0, progress)
 
         if self.stage_transition_type == "fade":
             # Create a copy of old background
-            transition_surface = self.old_background.copy()
+            transition_surface = self.stage_manager.old_background.copy()
 
-            new_with_alpha = self.new_background.copy()
             alpha = int(255 * progress)
             fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             fade_surface.fill((0, 0, 0))
@@ -404,7 +330,7 @@ class DoomsdayScreen(BaseScreen):
 
             # Blend new background
             temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            temp_surface.blit(self.new_background, (0, 0))
+            temp_surface.blit(self.stage_manager.new_background, (0, 0))
             temp_surface.set_alpha(alpha)
 
             transition_surface.blit(temp_surface, (0, 0))
@@ -416,20 +342,20 @@ class DoomsdayScreen(BaseScreen):
                 flash_intensity = int(255 * (progress / 0.3))
                 flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
                 flash_surface.fill((255, 255, 255))
-                surface.blit(self.old_background, (0, 0))
+                surface.blit(self.stage_manager.old_background, (0, 0))
                 flash_surface.set_alpha(flash_intensity)
                 surface.blit(flash_surface, (0, 0))
             else:
                 # Reveal phase - show new background
                 reveal_progress = (progress - 0.3) / 0.7
                 if reveal_progress < 1.0:
-                    surface.blit(self.new_background, (0, 0))
+                    surface.blit(self.stage_manager.new_background, (0, 0))
                     white_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
                     white_overlay.fill((255, 255, 255))
                     white_overlay.set_alpha(int(255 * (1 - reveal_progress)))
                     surface.blit(white_overlay, (0, 0))
                 else:
-                    surface.blit(self.new_background, (0, 0))
+                    surface.blit(self.stage_manager.new_background, (0, 0))
 
         elif self.stage_transition_type == "slide":
             slide_offset = int(SCREEN_WIDTH * (1 - progress))
@@ -437,7 +363,7 @@ class DoomsdayScreen(BaseScreen):
             surface.blit(self.old_background, (0, 0))
 
             if slide_offset < SCREEN_WIDTH:
-                surface.blit(self.new_background, (slide_offset, 0))
+                surface.blit(self.stage_manager.new_background, (slide_offset, 0))
 
         self._draw_transition_text(surface, progress)
 
@@ -504,10 +430,14 @@ class DoomsdayScreen(BaseScreen):
 
         draw_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-        if self.stage_transition_active:
-            self._draw_stage_transition(draw_surface)
-        else:
-            draw_surface.blit(self.background, (0, 0))
+        # Draw background (includes stage transitions)
+        draw_surface.blit(self.background, (0, 0))
+
+        # Draw stage transition effects if active
+        self.stage_manager.draw_stage_transition(draw_surface)
+
+        # Draw stage transition text if active
+        self.stage_manager.draw_stage_transition_text(draw_surface, self.big_font)
 
         if self.paused:
             self._draw_pause_screen()
@@ -519,12 +449,10 @@ class DoomsdayScreen(BaseScreen):
             self._draw_camera_feed()
             return
 
-        # Draw stage-specific background elements
+        # Draw stage-specific background elements and effects
         self._draw_stage_background(draw_surface)
 
-        self._draw_floor_grid(draw_surface)
-
-        self._draw_stage_effects(draw_surface)
+        self.stage_manager.draw_stage_effects(draw_surface)
 
         # Draw enemies with blood physics
         self.enemy_manager.draw(draw_surface, self.debug_mode, dt=1.0 / 60.0)
@@ -562,34 +490,25 @@ class DoomsdayScreen(BaseScreen):
         if self.settings_manager.get("debug_mode", False):
             self.draw_debug_overlay()
 
-    def _get_stage_object_alpha(self):
-        """Calculate alpha for stage objects during transitions"""
-        if not self.stage_transition_active:
-            return 255
-
-        progress = self.stage_transition_time / self.stage_transition_duration
-        if progress < 0.5:
-            # First half: fade out old objects
-            return int(255 * (1 - progress * 2))
-        else:
-            return int(255 * ((progress - 0.5) * 2))
-
     def _draw_stage_background(self, surface: pygame.Surface):
         """Draw stage-specific background elements"""
         horizon_y = int(SCREEN_HEIGHT * 0.4)
 
-        # Calculate object alpha during transitions
-        object_alpha = self._get_stage_object_alpha()
-
-        # Create a temporary surface for alpha blending if needed
-        if object_alpha < 255:
-            temp_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            temp_surface.set_alpha(object_alpha)
-            draw_target = temp_surface
+        # Handle object visibility during transitions
+        if self.stage_manager.stage_transition_active:
+            progress = self.stage_manager.stage_transition_time / self.stage_manager.stage_transition_duration
+            if progress < 0.6:  # Hide objects during first 60% of transition
+                return  # Don't draw any objects
+            # After 60%, we want to draw NEW stage objects
+            # So we need to determine what the target theme should be
+            target_theme = min(4, (self.enemy_manager.wave_number - 1) // 2 + 1)
         else:
-            draw_target = surface
+            # Not in transition, use current theme
+            target_theme = self.stage_manager.current_stage_theme
 
-        if self.current_stage_theme == 1:
+        draw_target = surface
+
+        if target_theme == 1:
             # Stage 1: The Beginning
 
             for i in range(18):
@@ -735,7 +654,7 @@ class DoomsdayScreen(BaseScreen):
                     ],
                 )
 
-        elif self.current_stage_theme == 2:
+        elif target_theme == 2:
             # Stage 2: Hell's Gates
 
             for i in range(4):
@@ -880,7 +799,7 @@ class DoomsdayScreen(BaseScreen):
                 pygame.draw.line(draw_target, (20, 10, 5), (stake_x, stake_y - 30), (stake_x - 15, stake_y - 35), 2)
                 pygame.draw.line(draw_target, (20, 10, 5), (stake_x, stake_y - 20), (stake_x + 10, stake_y - 28), 2)
 
-        elif self.current_stage_theme == 3:
+        elif self.stage_manager.current_stage_theme == 3:
             # Stage 3: Demon Realm
 
             for crystal in range(15):
@@ -1008,7 +927,7 @@ class DoomsdayScreen(BaseScreen):
                     inner_points.append((int(px), int(py)))
                 pygame.draw.polygon(draw_target, (150, 80, 200), inner_points, 1)
 
-        elif self.current_stage_theme == 4:
+        elif self.stage_manager.current_stage_theme == 4:
             # Stage 4: Final Apocalypse
 
             for building in range(20):
@@ -1205,7 +1124,7 @@ class DoomsdayScreen(BaseScreen):
             draw_target = temp_surface
         else:
             draw_target = surface
-        if self.current_stage_theme == 2:
+        if self.stage_manager.current_stage_theme == 2:
             # Fire particles
             for i in range(5):
                 x = random.randint(0, SCREEN_WIDTH)
@@ -1217,7 +1136,7 @@ class DoomsdayScreen(BaseScreen):
                 if size >= 5 and random.random() < 0.001:
                     self.sound_manager.play_one_shot_effect("stage2_fire_crackle", volume=0.05)
 
-        elif self.current_stage_theme == 3:
+        elif self.stage_manager.current_stage_theme == 3:
             mist_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             for i in range(3):
                 x = random.randint(0, SCREEN_WIDTH)
@@ -1226,7 +1145,7 @@ class DoomsdayScreen(BaseScreen):
                 mist_surface.fill((100, 50, 150, 20), (x - radius, y - radius, radius * 2, radius * 2))
             draw_target.blit(mist_surface, (0, 0))
 
-        elif self.current_stage_theme == 4:
+        elif self.stage_manager.current_stage_theme == 4:
             # FINAL APOCALYPSE
 
             # 1. Falling meteors/debris
@@ -1285,16 +1204,15 @@ class DoomsdayScreen(BaseScreen):
                 smoke_surface.fill((50, 30, 20, 30), (x - radius, y - radius, radius * 2, radius * 2))
             draw_target.blit(smoke_surface, (0, 0))
 
-        # Blit the temporary surface if using alpha blending
-        if object_alpha < 255:
-            surface.blit(temp_surface, (0, 0))
+        # Objects draw directly to surface - no alpha blending
 
     def _draw_floor_grid(self, surface: pygame.Surface):
         """Draw 3D floor grid for perspective"""
         horizon_y = int(SCREEN_HEIGHT * 0.4)
 
-        # Use the theme's grid color
-        grid_color = self.grid_color if hasattr(self, "grid_color") else (40, 30, 30)
+        # Get the grid color from the stage manager's current theme
+        theme = self.stage_manager.stage_themes.get(self.stage_manager.current_stage_theme, self.stage_manager.stage_themes[1])
+        grid_color = theme.get("grid", (40, 30, 30))
 
         # Vertical lines (perspective)
         for i in range(-10, 11):
@@ -1384,9 +1302,7 @@ class DoomsdayScreen(BaseScreen):
         score_text = self.font.render(f"Score: {self.score}", True, WHITE)
         surface.blit(score_text, (10, 10))
 
-        stage_names = {1: "The Beginning", 2: "Hell's Gates", 3: "Demon Realm", 4: "Final Apocalypse"}
-        stage_name = stage_names.get(self.current_stage_theme, "Unknown")
-        wave_text = self.font.render(f"Wave {self.enemy_manager.wave_number}: {stage_name}", True, WHITE)
+        wave_text = self.font.render(self.stage_manager.get_wave_text(self.enemy_manager.wave_number), True, WHITE)
         surface.blit(wave_text, (10, 50))
 
         # Combo indicator
@@ -1401,15 +1317,9 @@ class DoomsdayScreen(BaseScreen):
             wave_rect = wave_complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
             surface.blit(wave_complete_text, wave_rect)
 
-            # Check if entering new stage
-            next_wave = self.enemy_manager.wave_number + 1
-            next_theme = min(4, (next_wave - 1) // 2 + 1)
-            if next_theme != self.current_stage_theme:
-                stage_names = {2: "ENTERING HELL'S GATES", 3: "DESCENDING TO DEMON REALM", 4: "THE FINAL APOCALYPSE BEGINS"}
-                if next_theme in stage_names:
-                    stage_text = self.big_font.render(stage_names[next_theme], True, (255, 100, 0))
-                    stage_rect = stage_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80))
-                    surface.blit(stage_text, stage_rect)
+            # Draw stage transition text if active
+            if self.stage_manager.should_show_stage_transition_text():
+                self.stage_manager.draw_stage_transition_text(surface, self.big_font)
             else:
                 next_wave_text = self.font.render("Next wave starting...", True, WHITE)
                 next_rect = next_wave_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
@@ -1458,10 +1368,12 @@ class DoomsdayScreen(BaseScreen):
         if command.startswith("/stage "):
             try:
                 stage_num = int(command.split()[1])
-                # Calculate wave number from stage (2 waves per stage)
-                wave_num = (stage_num - 1) * 2 + 1
-                self._jump_to_wave(wave_num)
-                self.console_message = f"Jumped to Stage {stage_num} (Wave {wave_num})"
+                success, message = self.stage_manager.jump_to_stage(stage_num)
+                if success:
+                    # Also update wave number in enemy manager
+                    wave_num = (stage_num - 1) * 2 + 1
+                    self._jump_to_wave(wave_num)
+                self.console_message = message
             except Exception:
                 self.console_message = "Invalid stage number"
 
@@ -1506,14 +1418,8 @@ class DoomsdayScreen(BaseScreen):
         self.enemy_manager.time_between_spawns = max(1.5, 3.0 - wave_num * 0.15)
         self.enemy_manager.difficulty_multiplier = 1.0 + (wave_num - 1) * 0.10
 
-        # Update stage theme with transition effect
-        new_theme = min(4, (wave_num - 1) // 2 + 1)
-        if new_theme != self.current_stage_theme:
-            self._start_stage_transition(new_theme)
-        else:
-            # If same stage, just update background without transition
-            self.create_background()
-            self._start_stage_music(new_theme)
+        # Update stage progression
+        self.stage_manager.update_stage_progression(wave_num)
 
     def _draw_pause_screen(self) -> None:
         """Draw pause overlay"""

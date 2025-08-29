@@ -23,8 +23,8 @@ from utils.constants import (
     CAMERA_X,
     CAMERA_Y,
     DEFAULT_CAMERA_ID,
-    GAME_STATE_ARCADE,
     GAME_STATE_CAPYBARA_HUNT,
+    GAME_STATE_DOOMSDAY,
     GAME_STATE_INSTRUCTIONS,
     GAME_STATE_PLAYING,
     GAME_STATE_SETTINGS,
@@ -152,7 +152,7 @@ class MenuScreen(BaseScreen):
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_1:
-                return GAME_STATE_ARCADE
+                return GAME_STATE_DOOMSDAY
             elif event.key == pygame.K_2:
                 return GAME_STATE_CAPYBARA_HUNT
             elif event.key == pygame.K_3:
@@ -171,7 +171,7 @@ class MenuScreen(BaseScreen):
         if button == self.play_button:
             result = GAME_STATE_PLAYING
         elif button == self.arcade_button:
-            result = GAME_STATE_ARCADE
+            result = GAME_STATE_DOOMSDAY
         elif button == self.capybara_button:
             result = GAME_STATE_CAPYBARA_HUNT
         elif button == self.settings_button:
@@ -494,8 +494,6 @@ class MenuScreen(BaseScreen):
                 self.pond_buddy["mood"] = "neutral"
 
         # Random idle animations when neutral
-        # Standard library imports
-        import random
 
         if self.pond_buddy["mood"] == "neutral" and random.random() < 0.005:
             idle_moods = ["happy", "excited"]
@@ -582,8 +580,6 @@ class MenuScreen(BaseScreen):
                         rad = math.radians(angle)
                         x1 = cx + math.cos(rad) * 8
                         y1 = cy + math.sin(rad) * 8
-                        x2 = cx + math.cos(rad + math.radians(36)) * 4
-                        y2 = cy + math.sin(rad + math.radians(36)) * 4
                         pygame.draw.line(self.screen, (255, 215, 0), (cx, cy), (int(x1), int(y1)), 2)
 
                 # Huge smile
