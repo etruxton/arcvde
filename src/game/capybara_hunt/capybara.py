@@ -646,7 +646,7 @@ class FlyingCapybara:
             # Shot capybaras also get a random landing position
             self.ground_y = random.randint(575, 700)
 
-    def draw(self, screen: pygame.Surface):
+    def draw(self, screen: pygame.Surface, debug_mode: bool = False):
         """Draw the capybara with balloon"""
         # Check if capybara is on ground
         if self.grounded:
@@ -658,6 +658,16 @@ class FlyingCapybara:
         else:
             # Draw flying capybara with balloon
             self._draw_flying_capybara(screen)
+
+        # Draw debug hitboxes if enabled
+        if debug_mode:
+            # Draw capybara hitbox (circular)
+            pygame.draw.circle(screen, (255, 0, 0), (int(self.x), int(self.y)), self.size // 2, 2)
+
+            # Draw balloon hitbox (circular) if alive and balloon not popped
+            if self.alive and not self.balloon_popped:
+                balloon_y = int(self.y - self.size // 2 - 40)
+                pygame.draw.circle(screen, (0, 255, 0), (int(self.x), balloon_y), self.balloon_radius, 2)
 
     def _draw_flying_capybara(self, screen: pygame.Surface):
         """Draw a flying capybara with balloon"""
@@ -980,7 +990,7 @@ class CapybaraManager:
 
         return False, "none", 0
 
-    def draw(self, screen: pygame.Surface):
+    def draw(self, screen: pygame.Surface, debug_mode: bool = False):
         """Draw all capybaras with depth layering (back to front)"""
         # Sort capybaras by Y position for proper depth layering
         # Capybaras higher up (smaller Y) should be drawn first (behind)
@@ -988,7 +998,7 @@ class CapybaraManager:
         sorted_capybaras = sorted(self.capybaras, key=lambda c: c.y)
 
         for capybara in sorted_capybaras:
-            capybara.draw(screen)
+            capybara.draw(screen, debug_mode)
 
     def start_next_round(self):
         """Start the next round"""

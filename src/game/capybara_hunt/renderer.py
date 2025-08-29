@@ -16,6 +16,7 @@ from utils.constants import (
     CAMERA_Y,
     GRAY,
     GREEN,
+    LIGHT_GRAY,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     UI_ACCENT,
@@ -767,7 +768,7 @@ class CapybaraHuntRenderer:
         screen.blit(fps_text, fps_rect)
 
         # Controls hint
-        controls_text = small_font.render("ESC: Menu | P: Pause | R: Reset | Shoot BALLOONS, not capybaras!", True, GRAY)
+        controls_text = small_font.render("ESC: Menu | P: Pause | R: Reset | D: Debug", True, LIGHT_GRAY)
         controls_rect = controls_text.get_rect()
         controls_rect.centerx = SCREEN_WIDTH // 2
         controls_rect.y = SCREEN_HEIGHT - 30

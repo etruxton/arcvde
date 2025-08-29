@@ -14,6 +14,7 @@ import pygame
 
 # Local application imports
 from game.capybara_hunt.capybara import CapybaraManager, FlyingCapybara
+from game.capybara_hunt.input_handler import CapybaraHuntInputHandler
 from game.capybara_hunt.pond_buddy import PondBuddy
 from game.capybara_hunt.renderer import CapybaraHuntRenderer
 from game.capybara_hunt.state_manager import CapybaraHuntState
@@ -57,6 +58,9 @@ class CapybaraHuntScreen(BaseScreen):
         # UI Manager
         self.ui_manager = CapybaraHuntUI(self.font)
 
+        # Input handler for all keyboard and event processing
+        self.input_handler = CapybaraHuntInputHandler()
+
         # Renderer for all drawing operations
         self.renderer = CapybaraHuntRenderer()
 
@@ -76,99 +80,35 @@ class CapybaraHuntScreen(BaseScreen):
         self.fps_timer = 0
         self.current_fps = 0
 
-        # Debug console
-        self.console_active = False
-        self.console_input = ""
-        self.console_message = ""
-        self.console_message_time = 0
+        # Debug mode for hitbox visualization
+        self.debug_mode = False
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
-        # Handle mouse clicks for buttons
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Left click
-                mouse_pos = pygame.mouse.get_pos()
+        result = self.input_handler.handle_events(
+            event,
+            self.state,
+            self.capybara_manager,
+            self.ui_manager,
+            self.hand_tracker,
+            self._reset_shoot_pos,
+            self._reset_crosshair_pos,
+        )
 
-                # Handle UI button clicks
-                action = self.ui_manager.handle_mouse_button_click(
-                    mouse_pos, self.capybara_manager.round_complete, self.state.is_game_over(self.capybara_manager)
-                )
+        # Handle debug mode toggle
+        if result == "toggle_debug":
+            self.debug_mode = not self.debug_mode
+            return None
 
-                if action == "continue":
-                    self.state.start_next_round()
-                    self.capybara_manager.start_next_round()
-                    self.hand_tracker.reset_tracking_state()
-                    self.shoot_pos = None
-                    self.crosshair_pos = None
-                    self.ui_manager.reset_buttons()
-                    return None
-                elif action == "retry":
-                    self.state.reset_game()
-                    self.capybara_manager.reset_game()
-                    self.hand_tracker.reset_tracking_state()
-                    self.shoot_pos = None
-                    self.crosshair_pos = None
-                    self.ui_manager.reset_buttons()
-                    return None
-                elif action == "menu":
-                    return GAME_STATE_MENU
+        return result
 
-        if event.type == pygame.KEYDOWN:
-            # Handle console input when active
-            if self.console_active:
-                if event.key == pygame.K_RETURN:
-                    self._execute_console_command()
-                    self.console_input = ""
-                    self.console_active = False
-                elif event.key == pygame.K_ESCAPE:
-                    self.console_active = False
-                    self.console_input = ""
-                elif event.key == pygame.K_BACKSPACE:
-                    self.console_input = self.console_input[:-1]
-                else:
-                    if event.unicode and len(self.console_input) < 30:
-                        self.console_input += event.unicode
-                return None
+    def _reset_shoot_pos(self):
+        """Callback to reset shoot position"""
+        self.shoot_pos = None
 
-            # Normal key handling
-            if event.key == pygame.K_ESCAPE:
-                return GAME_STATE_MENU
-            elif event.key == pygame.K_p or event.key == pygame.K_SPACE:
-                if not self.state.is_game_over(self.capybara_manager) and not self.capybara_manager.round_complete:
-                    self.state.toggle_pause()
-            elif event.key == pygame.K_r:
-                self.state.reset_game()
-                self.capybara_manager.reset_game()
-                self.hand_tracker.reset_tracking_state()
-                self.shoot_pos = None
-                self.crosshair_pos = None
-                self.ui_manager.reset_buttons()
-            elif event.key == pygame.K_RETURN and (
-                self.state.is_game_over(self.capybara_manager)
-                or self.capybara_manager.round_complete
-                or self.capybara_manager.game_over
-            ):
-                if self.state.is_game_over(self.capybara_manager) or self.capybara_manager.game_over:
-                    # Reset entire game
-                    self.state.reset_game()
-                    self.capybara_manager.reset_game()
-                    self.hand_tracker.reset_tracking_state()
-                    self.shoot_pos = None
-                    self.crosshair_pos = None
-                    self.ui_manager.reset_buttons()
-                elif self.capybara_manager.round_complete:
-                    # Start next round
-                    self.state.start_next_round()
-                    self.capybara_manager.start_next_round()
-                    self.hand_tracker.reset_tracking_state()
-                    self.shoot_pos = None
-                    self.crosshair_pos = None
-                    self.ui_manager.reset_buttons()
-            elif event.key == pygame.K_SLASH and self.state.is_paused():  # Open console with /
-                self.console_active = True
-                self.console_input = "/"
-
-        return None
+    def _reset_crosshair_pos(self):
+        """Callback to reset crosshair position"""
+        self.crosshair_pos = None
 
     def update(self, dt: float, current_time: int) -> Optional[str]:
         """Update game state"""
@@ -383,17 +323,18 @@ class CapybaraHuntScreen(BaseScreen):
         self.renderer.draw_scenery(self.screen)
 
         # Draw capybaras (sorted by Y position for depth layering)
-        self.capybara_manager.draw(self.screen)
+        self.capybara_manager.draw(self.screen, self.debug_mode)
 
         self.pond_buddy.draw(self.screen)
 
         if self.state.should_show_pause_screen():
+            console_active, console_input, console_message, console_message_time = self.input_handler.get_console_state()
             self.renderer.draw_pause_screen(
                 self.screen,
-                self.console_active,
-                self.console_input,
-                self.console_message,
-                self.console_message_time,
+                console_active,
+                console_input,
+                console_message,
+                console_message_time,
                 self.big_font,
                 self.font,
                 self.small_font,
@@ -478,52 +419,14 @@ class CapybaraHuntScreen(BaseScreen):
             self.screen, self.capybara_shot_message_time, self.capybara_manager.round_number, self.big_font, self.font
         )
 
+        # Show debug mode indicator
+        if self.debug_mode:
+            debug_text = self.small_font.render("DEBUG MODE - Hitboxes Visible", True, (255, 0, 255))
+            self.screen.blit(debug_text, (10, 120))
+
         # Draw camera feed
         self.draw_camera_with_tracking(CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT)
 
         # Draw debug overlay if enabled
         if self.settings_manager.get("debug_mode", False):
             self.draw_debug_overlay()
-
-    def _execute_console_command(self):
-        """Execute debug console command"""
-        command = self.console_input.strip().lower()
-
-        if command.startswith("/round "):
-            try:
-                round_num = int(command.split()[1])
-                if round_num > 0:
-                    self._jump_to_round(round_num)
-                    self.console_message = f"Jumped to Round {round_num}"
-                else:
-                    self.console_message = "Round number must be positive"
-            except Exception:
-                self.console_message = "Invalid round number"
-
-        else:
-            self.console_message = "Unknown command. Try: /round #"
-
-        self.console_message_time = time.time()
-
-    def _jump_to_round(self, round_num: int):
-        """Jump directly to a specific round"""
-        self.capybara_manager.round_number = round_num
-        self.capybara_manager.capybaras_spawned = 0
-        self.capybara_manager.capybaras_hit = 0
-        self.state.shots_remaining = 3
-        self.state.game_over = False
-        self.capybara_manager.capybaras.clear()
-        self.state.hit_markers.clear()
-        self.capybara_manager.spawn_timer = 0
-        self.capybara_manager.wave_active = False
-
-        # Reset completion flags
-        self.capybara_manager.round_complete = False
-        if hasattr(self, "_round_completion_processed"):
-            delattr(self, "_round_completion_processed")
-        if hasattr(self, "_game_over_processed"):
-            delattr(self, "_game_over_processed")
-
-        # Adjust difficulty for the round
-        self.capybara_manager.required_hits = min(9, 6 + (round_num - 1) // 5)
-        self.capybara_manager.spawn_delay = max(1.0, 2.0 - round_num * 0.1)

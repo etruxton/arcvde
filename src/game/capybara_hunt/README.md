@@ -45,6 +45,26 @@ The **`CapybaraHuntUI`** class handles:
 - Return to main menu
 - Visual crosshair targeting feedback
 
+### `input_handler.py`
+**Comprehensive input and control management**
+
+The **`CapybaraHuntInputHandler`** class handles:
+- **Keyboard input processing**: ESC (menu), P/SPACE (pause), R (reset), RETURN (continue/retry)
+- **Debug console management**: Console activation (/), command input, and command execution
+- **Event delegation**: Mouse button clicks and UI interactions
+- **State-aware input**: Context-sensitive input validation based on game state
+- **Console commands**: /round # for debug round jumping
+
+**Key Features:**
+- **Centralized input**: All keyboard and event handling in one location
+- **Console system**: Full debug console with command processing and feedback
+- **Callback pattern**: Clean separation using callback functions for state changes
+- **Input validation**: Context-aware input restrictions (e.g., pause only during active gameplay)
+- **Reset coordination**: Coordinated game state and UI resets across components
+
+**Supported Commands:**
+- `/round #`: Jump to specific round number for testing
+
 ### `renderer.py`
 **Comprehensive rendering and visual effects system**
 
@@ -106,11 +126,11 @@ These components are used by `src/screens/capybara_hunt_screen.py`, which acts a
 - Game state management and logic coordination  
 - Camera integration and hand tracking
 - Sound management and effects
-- Input processing and event handling
 
 The main screen delegates specific responsibilities:
 - **Rendering**: All visual rendering handled by `CapybaraHuntRenderer`
 - **UI Management**: Button interactions handled by `CapybaraHuntUI`
+- **Input Handling**: Keyboard and event processing handled by `CapybaraHuntInputHandler`
 - **State Management**: Game state and flow control handled by `CapybaraHuntState`
 - **Game Logic**: Entity management handled by `CapybaraManager`
 - **Companion**: Emotional reactions handled by `PondBuddy`
