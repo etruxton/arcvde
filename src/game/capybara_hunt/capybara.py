@@ -667,7 +667,7 @@ class FlyingCapybara:
             # Draw balloon hitbox (circular) if alive and balloon not popped
             if self.alive and not self.balloon_popped:
                 balloon_y = int(self.y - self.size // 2 - 40)
-                pygame.draw.circle(screen, (0, 255, 0), (int(self.x), balloon_y), self.balloon_radius, 2)
+                pygame.draw.circle(screen, (255, 0, 255), (int(self.x), balloon_y), self.balloon_radius, 2)
 
     def _draw_flying_capybara(self, screen: pygame.Surface):
         """Draw a flying capybara with balloon"""
