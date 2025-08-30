@@ -16,6 +16,7 @@ import pygame
 from game.doomsday.enemy import EnemyManager
 from game.doomsday.renderer import DoomsdayRenderer
 from game.doomsday.stage_manager import StageManager
+from game.doomsday.ui_manager import DoomsdayUI
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import GAME_STATE_MENU, SCREEN_HEIGHT, SCREEN_WIDTH
@@ -31,6 +32,7 @@ class DoomsdayScreen(BaseScreen):
         # Game-specific components
         self.enemy_manager = EnemyManager(SCREEN_WIDTH, SCREEN_HEIGHT)
         self.renderer = DoomsdayRenderer(screen)
+        self.ui_manager = DoomsdayUI(screen)
 
         # Game state
         self.score = 0
@@ -324,6 +326,9 @@ class DoomsdayScreen(BaseScreen):
         self.enemy_manager.enemies_spawned_this_wave = 0
         self.enemy_manager.enemies_per_wave = 5 + wave_num * 2
         self.enemy_manager.time_between_spawns = max(1.5, 3.0 - wave_num * 0.15)
+
+        # IMPORTANT: Update difficulty multiplier for proper health scaling
+        self.enemy_manager.difficulty_multiplier = 1.0 + (wave_num - 1) * 0.15
 
         # Update stage theme
         stage = min(4, (wave_num - 1) // 2 + 1)

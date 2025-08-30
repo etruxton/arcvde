@@ -12,6 +12,7 @@ from typing import Optional, Tuple
 import pygame
 
 # Local application imports
+from game.doomsday.ui_manager import DoomsdayUI
 from utils.constants import (
     BLACK,
     CAMERA_HEIGHT,
@@ -39,6 +40,9 @@ class DoomsdayRenderer:
         self.small_font = pygame.font.Font(None, 24)
         self.big_font = pygame.font.Font(None, 72)
         self.huge_font = pygame.font.Font(None, 96)
+
+        # Initialize UI manager
+        self.ui_manager = DoomsdayUI(screen)
 
     def draw_main_game(
         self,
@@ -107,10 +111,8 @@ class DoomsdayRenderer:
 
         # Apply damage flash
         if damage_flash_time > 0:
-            damage_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            damage_surface.set_alpha(int(100 * (damage_flash_time / 0.3)))
-            damage_surface.fill((255, 0, 0))
-            draw_surface.blit(damage_surface, (0, 0))
+            alpha = int(100 * (damage_flash_time / 0.3))
+            self.ui_manager.draw_damage_flash(draw_surface, alpha)
 
         # Draw UI
         self._draw_ui(draw_surface, stage_manager, enemy_manager, player_health, max_health, score, current_fps, debug_mode)
@@ -129,82 +131,17 @@ class DoomsdayRenderer:
         console_message: str,
         console_message_time: float,
     ) -> None:
-        """Draw pause overlay"""
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(128)
-        overlay.fill(BLACK)
-        self.screen.blit(overlay, (0, 0))
-
-        pause_text = self.big_font.render("PAUSED", True, WHITE)
-        pause_rect = pause_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
-        self.screen.blit(pause_text, pause_rect)
-
-        # Draw console if active
-        if console_active:
-            # Console background
-            console_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 20, 400, 40)
-            pygame.draw.rect(self.screen, (40, 40, 40), console_rect)
-            pygame.draw.rect(self.screen, WHITE, console_rect, 2)
-
-            # Console text
-            console_text = self.font.render(console_input, True, WHITE)
-            self.screen.blit(console_text, (console_rect.x + 10, console_rect.y + 10))
-
-            # Console hint
-            hint_text = self.small_font.render(
-                "Commands: /stage #, /wave #, /heal, /kill | ESC to cancel", True, (200, 200, 200)
-            )
-            hint_rect = hint_text.get_rect(center=(SCREEN_WIDTH // 2, console_rect.bottom + 20))
-            self.screen.blit(hint_text, hint_rect)
-        else:
-            instructions = [
-                "Press P or SPACE to resume",
-                "Press / to open debug console",
-                "Press ESC to return to menu",
-                "Press R to reset game",
-            ]
-
-            for i, instruction in enumerate(instructions):
-                text = self.font.render(instruction, True, WHITE)
-                text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + i * 40))
-                self.screen.blit(text, text_rect)
-
-        # Show console message if recent
-        if console_message and time.time() - console_message_time < 3:
-            msg_text = self.font.render(console_message, True, (0, 255, 0))
-            msg_rect = msg_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 150))
-            self.screen.blit(msg_text, msg_rect)
+        """Draw pause overlay - delegate to UI manager"""
+        self.ui_manager.draw_pause_screen(self.screen, console_active, console_input, console_message, console_message_time)
 
     def draw_game_over_screen(self, surface: pygame.Surface, score: int, enemy_manager) -> None:
-        """Draw game over screen"""
-        # Dark overlay
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill(BLACK)
-        surface.blit(overlay, (0, 0))
+        """Draw game over screen - delegate to UI manager"""
+        # Calculate time survived (placeholder - would need actual game time)
+        time_survived = enemy_manager.wave_number * 30.0  # Rough estimate
 
-        # Game Over text
-        game_over_text = self.huge_font.render("GAME OVER", True, (255, 0, 0))
-        game_over_rect = game_over_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
-        surface.blit(game_over_text, game_over_rect)
-
-        # Stats
-        stats = [
-            f"Final Score: {score}",
-            f"Waves Survived: {enemy_manager.wave_number - 1}",
-            f"Enemies Defeated: {enemy_manager.total_kills}",
-            f"Best Combo: {enemy_manager.current_combo}",
-        ]
-
-        for i, stat in enumerate(stats):
-            text = self.font.render(stat, True, WHITE)
-            text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + i * 40))
-            surface.blit(text, text_rect)
-
-        # Restart instructions
-        restart_text = self.font.render("Press ENTER or R to restart | ESC to return to menu", True, YELLOW)
-        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 200))
-        surface.blit(restart_text, restart_rect)
+        self.ui_manager.draw_game_over_screen(
+            surface, score, enemy_manager.wave_number - 1, enemy_manager.total_kills, time_survived
+        )
 
     def _draw_ui(
         self,
@@ -217,47 +154,25 @@ class DoomsdayRenderer:
         current_fps: int,
         debug_mode: bool,
     ) -> None:
-        """Draw game UI elements"""
-        # Health bar
-        health_bar_width = 300
-        health_bar_height = 30
-        health_bar_x = 10
-        health_bar_y = SCREEN_HEIGHT - 40
-
-        # Health bar background
-        pygame.draw.rect(surface, (50, 0, 0), (health_bar_x, health_bar_y, health_bar_width, health_bar_height))
-
-        # Health bar fill
-        health_percent = player_health / max_health
-        health_color = (255, 0, 0) if health_percent < 0.3 else (255, 255, 0) if health_percent < 0.6 else (0, 255, 0)
-        pygame.draw.rect(
-            surface, health_color, (health_bar_x, health_bar_y, int(health_bar_width * health_percent), health_bar_height)
+        """Draw game UI elements - delegate main HUD to UI manager"""
+        # Draw main HUD through UI manager
+        self.ui_manager.draw_hud(
+            surface,
+            stage_manager,
+            enemy_manager,
+            player_health,
+            max_health,
+            score,
+            enemy_manager.wave_number,
+            current_fps,
+            debug_mode,
         )
 
-        # Health bar border
-        pygame.draw.rect(surface, WHITE, (health_bar_x, health_bar_y, health_bar_width, health_bar_height), 2)
-
-        # Health text
-        health_text = self.small_font.render(f"{player_health}/{max_health}", True, WHITE)
-        health_text_rect = health_text.get_rect(
-            center=(health_bar_x + health_bar_width // 2, health_bar_y + health_bar_height // 2)
-        )
-        surface.blit(health_text, health_text_rect)
-
-        # Score
-        score_text = self.font.render(f"Score: {score}", True, WHITE)
-        surface.blit(score_text, (10, 10))
-
-        wave_text = self.font.render(stage_manager.get_wave_text(enemy_manager.wave_number), True, WHITE)
-        surface.blit(wave_text, (10, 50))
-
-        # Combo indicator
+        # Draw combo indicator (game-specific logic)
         if enemy_manager.current_combo > 1:
-            combo_color = (255, 255, 0) if enemy_manager.current_combo < 5 else (255, 128, 0)
-            combo_text = self.font.render(f"COMBO x{enemy_manager.current_combo}", True, combo_color)
-            combo_rect = combo_text.get_rect(center=(SCREEN_WIDTH // 2, 100))
-            surface.blit(combo_text, combo_rect)
+            self.ui_manager.draw_combo_indicator(surface, enemy_manager.current_combo, enemy_manager.combo_timer)
 
+        # Draw wave completion status
         if enemy_manager.wave_complete:
             wave_complete_text = self.big_font.render(f"WAVE {enemy_manager.wave_number} COMPLETE!", True, (0, 255, 0))
             wave_rect = wave_complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
@@ -270,11 +185,6 @@ class DoomsdayRenderer:
                 next_wave_text = self.font.render("Next wave starting...", True, WHITE)
                 next_rect = next_wave_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
                 surface.blit(next_wave_text, next_rect)
-
-        # FPS counter
-        fps_text = self.small_font.render(f"FPS: {current_fps}", True, GRAY)
-        fps_rect = fps_text.get_rect(bottomright=(SCREEN_WIDTH - 10, SCREEN_HEIGHT - 10))
-        surface.blit(fps_text, fps_rect)
 
         # Controls hint
         controls_text = self.small_font.render("ESC: Menu | P: Pause | R: Reset | D: Debug", True, GRAY)
@@ -298,18 +208,8 @@ class DoomsdayRenderer:
             surface.blit(danger_surface, (0, SCREEN_HEIGHT - 60))
 
     def _draw_crosshair(self, surface: pygame.Surface, pos: Tuple[int, int], color: Tuple[int, int, int], base_screen) -> None:
-        """Draw crosshair on surface - standalone implementation"""
-        x, y = pos
-        size = 15
-        thickness = 2
-
-        # Draw crosshair directly without base screen delegation
-        pygame.draw.circle(surface, color, pos, size, thickness)
-        pygame.draw.line(surface, color, (x - size - 8, y), (x + size + 8, y), thickness)
-        pygame.draw.line(surface, color, (x, y - size - 8), (x, y + size + 8), thickness)
-
-        # Center dot
-        pygame.draw.circle(surface, color, pos, 2)
+        """Draw crosshair on surface - delegate to UI manager"""
+        self.ui_manager.draw_crosshair(surface, pos, color)
 
     def _draw_shoot_animation(
         self, surface: pygame.Surface, pos: Tuple[int, int], shoot_animation_time: int, shoot_animation_duration: int

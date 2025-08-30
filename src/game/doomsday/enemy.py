@@ -133,12 +133,12 @@ class Enemy:
 
     def _get_initial_health(self) -> int:
         """Get initial health based on enemy type"""
-        health_map = {"zombie": 30, "demon": 50, "skull": 1, "giant": 100}  # Die in one shot
+        health_map = {"zombie": 30, "demon": 35, "skull": 1, "giant": 75}
         return health_map.get(self.enemy_type, 30)
 
     def _get_speed(self) -> float:
         """Get movement speed based on enemy type"""
-        speed_map = {"zombie": 0.15, "demon": 0.18, "skull": 0.35, "giant": 0.10}  # Reduced from 0.25 for better balance
+        speed_map = {"zombie": 0.15, "demon": 0.18, "skull": 0.35, "giant": 0.10}
         return speed_map.get(self.enemy_type, 0.15)
 
     def _get_damage(self) -> int:
@@ -882,7 +882,7 @@ class EnemyManager:
         self.total_kills = 0
         self.current_combo = 0
         self.combo_timer = 0
-        self.max_combo_time = 2.0
+        self.max_combo_time = 3.0
 
     def update(self, dt: float, current_time: float) -> Tuple[int, int]:
         """Update all enemies, returns (damage_to_player, enemies_killed)"""
@@ -973,8 +973,8 @@ class EnemyManager:
         self.wave_complete = False
         self.enemies_spawned_this_wave = 0
         self.enemies_per_wave = 5 + self.wave_number * 2
-        self.time_between_spawns = max(1.5, 3.0 - self.wave_number * 0.15)  # Slower spawn rate
-        self.difficulty_multiplier = 1.0 + (self.wave_number - 1) * 0.10  # Reduced from 0.15
+        self.time_between_spawns = max(1.5, 3.0 - self.wave_number * 0.15)  # Spawn rate increase
+        self.difficulty_multiplier = 1.0 + (self.wave_number - 1) * 0.10  # 10% health increase per wave
 
     def check_hit(self, x: int, y: int, damage: int = 10) -> Tuple[int, bool]:
         """Check if shot hit an enemy, returns (score_gained, killed)"""
