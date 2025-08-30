@@ -11,14 +11,14 @@ class StageAudio:
 
     def __init__(self, sound_manager):
         self.sound_manager = sound_manager
-        
+
         # Music tracking
         self.current_music_track = None
         self.music_started = False
 
     def start_stage_music(self, stage: int) -> None:
         """Start the appropriate music for a given stage"""
-        if not hasattr(self.sound_manager, 'play_stage_music'):
+        if not hasattr(self.sound_manager, "play_stage_music"):
             return
 
         if stage == 4:

@@ -187,7 +187,7 @@ class StageManager:
 
         # Handle audio transition
         self.stage_audio.handle_stage_transition_audio(self.current_stage_theme, new_theme)
-        
+
         # Enable stage 4 alternating mode if needed
         if new_theme >= 4:
             self.stage4_alternating_mode = True
@@ -504,7 +504,6 @@ class StageManager:
                 pygame.draw.line(surface, (200, 200, 255), (current_x, current_y), (next_x, next_y), 1)
                 current_x, current_y = next_x, next_y
 
-
     def jump_to_stage(self, stage_number: int) -> Tuple[bool, str]:
         """Jump directly to a specific stage (for console commands)"""
         if stage_number < 1:
@@ -580,7 +579,7 @@ class StageManager:
             self.stage4_alternating_mode = True
         else:
             self.stage4_alternating_mode = False
-            
+
         self.stage_audio.start_stage_music(self.current_stage_theme)
 
         self.stage_transition_active = False
@@ -597,7 +596,7 @@ class StageManager:
         self.current_stage_theme = 1
         self.stage4_alternating_mode = False
         self.current_stage_ambient = None
-        
+
         # Reset audio
         self.stage_audio.reset()
 
