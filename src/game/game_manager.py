@@ -12,6 +12,7 @@ import pygame
 
 # Local application imports
 from screens.capybara_hunt_screen import CapybaraHuntScreen
+from screens.credits_screen import CreditsScreen
 from screens.doomsday_screen import DoomsdayScreen
 from screens.instructions_screen import InstructionsScreen
 from screens.loading_screen import LoadingScreen
@@ -23,6 +24,7 @@ from utils.constants import (
     DEFAULT_CAMERA_ID,
     FPS,
     GAME_STATE_CAPYBARA_HUNT,
+    GAME_STATE_CREDITS,
     GAME_STATE_DOOMSDAY,
     GAME_STATE_INSTRUCTIONS,
     GAME_STATE_LOADING,
@@ -107,6 +109,8 @@ class GameManager:
             print("Settings screen initialized")
             self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
             print("Instructions screen initialized")
+            self.screens[GAME_STATE_CREDITS] = CreditsScreen(self.screen, self.camera_manager)
+            print("Credits screen initialized")
 
             self.loading_complete = True
             print("Loading complete!")
