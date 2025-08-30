@@ -524,8 +524,9 @@ class StageManager:
 
     def _start_direct_stage_jump(self, target_theme: int) -> None:
         """Start a direct transition to any stage (for console commands)"""
+        # Console commands can override existing transitions
         if self.stage_transition_active:
-            return
+            print(f"Overriding active transition to jump to stage {target_theme}")
 
         print(f"Direct stage jump from {self.current_stage_theme} to {target_theme}")
 

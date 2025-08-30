@@ -90,6 +90,10 @@ class DoomsdayRenderer:
         # Stage background elements are now drawn directly in _draw_stage_background with exact original code
         # stage_manager.draw_stage_background_elements(draw_surface)  # Disabled - causes wiggling triangles
 
+        # Draw meteors for Stage 4
+        if stage_manager.current_stage_theme == 4:
+            self.draw_meteors(draw_surface)
+
         # Draw stage effects (stage manager handles this - eliminates duplication)
         stage_manager.draw_stage_effects(draw_surface)
 
@@ -123,6 +127,60 @@ class DoomsdayRenderer:
     def draw_camera_feed(self, base_screen) -> None:
         """Draw camera feed in corner"""
         base_screen.draw_camera_with_tracking(CAMERA_X, CAMERA_Y, CAMERA_WIDTH, CAMERA_HEIGHT)
+
+    def draw_meteors(self, surface: pygame.Surface) -> None:
+        """Draw apocalyptic effects for Stage 4 - ORIGINAL IMPLEMENTATION"""
+        draw_target = surface
+
+        # 1. Falling meteors/debris
+        for i in range(8):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, int(SCREEN_HEIGHT * 0.6))
+            meteor_size = random.randint(3, 8)
+            # Meteor core
+            pygame.draw.circle(draw_target, (255, 100, 0), (x, y), meteor_size)
+            # Fiery trail
+            for j in range(5):
+                trail_x = x - j * 3
+                trail_y = y - j * 5
+                trail_size = meteor_size - j
+                if trail_size > 0:
+                    color = (255 - j * 30, 50 + j * 20, 0)
+                    pygame.draw.circle(draw_target, color, (trail_x, trail_y), trail_size)
+
+        # 2. Ash particles falling
+        for i in range(15):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, SCREEN_HEIGHT)
+            pygame.draw.circle(draw_target, (150, 150, 150), (x, y), 1)
+
+        # 3. Intense lightning with screen flash
+        if random.random() < 0.04:  # 4% chance
+            # Draw actual lightning bolt
+            lightning_x = random.randint(100, SCREEN_WIDTH - 100)
+            current_x = lightning_x
+            current_y = 0
+            for i in range(10):
+                next_x = current_x + random.randint(-30, 30)
+                next_y = current_y + SCREEN_HEIGHT // 10
+                pygame.draw.line(draw_target, (255, 255, 255), (current_x, current_y), (next_x, next_y), 3)
+                pygame.draw.line(draw_target, (200, 200, 255), (current_x, current_y), (next_x, next_y), 1)
+                current_x, current_y = next_x, next_y
+
+            # Screen flash
+            flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            flash_surface.set_alpha(60)
+            flash_surface.fill((255, 200, 150))
+            draw_target.blit(flash_surface, (0, 0))
+
+        # 4. Dark smoke clouds at top
+        smoke_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        for i in range(4):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, int(SCREEN_HEIGHT * 0.3))
+            radius = random.randint(40, 100)
+            smoke_surface.fill((50, 30, 20, 30), (x - radius, y - radius, radius * 2, radius * 2))
+        draw_target.blit(smoke_surface, (0, 0))
 
     def draw_pause_screen(
         self,
@@ -411,7 +469,7 @@ class DoomsdayRenderer:
                 )
 
         elif target_theme == 2:
-            # Stage 2: Hell's Gates - EXACT ORIGINAL IMPLEMENTATION FROM SOURCE CODE
+            # Stage 2: Hell's Gates
 
             for i in range(4):
                 volcano_x = 150 + i * 250
@@ -482,7 +540,7 @@ class DoomsdayRenderer:
 
             # Flowing lava river
             river_start_x = -50
-            river_y = horizon_y + 60  # Moved closer
+            river_y = horizon_y + 60
 
             river_points = []
             for i in range(30):
@@ -607,27 +665,50 @@ class DoomsdayRenderer:
                     particle_y = crystal_y + math.sin(angle) * 30
                     pygame.draw.circle(draw_target, (200, 150, 255), (int(particle_x), int(particle_y)), 2)
 
-            # Twisted portal/vortex in background
+            # Twisted portal/vortex in background with rotation
             portal_x = SCREEN_WIDTH // 2
-            portal_y = horizon_y - 30
+            portal_y = horizon_y - 200
             for ring in range(5):
-                ring_size = 60 - ring * 10
+                ring_size = 90 - ring * 15
                 ring_alpha = 40 + ring * 15
-                ring_surface = pygame.Surface((ring_size * 4, ring_size * 2), pygame.SRCALPHA)
-                color = (100 + ring * 20, 50 + ring * 10, 150 + ring * 15, ring_alpha)
-                pygame.draw.ellipse(ring_surface, color, (0, 0, ring_size * 4, ring_size * 2))
-                draw_target.blit(ring_surface, (portal_x - ring_size * 2, portal_y - ring_size))
+
+                # Create rotation effect - each ring rotates at different speeds
+                rotation_speed = 0.001 + ring * 0.0005  # Outer rings rotate slower
+                rotation_angle = pygame.time.get_ticks() * rotation_speed
+
+                # Create larger surface for rotation
+                ring_surface = pygame.Surface((ring_size * 6, ring_size * 4), pygame.SRCALPHA)
+
+                # Draw multiple overlapping ellipses to create swirl effect
+                for swirl in range(3):
+                    swirl_angle = rotation_angle + swirl * (math.pi * 2 / 3)
+                    offset_x = math.cos(swirl_angle) * 10
+                    offset_y = math.sin(swirl_angle) * 5
+
+                    color = (100 + ring * 20, 50 + ring * 10, 150 + ring * 15, ring_alpha // 3)
+                    ellipse_rect = (
+                        ring_size * 3 - ring_size * 2 + offset_x,
+                        ring_size * 2 - ring_size + offset_y,
+                        ring_size * 4,
+                        ring_size * 2,
+                    )
+                    pygame.draw.ellipse(ring_surface, color, ellipse_rect)
+
+                draw_target.blit(ring_surface, (portal_x - ring_size * 3, portal_y - ring_size * 2))
 
             tentacle_positions = [
-                (80, horizon_y + 160),
-                (220, horizon_y + 150),
-                (360, horizon_y + 165),
-                (500, horizon_y + 155),
-                (640, horizon_y + 160),
-                (780, horizon_y + 150),
-                (920, horizon_y + 165),
-                (1060, horizon_y + 155),
-                (1150, horizon_y + 160),
+                (120, horizon_y + 140),
+                (280, horizon_y + 170),
+                (450, horizon_y + 145),
+                (320, horizon_y + 190),
+                (680, horizon_y + 135),
+                (530, horizon_y + 175),
+                (850, horizon_y + 160),
+                (750, horizon_y + 185),
+                (980, horizon_y + 150),
+                (1100, horizon_y + 140),
+                (200, horizon_y + 180),
+                (600, horizon_y + 200),
             ]
 
             for tentacle_x, tentacle_base_y in tentacle_positions:
@@ -820,20 +901,7 @@ class DoomsdayRenderer:
                                 ),
                             )
 
-            # Background ground cracks
-            back_crack_positions = [
-                [(150, horizon_y + 80), (170, horizon_y + 100), (160, horizon_y + 120), (180, horizon_y + 140)],
-                [(400, horizon_y + 70), (420, horizon_y + 95), (410, horizon_y + 115), (430, horizon_y + 135)],
-                [(650, horizon_y + 90), (670, horizon_y + 110), (660, horizon_y + 130), (680, horizon_y + 150)],
-            ]
-
-            for crack_segments in back_crack_positions:
-                if len(crack_segments) > 1:
-                    # Thin background cracks
-                    pygame.draw.lines(draw_target, (15, 8, 5), False, crack_segments, 2)
-                    pygame.draw.lines(draw_target, (180, 40, 10), False, crack_segments, 1)
-
-            # Foreground ground cracks
+            # Foreground ground
             main_crack_positions = [
                 [
                     (50, SCREEN_HEIGHT),
@@ -857,13 +925,34 @@ class DoomsdayRenderer:
                     (725, SCREEN_HEIGHT - 200),
                 ],
                 [(900, SCREEN_HEIGHT), (920, SCREEN_HEIGHT - 80), (910, SCREEN_HEIGHT - 140), (925, SCREEN_HEIGHT - 180)],
+                # Two new cracks on the right side
+                [
+                    (1050, SCREEN_HEIGHT),
+                    (1070, SCREEN_HEIGHT - 90),
+                    (1060, SCREEN_HEIGHT - 150),
+                    (1080, SCREEN_HEIGHT - 200),
+                ],
+                [
+                    (1180, SCREEN_HEIGHT),
+                    (1200, SCREEN_HEIGHT - 70),
+                    (1190, SCREEN_HEIGHT - 130),
+                    (1210, SCREEN_HEIGHT - 180),
+                    (1205, SCREEN_HEIGHT - 220),
+                ],
             ]
+
+            # Animated pulsing glow for cracks
+            pulse_intensity = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.003)
 
             for crack_segments in main_crack_positions:
                 if len(crack_segments) > 1:
                     # Main crack
                     pygame.draw.lines(draw_target, (10, 5, 0), False, crack_segments, 4)
-                    # Glow from within
-                    pygame.draw.lines(draw_target, (255, 50, 0), False, crack_segments, 2)
-                    # Inner bright line
-                    pygame.draw.lines(draw_target, (255, 150, 50), False, crack_segments, 1)
+
+                    # Animated pulsing glow from within
+                    glow_color = (255, int(50 * pulse_intensity), 0)
+                    pygame.draw.lines(draw_target, glow_color, False, crack_segments, 2)
+
+                    # Bright inner line with separate animation
+                    inner_color = (255, int(150 + 50 * math.sin(pygame.time.get_ticks() * 0.008)), 50)
+                    pygame.draw.lines(draw_target, inner_color, False, crack_segments, 1)
