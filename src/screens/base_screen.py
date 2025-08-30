@@ -315,7 +315,7 @@ class BaseScreen:
             self.screen.blit(feature_surface, (x_offset, y_offset))
 
     def draw_shoot_animation(self) -> None:
-        """Draw shooting animation if active"""
+        """Draw shooting animation - simple target practice style"""
         if not self.shoot_pos:
             return
 
@@ -328,7 +328,7 @@ class BaseScreen:
         animation_progress = time_since_shoot / self.shoot_animation_duration
 
         if animation_progress < 1.0:
-            # Expanding circle animation
+            # Simple expanding circle animation - matches target practice
             radius = int(40 * animation_progress)
             alpha = int(255 * (1 - animation_progress))
 

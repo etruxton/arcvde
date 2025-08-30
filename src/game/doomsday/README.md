@@ -25,6 +25,24 @@ Contains core classes for the enemy system:
 - **Skull**: Floating enemy with unique movement patterns
 - **Giant**: Large, slow enemy with high health and damage
 
+### `renderer.py`
+**Comprehensive rendering system for all visual elements**
+
+The **`DoomsdayRenderer`** class provides:
+- **Main Game Rendering**: Coordinates all visual elements including backgrounds, effects, enemies, UI, and animations
+- **Screen Overlays**: Pause screen, game over screen, and console interface rendering
+- **Visual Effects**: Muzzle flash, shoot animations, damage flash, and screen shake coordination
+- **Stage Backgrounds**: Detailed 4-stage backgrounds with animated elements (urban decay, hellscape, demon realm, apocalypse)
+- **UI Management**: Health bars, score display, combo indicators, wave completion, and debug information
+- **Camera Integration**: Handles camera feed rendering and positioning
+
+**Key Features:**
+- **Modular Design**: Clean separation of rendering from game logic
+- **Performance Optimized**: Efficient surface management and alpha blending
+- **Visual Consistency**: Maintains identical appearance to original implementation
+- **Screen Shake Integration**: Coordinates shake effects with main game rendering
+- **Font Management**: Centralized font handling for consistent typography
+
 ### `stage_manager.py`
 **Stage progression, environmental effects, and audio management**
 
@@ -69,8 +87,8 @@ These components are used by `src/screens/doomsday_screen.py`, which acts as the
 The main screen delegates specific responsibilities:
 - **Enemy Management**: All enemy spawning, AI, and combat handled by `EnemyManager`
 - **Stage Management**: Environmental effects, music, and transitions handled by `StageManager`
-- **Visual Coordination**: Stage backgrounds integrated with enemy rendering
-- **Audio Coordination**: Stage music coordinated with combat sound effects
+- **Rendering**: All visual rendering handled by `DoomsdayRenderer`
+- **Game Logic**: Core game state, player health, scoring, and input handling in main screen
 
 ## Design Philosophy
 

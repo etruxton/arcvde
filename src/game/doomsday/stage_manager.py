@@ -1,4 +1,5 @@
 # Standard library imports
+import math
 import random
 from typing import Dict, Optional, Tuple
 
@@ -114,10 +115,10 @@ class StageManager:
         pygame.draw.line(self.background, theme["horizon"], (0, horizon_y), (SCREEN_WIDTH, horizon_y), 2)
 
         # Draw floor grid
-        self._draw_floor_grid(self.background, theme)
+        self._draw_floor_grid(theme)
 
-    def _draw_floor_grid(self, surface: pygame.Surface, theme: Dict):
-        """Draw 3D floor grid for perspective - matches original doomsday implementation"""
+    def _draw_floor_grid(self, theme):
+        """Draw 3D floor grid for perspective"""
         grid_color = theme["grid"]
         horizon_y = int(SCREEN_HEIGHT * 0.4)
 
@@ -125,12 +126,12 @@ class StageManager:
         for i in range(-10, 11):
             x_start = SCREEN_WIDTH // 2 + i * 100  # Wide at bottom
             x_end = SCREEN_WIDTH // 2 + i * 20  # Narrow at horizon
-            pygame.draw.line(surface, grid_color, (x_start, SCREEN_HEIGHT), (x_end, horizon_y), 1)
+            pygame.draw.line(self.background, grid_color, (x_start, SCREEN_HEIGHT), (x_end, horizon_y), 1)
 
         # Horizontal lines (depth) - use power function for perspective
         for i in range(10):
             y = horizon_y + (SCREEN_HEIGHT - horizon_y) * (i / 10) ** 0.7
-            pygame.draw.line(surface, grid_color, (0, int(y)), (SCREEN_WIDTH, int(y)), 1)
+            pygame.draw.line(self.background, grid_color, (0, int(y)), (SCREEN_WIDTH, int(y)), 1)
 
     def update_stage_progression(self, wave_number: int) -> None:
         """Update stage theme based on wave progression"""
@@ -190,7 +191,6 @@ class StageManager:
             self.sound_manager.play_stage_transition(new_theme)
 
         print(f"Starting stage transition from {old_theme} to {new_theme} with {self.stage_transition_type} effect")
-
 
     def draw_stage_transition(self, surface: pygame.Surface) -> None:
         """Draw the stage transition effect"""
@@ -420,7 +420,10 @@ class StageManager:
 
         object_alpha = self.get_stage_object_alpha()
 
-        if self.current_stage_theme == 2:
+        if self.current_stage_theme == 1:
+            # Urban decay dust and debris particles
+            self._draw_dust_effects(surface, object_alpha)
+        elif self.current_stage_theme == 2:
             # Hell fire effects
             self._draw_fire_effects(surface, object_alpha)
         elif self.current_stage_theme == 3:
@@ -429,6 +432,24 @@ class StageManager:
         elif self.current_stage_theme == 4:
             # Apocalyptic lightning/destruction
             self._draw_lightning_effects(surface, object_alpha)
+
+    def _draw_dust_effects(self, surface: pygame.Surface, alpha: int) -> None:
+        """Draw dust and debris effects for Urban Decay stage"""
+        # Floating dust particles
+        for i in range(3):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(int(SCREEN_HEIGHT * 0.4), SCREEN_HEIGHT)
+            size = random.randint(1, 3)
+            color = random.choice([(80, 70, 60), (90, 80, 70), (70, 65, 55)])
+            pygame.draw.circle(surface, color, (x, y), size)
+
+        # Occasional falling debris
+        if random.random() < 0.005:  # 0.5% chance per frame
+            x = random.randint(50, SCREEN_WIDTH - 50)
+            y = random.randint(int(SCREEN_HEIGHT * 0.4), int(SCREEN_HEIGHT * 0.6))
+            debris_size = random.randint(2, 5)
+            debris_color = (60, 55, 45)
+            pygame.draw.circle(surface, debris_color, (x, y), debris_size)
 
     def _draw_fire_effects(self, surface: pygame.Surface, alpha: int) -> None:
         """Draw fire effects for Hell's Gates stage - matches original implementation"""

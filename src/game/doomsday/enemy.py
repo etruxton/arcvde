@@ -886,6 +886,9 @@ class EnemyManager:
 
     def update(self, dt: float, current_time: float) -> Tuple[int, int]:
         """Update all enemies, returns (damage_to_player, enemies_killed)"""
+        # Convert current_time from milliseconds to seconds
+        current_time_seconds = current_time / 1000.0
+
         total_damage = 0
         enemies_killed = 0
 
@@ -916,20 +919,20 @@ class EnemyManager:
         # Check wave completion
         if self.enemies_spawned_this_wave >= self.enemies_per_wave and len(self.enemies) == 0 and not self.wave_complete:
             self.wave_complete = True
-            self.wave_complete_time = current_time
+            self.wave_complete_time = current_time_seconds
 
         # Start next wave after delay
-        if self.wave_complete and current_time - self.wave_complete_time > 3.0:
+        if self.wave_complete and current_time_seconds - self.wave_complete_time > 3.0:
             self.start_next_wave()
 
         # Spawn new enemies
         if (
             not self.wave_complete
             and self.enemies_spawned_this_wave < self.enemies_per_wave
-            and current_time - self.last_spawn_time > self.time_between_spawns
+            and current_time_seconds - self.last_spawn_time > self.time_between_spawns
         ):
             self.spawn_enemy()
-            self.last_spawn_time = current_time
+            self.last_spawn_time = current_time_seconds
 
         return total_damage, enemies_killed
 
@@ -1033,3 +1036,7 @@ class EnemyManager:
         self.total_kills = 0
         self.current_combo = 0
         self.combo_timer = 0
+
+    def reset(self):
+        """Reset enemy manager to initial state (alias for clear_all_enemies)"""
+        self.clear_all_enemies()

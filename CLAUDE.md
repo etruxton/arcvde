@@ -46,3 +46,4 @@ python -c "import sys; sys.path.insert(0, 'src'); from game.cv.finger_gun_detect
 - Use TodoWrite for task tracking
 - Grep and search tools are encouraged
 - CLAUDE.md
+- memory CLAUDE.md
