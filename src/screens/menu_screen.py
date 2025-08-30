@@ -118,12 +118,8 @@ class MenuScreen(BaseScreen):
             center_x, start_y + 4 * (button_height + button_spacing), button_width, button_height, "SETTINGS", self.button_font
         )
 
-        self.credits_button = Button(
-            center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "CREDITS", self.button_font
-        )
-
         self.quit_button = Button(
-            center_x, start_y + 6 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
+            center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
         )
 
         self.buttons = [
@@ -132,7 +128,6 @@ class MenuScreen(BaseScreen):
             self.capybara_button,
             self.instructions_button,
             self.settings_button,
-            self.credits_button,
             self.quit_button,
         ]
 
@@ -184,8 +179,6 @@ class MenuScreen(BaseScreen):
             result = GAME_STATE_SETTINGS
         elif button == self.instructions_button:
             result = GAME_STATE_INSTRUCTIONS
-        elif button == self.credits_button:
-            result = GAME_STATE_CREDITS
         elif button == self.quit_button:
             result = "quit"
 
