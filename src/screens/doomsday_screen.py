@@ -213,7 +213,7 @@ class DoomsdayScreen(BaseScreen):
         self.muzzle_flash_time = 0
 
         # Start stage 1 music when game begins
-        self.stage_manager._start_stage_music(1)
+        self.stage_manager.stage_audio.start_stage_music(1)
         self.music_started = True
 
     def draw(self) -> None:

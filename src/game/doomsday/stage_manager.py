@@ -7,6 +7,7 @@ from typing import Dict, Optional, Tuple
 import pygame
 
 # Local application imports
+from game.doomsday.stage_audio import StageAudio
 from utils.constants import SCREEN_HEIGHT, SCREEN_WIDTH, WHITE
 
 
@@ -14,15 +15,15 @@ class StageManager:
     """Manages stage themes, transitions, backgrounds, and effects for Doomsday mode"""
 
     def __init__(self, sound_manager, screen_shake_callback=None):
-        self.sound_manager = sound_manager
         self.screen_shake_callback = screen_shake_callback
 
         # Current stage state
         self.current_stage_theme = 1
         self.current_stage_ambient = None
-        self.current_music_track = None
         self.stage4_alternating_mode = False
-        self.music_started = False
+
+        # Audio management
+        self.stage_audio = StageAudio(sound_manager)
 
         # Stage transition system
         self.stage_transition_active = False
@@ -72,9 +73,7 @@ class StageManager:
         self.background = None
         self.create_background()
 
-        # Start initial stage music (temporarily disabled for debugging)
-        # if hasattr(self.sound_manager, 'play_stage_music'):
-        #     self._start_stage_music(1)
+        # Audio will be started by the game screen when needed
 
         # Stage names and metadata
         self.stage_names = {1: "The Beginning", 2: "Hell's Gates", 3: "Demon Realm", 4: "Final Apocalypse"}
@@ -141,7 +140,7 @@ class StageManager:
             self._start_stage_transition(new_theme)
 
         if self.current_stage_theme >= 4 and self.stage4_alternating_mode:
-            self._handle_stage4_music_alternation()
+            self.stage_audio.handle_stage4_music_alternation()
 
     def update(self, dt: float) -> None:
         """Update stage system each frame"""
@@ -186,9 +185,14 @@ class StageManager:
         if self.screen_shake_callback:
             self.screen_shake_callback(1.0, 15)  # 1 second duration, intensity 15
 
-        # Play transition sound effect
-        if hasattr(self.sound_manager, "play_stage_transition"):
-            self.sound_manager.play_stage_transition(new_theme)
+        # Handle audio transition
+        self.stage_audio.handle_stage_transition_audio(self.current_stage_theme, new_theme)
+        
+        # Enable stage 4 alternating mode if needed
+        if new_theme >= 4:
+            self.stage4_alternating_mode = True
+        else:
+            self.stage4_alternating_mode = False
 
         print(f"Starting stage transition from {old_theme} to {new_theme} with {self.stage_transition_type} effect")
 
@@ -463,8 +467,7 @@ class StageManager:
 
             # Occasional fire crackling sound
             if size >= 5 and random.random() < 0.001:
-                if hasattr(self.sound_manager, "play_one_shot_effect"):
-                    self.sound_manager.play_one_shot_effect("stage2_fire_crackle", volume=0.05)
+                self.stage_audio.play_stage_effect("stage2_fire_crackle", volume=0.05)
 
     def _draw_mist_effects(self, surface: pygame.Surface, alpha: int) -> None:
         """Draw mist effects for Demon Realm stage - matches original purple pixel particles"""
@@ -485,12 +488,8 @@ class StageManager:
         """Draw lightning effects for Final Apocalypse stage - matches original implementation"""
         # Occasional lightning
         if random.random() < 0.04:  # 4% chance per frame
-            # Play lightning sound effect
-            if hasattr(self.sound_manager, "play_one_shot_effect"):
-                if random.random() < 0.7:
-                    self.sound_manager.play_one_shot_effect("stage4_lightning", volume=0.4)
-                else:
-                    self.sound_manager.play_one_shot_effect("stage4_thunder", volume=0.3)
+            # Play lightning sound effects
+            self.stage_audio.play_lightning_effects()
 
             # Draw actual lightning bolt
             lightning_x = random.randint(100, SCREEN_WIDTH - 100)
@@ -505,53 +504,6 @@ class StageManager:
                 pygame.draw.line(surface, (200, 200, 255), (current_x, current_y), (next_x, next_y), 1)
                 current_x, current_y = next_x, next_y
 
-    def _start_stage_music(self, stage: int) -> None:
-        """Start the appropriate music for a given stage"""
-        if stage >= 4:
-            self.stage4_alternating_mode = True
-            # Play tracks once to enable alternation
-            self.current_music_track = self.sound_manager.get_stage_music(stage)
-            self.sound_manager.play_stage_music(stage, loops=0)
-        else:
-            self.stage4_alternating_mode = False
-            self.current_music_track = self.sound_manager.play_stage_music(stage, loops=-1)
-
-        # Start stage-specific ambient effects
-        if stage == 2:
-            self.current_stage_ambient = "stage2_fire_ambient"
-            self.sound_manager.play_stage_effect("stage2_fire_ambient", loops=-1, volume=0.08)
-            print("Starting Stage 2 fire ambient")
-        elif stage == 3:
-            # Play static/mist ambient for Stage 3
-            self.current_stage_ambient = "stage3_static_mist"
-            self.sound_manager.play_stage_effect("stage3_static_mist", loops=-1, volume=0.2)
-            print("Starting Stage 3 static ambient")
-        elif stage >= 4:
-            # No continuous ambient for Stage 4, just one-shot lightning
-            self.current_stage_ambient = None
-            self.sound_manager.stop_stage_effect()
-        else:
-            # Stop any stage effects for Stage 1
-            self.current_stage_ambient = None
-            self.sound_manager.stop_stage_effect()
-
-    def _handle_stage4_music_alternation(self) -> None:
-        """Handle the alternating music logic for Stage 4+"""
-        # Check if current track finished, then switch to next
-        if self.sound_manager.is_ambient_finished():
-            # Get the next track in the alternating sequence
-            next_track = self.sound_manager.get_next_stage4_track(self.current_music_track)
-            print(f"Stage 4 music alternation: {self.current_music_track} -> {next_track}")
-
-            self.current_music_track = next_track
-
-            # Metal track loops indefinitely for enhanced intensity
-            if next_track == "stage4_music3":
-                self.sound_manager.play_ambient(next_track, loops=-1, fade_ms=1000)
-            else:
-                self.sound_manager.play_ambient(next_track, loops=0, fade_ms=1000)
-
-            print(f"Now playing: {next_track}")
 
     def jump_to_stage(self, stage_number: int) -> Tuple[bool, str]:
         """Jump directly to a specific stage (for console commands)"""
@@ -567,7 +519,7 @@ class StageManager:
         else:
             # If same stage, just update background without transition
             self.create_background()
-            self._start_stage_music(new_theme)
+            # Audio handled by stage transition method above
 
         return True, f"Jumped to Stage {stage_number} (Wave {wave_number})"
 
@@ -623,7 +575,13 @@ class StageManager:
             # Sequential progression
             self.current_stage_theme = min(4, (self.current_stage_theme + 1))
 
-        self._start_stage_music(self.current_stage_theme)
+        # Start stage music and enable alternating mode if needed
+        if self.current_stage_theme >= 4:
+            self.stage4_alternating_mode = True
+        else:
+            self.stage4_alternating_mode = False
+            
+        self.stage_audio.start_stage_music(self.current_stage_theme)
 
         self.stage_transition_active = False
         self.stage_transition_time = 0
@@ -638,9 +596,10 @@ class StageManager:
         """Reset stage system to initial state"""
         self.current_stage_theme = 1
         self.stage4_alternating_mode = False
-        self.music_started = False
         self.current_stage_ambient = None
-        self.sound_manager.stop_stage_effect()
+        
+        # Reset audio
+        self.stage_audio.reset()
 
         # Reset transition state
         self.stage_transition_active = False
