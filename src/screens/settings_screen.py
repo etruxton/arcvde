@@ -48,7 +48,7 @@ class SettingsScreen(BaseScreen):
 
         self.settings_manager = get_settings_manager()
         self.debug_mode = self.settings_manager.get("debug_mode", False)
-        
+
         # Volume management
         self.master_volume = self.settings_manager.get("master_volume", 0.7)
         self.current_view = "camera"  # "camera" or "volume"
@@ -59,18 +59,29 @@ class SettingsScreen(BaseScreen):
         """Create UI buttons and elements"""
         # Back button
         self.back_button = Button(50, 50, 120, 50, "BACK", self.button_font)
-        
+
         # View switcher buttons at the top
         view_button_width = 150
         view_button_height = 50
         view_start_x = 200
-        view_y = 130  
-        
-        self.camera_view_button = Button(view_start_x, view_y, view_button_width, view_button_height, "CAMERA", self.button_font)
-        self.volume_view_button = Button(view_start_x + view_button_width + 20, view_y, view_button_width, view_button_height, "VOLUME", self.button_font)
-        
+        view_y = 130
+
+        self.camera_view_button = Button(
+            view_start_x, view_y, view_button_width, view_button_height, "CAMERA", self.button_font
+        )
+        self.volume_view_button = Button(
+            view_start_x + view_button_width + 20, view_y, view_button_width, view_button_height, "VOLUME", self.button_font
+        )
+
         # Credits button next to volume button
-        self.credits_button = Button(view_start_x + 2 * (view_button_width + 20), view_y, view_button_width, view_button_height, "CREDITS", self.button_font)
+        self.credits_button = Button(
+            view_start_x + 2 * (view_button_width + 20),
+            view_y,
+            view_button_width,
+            view_button_height,
+            "CREDITS",
+            self.button_font,
+        )
 
         # Camera selection buttons
         button_width = 80
@@ -98,7 +109,11 @@ class SettingsScreen(BaseScreen):
         # Debug mode toggle button
         self.debug_button = Button(start_x, start_y + 220, 200, button_height, "DEBUG MODE", self.button_font)
 
-        self.all_buttons = [self.back_button, self.camera_view_button, self.volume_view_button, self.credits_button] + self.camera_buttons + [self.test_button, self.apply_button, self.debug_button]
+        self.all_buttons = (
+            [self.back_button, self.camera_view_button, self.volume_view_button, self.credits_button]
+            + self.camera_buttons
+            + [self.test_button, self.apply_button, self.debug_button]
+        )
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle events, return next state if applicable"""
@@ -150,7 +165,7 @@ class SettingsScreen(BaseScreen):
                 print(f"Failed to switch to camera {self.selected_camera}")
                 # Revert selection
                 self.selected_camera = self.camera_manager.camera_id
-        
+
         if self.volume_changed:
             # Save volume to settings
             self.settings_manager.set("master_volume", self.master_volume)
@@ -177,14 +192,14 @@ class SettingsScreen(BaseScreen):
         segment_height = 40
         num_segments = 10
         spacing = 5
-        
+
         for i in range(num_segments):
             x = bar_x + i * (segment_width + spacing)
             # Create a mock button for each segment for shooting detection
             segment = Button(x, bar_y, segment_width, segment_height, "", self.button_font)
             segment.volume_level = (i + 1) / num_segments  # Volume from 0.1 to 1.0
             bar_segments.append(segment)
-        
+
         return bar_segments
 
     def _set_volume(self, volume_level: float) -> None:
@@ -192,15 +207,16 @@ class SettingsScreen(BaseScreen):
         self.master_volume = volume_level
         self.volume_changed = True
         self.settings_changed = True
-        
+
         # Apply volume immediately for feedback
+        # Local application imports
         from utils.sound_manager import get_sound_manager
+
         sound_manager = get_sound_manager()
         sound_manager.set_master_volume(volume_level)
-        
+
         # Play a test sound for feedback
         sound_manager.play("shoot")
-        
 
     def _switch_to_camera_view(self) -> None:
         """Switch back to camera configuration view"""
@@ -215,7 +231,7 @@ class SettingsScreen(BaseScreen):
         buttons_to_check = self.all_buttons.copy()
         if self.current_view == "volume":
             buttons_to_check.extend(self.volume_bar)
-            
+
         shot_button = self.check_button_shoot(buttons_to_check)
         if shot_button:
             if shot_button == self.back_button:
@@ -279,15 +295,15 @@ class SettingsScreen(BaseScreen):
         # Draw view switcher buttons first
         view_buttons = [self.camera_view_button, self.volume_view_button, self.credits_button]
         self.update_button_finger_states(view_buttons)
-        
+
         for button in view_buttons:
             # Highlight active view button
-            if (button == self.camera_view_button and self.current_view == "camera"):
+            if button == self.camera_view_button and self.current_view == "camera":
                 highlight_rect = pygame.Rect(
                     button.rect.x - 3, button.rect.y - 3, button.rect.width + 6, button.rect.height + 6
                 )
                 pygame.draw.rect(self.screen, VAPORWAVE_PINK, highlight_rect, 3)
-            
+
             button.draw(self.screen)
 
         # Draw camera-specific buttons
@@ -332,17 +348,17 @@ class SettingsScreen(BaseScreen):
         # Draw view switcher buttons first
         view_buttons = [self.camera_view_button, self.volume_view_button, self.credits_button]
         self.update_button_finger_states(view_buttons)
-        
+
         for button in view_buttons:
             # Highlight active view button
-            if (button == self.volume_view_button and self.current_view == "volume"):
+            if button == self.volume_view_button and self.current_view == "volume":
                 highlight_rect = pygame.Rect(
                     button.rect.x - 3, button.rect.y - 3, button.rect.width + 6, button.rect.height + 6
                 )
                 pygame.draw.rect(self.screen, VAPORWAVE_PINK, highlight_rect, 3)
-            
+
             button.draw(self.screen)
-        
+
         volume_title = self.section_font.render("Master Volume", True, UI_TEXT)
         self.screen.blit(volume_title, (200, 220))
 
@@ -358,7 +374,7 @@ class SettingsScreen(BaseScreen):
 
         # Update and draw volume bar segments
         self.update_button_finger_states(self.volume_bar)
-        
+
         for i, segment in enumerate(self.volume_bar):
             # Fill segments up to current volume level
             volume_level = (i + 1) / len(self.volume_bar)
@@ -373,7 +389,7 @@ class SettingsScreen(BaseScreen):
             else:
                 # Empty segment
                 color = GRAY
-            
+
             # Draw segment with border
             pygame.draw.rect(self.screen, color, segment.rect)
             pygame.draw.rect(self.screen, UI_TEXT, segment.rect, 2)
@@ -388,7 +404,7 @@ class SettingsScreen(BaseScreen):
         # Draw instructions
         instructions = [
             "Shoot the volume bars to set master volume",
-            "Click APPLY to save changes", 
+            "Click APPLY to save changes",
             "Click CAMERA button above to switch views",
         ]
 

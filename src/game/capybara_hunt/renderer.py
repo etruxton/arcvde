@@ -960,7 +960,7 @@ class CapybaraHuntRenderer:
         # Controls
         controls = [
             "P/SPACE - Resume",
-            "R - Restart", 
+            "R - Restart",
             "ESC - Menu",
             "/ - Console (when paused)",
             "D - Debug Mode",
@@ -978,7 +978,7 @@ class CapybaraHuntRenderer:
 
     def _draw_debug_console(
         self,
-        surface: pygame.Surface, 
+        surface: pygame.Surface,
         console_input: str,
         console_message: str,
         console_message_time: float,
@@ -986,8 +986,9 @@ class CapybaraHuntRenderer:
         small_font: pygame.font.Font,
     ) -> None:
         """Draw debug console interface"""
+        # Standard library imports
         import time
-        
+
         # Console background
         console_y = SCREEN_HEIGHT - 200
         console_bg = pygame.Surface((SCREEN_WIDTH - 40, 150))

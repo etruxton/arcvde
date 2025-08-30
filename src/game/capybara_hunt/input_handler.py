@@ -127,7 +127,7 @@ class CapybaraHuntInputHandler:
                     self.console_message = "Round number must be positive"
             except Exception:
                 self.console_message = "Invalid round number"
-                
+
         elif command.startswith("/score "):
             try:
                 score_value = int(command.split()[1])
