@@ -157,3 +157,7 @@ class CapybaraHuntState:
         # Handle round completion
         if capybara_manager.round_complete:
             self.handle_round_completion(capybara_manager, pond_buddy)
+
+    def should_show_pause_screen(self) -> bool:
+        """Check if pause screen should be displayed"""
+        return self.paused

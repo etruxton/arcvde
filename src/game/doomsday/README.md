@@ -44,27 +44,46 @@ The **`DoomsdayRenderer`** class provides:
 - **Font Management**: Centralized font handling for consistent typography
 
 ### `stage_manager.py`
-**Stage progression, environmental effects, and audio management**
+**Stage progression, environmental effects, and stage management**
 
 The **`StageManager`** class provides:
-- **4 Themed Stages**: Urban Decay, Hellscape, Ghostly Void, and Apocalypse environments
+- **4 Themed Stages**: Urban Decay, Hellscape, Demon Realm, and Apocalypse environments
 - **Dynamic Backgrounds**: 3D grid floors, atmospheric effects, and stage-specific visuals
 - **Stage Transitions**: Dramatic screen effects with shake, flash, and fade transitions
-- **Audio System**: Stage-specific music with alternating tracks for Stage 4+
 - **Environmental Effects**: Fire particles, purple mist, lightning strikes, and ambient sounds
 - **Stage Progression**: Wave-based advancement with proper state management
+- **Console Commands**: Debug stage jumping with `/stage #` command support
 
 **Stage Themes:**
-1. **Urban Decay**: Dark urban environment with grid floor
-2. **Hellscape**: Fire effects, warm colors, crackling ambient sounds
-3. **Ghostly Void**: Purple mist, static effects, ethereal atmosphere  
-4. **Apocalypse**: Lightning strikes, thunder, dramatic weather effects
+1. **Urban Decay**: Dark urban environment with detailed buildings, grid floor, debris
+2. **Hell's Gates**: Volcanoes, flowing lava rivers, lava pools, fire effects  
+3. **Demon Realm**: Floating crystals, rotating portal vortex, scattered tentacles, purple atmosphere
+4. **Final Apocalypse**: Destroyed buildings, animated ground cracks, meteors, lightning, ash particles
+
+### `stage_audio.py`
+**Audio management system for stage-specific music and effects**
+
+The **`StageAudio`** class provides:
+- **Stage Music**: Manages music tracks for each stage theme
+- **Stage 4 Alternation**: Special 3-track alternation system (2 alternating + 1 looping metal track)
+- **Sound Effects**: Fire crackling, lightning strikes, thunder effects
+- **Ambient Effects**: Stage-specific ambient loops and environmental audio
+- **Transition Audio**: Handles music changes during stage transitions
+
+### `ui_manager.py`
+**User interface rendering and HUD management**
+
+The **`DoomsdayUI`** class provides:
+- **HUD Elements**: Health bar, score display, FPS counter, stage information
+- **Pause Screen**: Console interface, input handling, command feedback
+- **Game Over Screen**: Final statistics, wave survived, kills, time played
+- **Crosshair Rendering**: Dynamic crosshair with color feedback
+- **Combo System**: Combo counter and timer display
+- **Damage Flash**: Screen flash effects when player takes damage
 
 **Key Features:**
-- **Visual Effects**: Stage-specific particle systems and atmospheric rendering
-- **Audio Management**: Music alternation system with enhanced intensity (metal track loops)
+- **Visual Effects**: Stage-specific particle systems and atmospheric rendering  
 - **Transition System**: Smooth stage changes with visual feedback and proper timing
-- **Console Commands**: Debug stage jumping with `/stage #` command support
 - **Screen Shake**: Dynamic camera shake effects during transitions and events
 
 ## Game Flow
@@ -79,14 +98,15 @@ The **`StageManager`** class provides:
 
 These components are used by `src/screens/doomsday_screen.py`, which acts as the main orchestrator, handling:
 - Game state management and player health system
-- Camera integration and hand tracking for aiming
-- Sound effects coordination with stage music
-- Screen shake effects and visual feedback
-- UI rendering and game over conditions
+- Camera integration and hand tracking for aiming  
+- Console commands and debug functionality
+- Core game logic and input processing
 
 The main screen delegates specific responsibilities:
 - **Enemy Management**: All enemy spawning, AI, and combat handled by `EnemyManager`
-- **Stage Management**: Environmental effects, music, and transitions handled by `StageManager`
+- **Stage Management**: Environmental effects and transitions handled by `StageManager` 
+- **Audio Management**: All stage music and effects handled by `StageAudio`
+- **UI Management**: All user interface rendering handled by `DoomsdayUI`
 - **Rendering**: All visual rendering handled by `DoomsdayRenderer`
 - **Game Logic**: Core game state, player health, scoring, and input handling in main screen
 

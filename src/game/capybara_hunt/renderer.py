@@ -933,3 +933,91 @@ class CapybaraHuntRenderer:
         instruction_text = small_font.render("Shoot the button to continue", True, WHITE)
         instruction_rect = instruction_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 160))
         screen.blit(instruction_text, instruction_rect)
+
+    def draw_pause_screen(
+        self,
+        surface: pygame.Surface,
+        console_active: bool,
+        console_input: str,
+        console_message: str,
+        console_message_time: float,
+        big_font: pygame.font.Font,
+        font: pygame.font.Font,
+        small_font: pygame.font.Font,
+    ) -> None:
+        """Draw pause screen overlay - same style as Doomsday"""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(128)
+        overlay.fill((0, 0, 0))
+        surface.blit(overlay, (0, 0))
+
+        # Pause text
+        pause_text = big_font.render("PAUSED", True, WHITE)
+        pause_rect = pause_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
+        surface.blit(pause_text, pause_rect)
+
+        # Controls
+        controls = [
+            "P/SPACE - Resume",
+            "R - Restart", 
+            "ESC - Menu",
+            "/ - Console (when paused)",
+            "D - Debug Mode",
+        ]
+
+        y_start = SCREEN_HEIGHT // 2 - 50
+        for i, control in enumerate(controls):
+            control_text = font.render(control, True, UI_ACCENT)
+            control_rect = control_text.get_rect(center=(SCREEN_WIDTH // 2, y_start + i * 40))
+            surface.blit(control_text, control_rect)
+
+        # Debug console
+        if console_active:
+            self._draw_debug_console(surface, console_input, console_message, console_message_time, font, small_font)
+
+    def _draw_debug_console(
+        self,
+        surface: pygame.Surface, 
+        console_input: str,
+        console_message: str,
+        console_message_time: float,
+        font: pygame.font.Font,
+        small_font: pygame.font.Font,
+    ) -> None:
+        """Draw debug console interface"""
+        import time
+        
+        # Console background
+        console_y = SCREEN_HEIGHT - 200
+        console_bg = pygame.Surface((SCREEN_WIDTH - 40, 150))
+        console_bg.set_alpha(200)
+        console_bg.fill((20, 20, 20))
+        surface.blit(console_bg, (20, console_y))
+
+        # Console border
+        pygame.draw.rect(surface, UI_ACCENT, (20, console_y, SCREEN_WIDTH - 40, 150), 2)
+
+        # Console title
+        title_text = font.render("DEBUG CONSOLE", True, UI_ACCENT)
+        surface.blit(title_text, (30, console_y + 10))
+
+        # Input line
+        input_text = font.render(f"> {console_input}", True, WHITE)
+        surface.blit(input_text, (30, console_y + 50))
+
+        # Blinking cursor
+        if int(time.time() * 2) % 2:  # Blink every 0.5 seconds
+            cursor_x = 30 + font.size(f"> {console_input}")[0]
+            pygame.draw.line(surface, WHITE, (cursor_x, console_y + 50), (cursor_x, console_y + 70), 2)
+
+        # Console message with fade
+        if console_message and time.time() - console_message_time < 3.0:
+            fade_alpha = max(0, 255 - int((time.time() - console_message_time) * 85))
+            message_surface = small_font.render(console_message, True, (0, 255, 0))
+            message_surface.set_alpha(fade_alpha)
+            surface.blit(message_surface, (30, console_y + 90))
+
+        # Help text
+        help_text = small_font.render("Available commands: /round #, /score #", True, (128, 128, 128))
+        surface.blit(help_text, (30, console_y + 120))

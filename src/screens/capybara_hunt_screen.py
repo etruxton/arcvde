@@ -115,6 +115,10 @@ class CapybaraHuntScreen(BaseScreen):
         # Process hand tracking always (for button shooting)
         self._process_hand_tracking()
 
+        # Skip game updates when paused
+        if self.state.is_paused():
+            return None
+
         self.pond_buddy.update(dt)
         self.renderer.update_scenery(dt)
 

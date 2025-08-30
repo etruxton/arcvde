@@ -80,7 +80,7 @@ class DoomsdayScreen(BaseScreen):
                 if event.key == pygame.K_RETURN:
                     self._execute_console_command()
                     self.console_input = ""
-                    self.console_active = False
+                    # Console stays open after command execution
                 elif event.key == pygame.K_ESCAPE:
                     self.console_active = False
                     self.console_input = ""

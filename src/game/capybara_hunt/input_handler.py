@@ -62,7 +62,7 @@ class CapybaraHuntInputHandler:
                 if event.key == pygame.K_RETURN:
                     self._execute_console_command(state, capybara_manager)
                     self.console_input = ""
-                    self.console_active = False
+                    # Console stays open after command execution
                 elif event.key == pygame.K_ESCAPE:
                     self.console_active = False
                     self.console_input = ""
@@ -127,9 +127,17 @@ class CapybaraHuntInputHandler:
                     self.console_message = "Round number must be positive"
             except Exception:
                 self.console_message = "Invalid round number"
+                
+        elif command.startswith("/score "):
+            try:
+                score_value = int(command.split()[1])
+                state.score = max(0, score_value)  # Don't allow negative scores
+                self.console_message = f"Score set to {state.score}"
+            except Exception:
+                self.console_message = "Invalid score value"
 
         else:
-            self.console_message = "Unknown command. Try: /round #"
+            self.console_message = "Unknown command. Try: /round #, /score #"
 
         self.console_message_time = time.time()
 
