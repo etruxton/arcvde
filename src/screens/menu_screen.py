@@ -258,7 +258,7 @@ class MenuScreen(BaseScreen):
         """Initialize blinky bird for showcase display"""
         # Position lower and more to the right
         self.blinky_bird = Bird(300, 300)  # Lower and more to the right
-        
+
         # Showcase animation state
         self.blinky_bird_jump_time = 0
         self.blinky_bird_base_y = 300
@@ -526,21 +526,21 @@ class MenuScreen(BaseScreen):
         self.blinky_bird_jump_time += dt
         jump_offset = math.sin(self.blinky_bird_jump_time * 2) * 20  # Slightly slower, bigger bouncing
         new_y = self.blinky_bird_base_y + jump_offset
-        
+
         # Check if bird is moving upward and trigger flapping + blinking
         if new_y < self.blinky_bird_last_y - 1:  # Moving up with threshold
             if not self.blinky_bird.is_flapping:  # Don't restart if already flapping
                 self.blinky_bird.flap()  # This already triggers blinking in the flap() method!
-        
+
         # Set velocity to trigger particles ONLY when flapping
         if self.blinky_bird.is_flapping:
             self.blinky_bird.velocity_y = -8  # Strong upward velocity for particles (same as flap_strength)
         else:
             self.blinky_bird.velocity_y = 0  # No particles when not flapping
-        
+
         self.blinky_bird_last_y = self.blinky_bird.y
         self.blinky_bird.y = new_y
-        
+
         # Update bird animation (without physics)
         self.blinky_bird.update(dt, apply_physics=False)
 

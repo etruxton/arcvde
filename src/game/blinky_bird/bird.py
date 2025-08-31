@@ -49,7 +49,7 @@ class Bird:
         self.flap_animation_time = 0
         self.flap_duration = 0.3  # seconds
         self.is_flapping = False
-        
+
         # Eye blinking animation
         self.is_blinking = False
         self.blink_animation_time = 0
@@ -121,7 +121,7 @@ class Bird:
             self.flap_animation_time += dt
             if self.flap_animation_time >= self.flap_duration:
                 self.is_flapping = False
-                
+
         # Update blink animation
         if self.is_blinking:
             self.blink_animation_time += dt
@@ -196,21 +196,21 @@ class Bird:
             angle_rad = math.radians(self.rotation)
             cos_angle = math.cos(angle_rad)
             sin_angle = math.sin(angle_rad)
-            
+
             # Create particle effect based on movement
             for i in range(3):
                 # Particles shoot opposite to bird's direction (like thrust)
                 base_distance = 25 + (i * 8)  # Further particles are more spread out
-                
+
                 # Calculate particle position shooting backward from bird
                 backward_x = -base_distance * cos_angle  # Opposite of forward direction
                 backward_y = -base_distance * sin_angle  # Opposite of forward direction
-                
+
                 # Add some random spread perpendicular to flight direction
                 spread_distance = random.randint(-8, 8)
                 spread_x = -spread_distance * sin_angle  # Perpendicular to flight
-                spread_y = spread_distance * cos_angle   # Perpendicular to flight
-                
+                spread_y = spread_distance * cos_angle  # Perpendicular to flight
+
                 trail_x = self.x + backward_x + spread_x + random.randint(-3, 3)
                 trail_y = self.y + backward_y + spread_y + random.randint(-3, 3)
 
@@ -279,9 +279,9 @@ class Bird:
         wing_points = [
             (0, 0),  # Wing attachment point
             (-18, -12),  # Wing tip top
-            (-22, -5),   # Wing tip middle
-            (-20, 10),   # Wing tip bottom  
-            (-5, 8),     # Wing bottom
+            (-22, -5),  # Wing tip middle
+            (-20, 10),  # Wing tip bottom
+            (-5, 8),  # Wing bottom
         ]
 
         # Apply wing flap tilt and body rotation
@@ -291,7 +291,7 @@ class Bird:
             horizontal_distance = abs(px)
             flap_offset = (horizontal_distance / 22.0) * math.sin(math.radians(wing_flap_angle)) * 20
             flapped_py = py + flap_offset
-            
+
             # Then apply body rotation
             rotated_x = px * cos_angle - flapped_py * sin_angle
             rotated_y = px * sin_angle + flapped_py * cos_angle
@@ -318,11 +318,11 @@ class Bird:
 
         # Define wing shape relative to wing base (mirrored from left wing)
         wing_points = [
-            (0, 0),      # Wing attachment point
-            (12, -8),    # Wing tip top
-            (15, -2),    # Wing tip middle
-            (14, 7),     # Wing tip bottom
-            (3, 6),      # Wing bottom
+            (0, 0),  # Wing attachment point
+            (12, -8),  # Wing tip top
+            (15, -2),  # Wing tip middle
+            (14, 7),  # Wing tip bottom
+            (3, 6),  # Wing bottom
         ]
 
         # Apply wing flap tilt and body rotation
@@ -332,7 +332,7 @@ class Bird:
             horizontal_distance = abs(px)
             flap_offset = (horizontal_distance / 15.0) * math.sin(math.radians(wing_flap_angle)) * 20
             flapped_py = py + flap_offset
-            
+
             # Then apply body rotation
             rotated_x = px * cos_angle - flapped_py * sin_angle
             rotated_y = px * sin_angle + flapped_py * cos_angle
@@ -385,7 +385,7 @@ class Bird:
             # Create a smooth blink - close quickly, open slowly
             if blink_progress < 0.3:  # Closing phase
                 blink_factor = 1 - (blink_progress / 0.3)
-            else:  # Opening phase  
+            else:  # Opening phase
                 blink_factor = (blink_progress - 0.3) / 0.7
             eye_height = int(eye_radius * 2 * blink_factor)
             eye_height = max(2, eye_height)  # Don't completely disappear
@@ -402,13 +402,12 @@ class Bird:
         # Draw blinking eye (ellipse that gets shorter when blinking)
         if eye_height <= 4:
             # Draw closed eye as a horizontal line
-            pygame.draw.line(surface, self.body_accent, 
-                           (int(eye_x - eye_radius), int(eye_y)), 
-                           (int(eye_x + eye_radius), int(eye_y)), 2)
+            pygame.draw.line(
+                surface, self.body_accent, (int(eye_x - eye_radius), int(eye_y)), (int(eye_x + eye_radius), int(eye_y)), 2
+            )
         else:
             # Draw open/partially open eye
-            eye_rect = pygame.Rect(eye_x - eye_radius, eye_y - eye_height // 2, 
-                                 eye_radius * 2, eye_height)
+            eye_rect = pygame.Rect(eye_x - eye_radius, eye_y - eye_height // 2, eye_radius * 2, eye_height)
             pygame.draw.ellipse(surface, self.eye_color, eye_rect)
 
             # Only draw pupil if eye is open enough

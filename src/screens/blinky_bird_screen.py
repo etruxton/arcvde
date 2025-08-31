@@ -255,7 +255,7 @@ class BlinkyBirdScreen(BaseScreen):
         # Bar outline
         pygame.draw.rect(self.screen, UI_TEXT, (bar_x, bar_y, bar_width, bar_height), 2)
 
-        instruction = self.medium_font.render("Keep both eyes open and look at the camera", True, WHITE)
+        instruction = self.medium_font.render("Keep your head still and eyes naturally open", True, WHITE)
         instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60))
         self.screen.blit(instruction, instruction_rect)
 
@@ -304,10 +304,17 @@ class BlinkyBirdScreen(BaseScreen):
         score_rect = score_text.get_rect(center=(SCREEN_WIDTH // 2, 50))
         self.screen.blit(score_text, score_rect)
 
-        # High score (smaller)
+        # Blink counter (fun stats!)
+        detector_status = self.blink_detector.get_status()
+        blink_count = detector_status.get("blink_count", 0)
+        blink_text = self.medium_font.render(f"Blinks: {blink_count}", True, VAPORWAVE_CYAN)
+        blink_rect = blink_text.get_rect(center=(SCREEN_WIDTH // 2, 85))
+        self.screen.blit(blink_text, blink_rect)
+
+        # High score (smaller, moved down to make room)
         if self.game.high_score > self.game.score:
             high_score_text = self.medium_font.render(f"Best: {self.game.high_score}", True, UI_ACCENT)
-            high_score_rect = high_score_text.get_rect(center=(SCREEN_WIDTH // 2, 90))
+            high_score_rect = high_score_text.get_rect(center=(SCREEN_WIDTH // 2, 120))
             self.screen.blit(high_score_text, high_score_rect)
 
     def _draw_game_over_screen(self, game_info: dict):
@@ -328,13 +335,20 @@ class BlinkyBirdScreen(BaseScreen):
         score_rect = score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 40))
         self.screen.blit(score_text, score_rect)
 
-        # High score
+        # Final blink count (fun stats!)
+        detector_status = self.blink_detector.get_status()
+        final_blink_count = detector_status.get("blink_count", 0)
+        blink_text = self.medium_font.render(f"Total Blinks: {final_blink_count}", True, VAPORWAVE_MINT)
+        blink_rect = blink_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 5))
+        self.screen.blit(blink_text, blink_rect)
+
+        # High score (moved down to make room)
         if self.game.score >= self.game.high_score:
             high_score_text = self.medium_font.render("NEW HIGH SCORE!", True, GREEN)
         else:
             high_score_text = self.medium_font.render(f"Best: {self.game.high_score}", True, UI_ACCENT)
 
-        high_score_rect = high_score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 10))
+        high_score_rect = high_score_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30))
         self.screen.blit(high_score_text, high_score_rect)
 
         # Restart instruction
