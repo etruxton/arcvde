@@ -14,6 +14,7 @@ import cv2
 import pygame
 
 # Local application imports
+from game.blinky_bird.bird import Bird
 from game.doomsday.enemy import Enemy
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
@@ -153,6 +154,9 @@ class MenuScreen(BaseScreen):
         # Capybara showcase
         self.init_capybara_showcase()
 
+        # Blinky bird showcase
+        self.init_blinky_bird_showcase()
+
         self.logo = None
         self.load_logo()
 
@@ -250,6 +254,18 @@ class MenuScreen(BaseScreen):
         self.capybara_animation_time = 0
         self.capybara_balloon_color = (255, 100, 100)  # Red balloon
 
+    def init_blinky_bird_showcase(self):
+        """Initialize blinky bird for showcase display"""
+        # Position lower and more to the right
+        self.blinky_bird = Bird(300, 300)  # Lower and more to the right
+        
+        # Showcase animation state
+        self.blinky_bird_jump_time = 0
+        self.blinky_bird_base_y = 300
+        self.blinky_bird_flap_timer = 0
+        self.blinky_bird_blink_timer = 0
+        self.blinky_bird_last_y = 300  # Track last Y position for flapping
+
     def load_logo(self):
         """Load the game logo image"""
         try:
@@ -285,6 +301,9 @@ class MenuScreen(BaseScreen):
                 self.capybara_animation_frame = (self.capybara_animation_frame + 1) % len(self.capybara_sprites)
 
         self._update_pond_buddy(dt)
+
+        # Update blinky bird showcase
+        self._update_blinky_bird_showcase(dt)
 
         hovering_game_button = False
         hovering_capybara = False
@@ -323,6 +342,8 @@ class MenuScreen(BaseScreen):
         self._draw_enemy_showcase()
 
         self._draw_capybara_showcase()
+
+        self._draw_blinky_bird_showcase()
 
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(40)  # Reduced from 100 to 40 for more vibrant enemies
@@ -498,6 +519,34 @@ class MenuScreen(BaseScreen):
         current_sprite = self.capybara_sprites[self.capybara_animation_frame]
         capybara_rect = current_sprite.get_rect(center=(int(capybara_center_x), int(capybara_center_y)))
         self.screen.blit(current_sprite, capybara_rect)
+
+    def _update_blinky_bird_showcase(self, dt: float):
+        """Update blinky bird animations for showcase"""
+        # Update jump animation (stationary Y movement only)
+        self.blinky_bird_jump_time += dt
+        jump_offset = math.sin(self.blinky_bird_jump_time * 2) * 20  # Slightly slower, bigger bouncing
+        new_y = self.blinky_bird_base_y + jump_offset
+        
+        # Check if bird is moving upward and trigger flapping + blinking
+        if new_y < self.blinky_bird_last_y - 1:  # Moving up with threshold
+            if not self.blinky_bird.is_flapping:  # Don't restart if already flapping
+                self.blinky_bird.flap()  # This already triggers blinking in the flap() method!
+        
+        # Set velocity to trigger particles ONLY when flapping
+        if self.blinky_bird.is_flapping:
+            self.blinky_bird.velocity_y = -8  # Strong upward velocity for particles (same as flap_strength)
+        else:
+            self.blinky_bird.velocity_y = 0  # No particles when not flapping
+        
+        self.blinky_bird_last_y = self.blinky_bird.y
+        self.blinky_bird.y = new_y
+        
+        # Update bird animation (without physics)
+        self.blinky_bird.update(dt, apply_physics=False)
+
+    def _draw_blinky_bird_showcase(self):
+        """Draw the animated blinky bird in showcase"""
+        self.blinky_bird.draw(self.screen)
 
     def _update_pond_buddy(self, dt: float):
         """Update pond buddy animations and mood"""
