@@ -57,6 +57,7 @@ class CreditsScreen(BaseScreen):
             # Music Section
             {"type": "heading", "text": "MUSIC & AUDIO", "color": UI_ACCENT},
             {"type": "space", "height": 20},
+            {"type": "subheading", "text": "Menu/Target Practice Music", "color": VAPORWAVE_PURPLE},
             {"type": "text", "text": 'Menu/Target Practice Music: "Somewhere in the Elevator" by Peachtea', "color": WHITE},
             {"type": "text", "text": "Source: opengameart.org/content/somewhere-in-the-elevator", "color": GRAY},
             {"type": "text", "text": "License: CC-BY 3.0", "color": GRAY},
@@ -75,6 +76,7 @@ class CreditsScreen(BaseScreen):
             {"type": "text", "text": 'Stage 4+: "Boss Battle 8 Retro" (alternating tracks)', "color": WHITE},
             {"type": "text", "text": 'Stage 4+ Metal: "Boss Battle 8 Metal" (third alternating track)', "color": WHITE},
             {"type": "space", "height": 10},
+            {"type": "text", "text": "Source: opengameart.org/users/nene", "color": GRAY},
             {"type": "text", "text": "All tracks licensed under CC0 (Public Domain)", "color": GRAY},
             {"type": "space", "height": 40},
             # Technology Section

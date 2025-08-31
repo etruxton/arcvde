@@ -11,6 +11,7 @@ from typing import Dict, Optional
 import pygame
 
 # Local application imports
+from screens.blinky_bird_screen import BlinkyBirdScreen
 from screens.capybara_hunt_screen import CapybaraHuntScreen
 from screens.credits_screen import CreditsScreen
 from screens.doomsday_screen import DoomsdayScreen
@@ -23,6 +24,7 @@ from utils.camera_manager import CameraManager
 from utils.constants import (
     DEFAULT_CAMERA_ID,
     FPS,
+    GAME_STATE_BLINKY_BIRD,
     GAME_STATE_CAPYBARA_HUNT,
     GAME_STATE_CREDITS,
     GAME_STATE_DOOMSDAY,
@@ -105,6 +107,8 @@ class GameManager:
                 raise  # Re-raise to stop initialization
             self.screens[GAME_STATE_CAPYBARA_HUNT] = CapybaraHuntScreen(self.screen, self.camera_manager)
             print("Capybara Hunt screen initialized")
+            self.screens[GAME_STATE_BLINKY_BIRD] = BlinkyBirdScreen(self.screen, self.camera_manager)
+            print("Winky Bird screen initialized")
             self.screens[GAME_STATE_SETTINGS] = SettingsScreen(self.screen, self.camera_manager)
             print("Settings screen initialized")
             self.screens[GAME_STATE_INSTRUCTIONS] = InstructionsScreen(self.screen, self.camera_manager)
@@ -171,6 +175,7 @@ class GameManager:
                 GAME_STATE_INSTRUCTIONS,
                 GAME_STATE_PLAYING,
                 GAME_STATE_SETTINGS,
+                GAME_STATE_BLINKY_BIRD,
             ]:
                 if sound_manager.current_ambient != "elevator":
                     sound_manager.play_ambient("elevator")
@@ -197,6 +202,10 @@ class GameManager:
                 capybara_screen = self.screens[GAME_STATE_CAPYBARA_HUNT]
                 if hasattr(capybara_screen, "reset_game"):
                     capybara_screen.reset_game()
+            elif new_state == GAME_STATE_BLINKY_BIRD:
+                blinky_bird_screen = self.screens[GAME_STATE_BLINKY_BIRD]
+                if hasattr(blinky_bird_screen, "reset_game"):
+                    blinky_bird_screen.reset_game()
         else:
             print(f"Unknown state: {new_state}")
 

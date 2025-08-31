@@ -23,6 +23,7 @@ from utils.constants import (
     CAMERA_X,
     CAMERA_Y,
     DEFAULT_CAMERA_ID,
+    GAME_STATE_BLINKY_BIRD,
     GAME_STATE_CAPYBARA_HUNT,
     GAME_STATE_CREDITS,
     GAME_STATE_DOOMSDAY,
@@ -96,6 +97,15 @@ class MenuScreen(BaseScreen):
             self.button_font,
         )
 
+        self.blinky_bird_button = Button(
+            center_x,
+            start_y + 3 * (button_height + button_spacing),
+            button_width,
+            button_height,
+            "BLINKY BIRD",
+            self.button_font,
+        )
+
         self.play_button = Button(
             center_x,
             start_y + button_height + button_spacing,
@@ -107,7 +117,7 @@ class MenuScreen(BaseScreen):
 
         self.instructions_button = Button(
             center_x,
-            start_y + 3 * (button_height + button_spacing),
+            start_y + 4 * (button_height + button_spacing),
             button_width,
             button_height,
             "HOW TO PLAY",
@@ -115,17 +125,18 @@ class MenuScreen(BaseScreen):
         )
 
         self.settings_button = Button(
-            center_x, start_y + 4 * (button_height + button_spacing), button_width, button_height, "SETTINGS", self.button_font
+            center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "SETTINGS", self.button_font
         )
 
         self.quit_button = Button(
-            center_x, start_y + 5 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
+            center_x, start_y + 6 * (button_height + button_spacing), button_width, button_height, "QUIT", self.button_font
         )
 
         self.buttons = [
             self.arcade_button,
             self.play_button,
             self.capybara_button,
+            self.blinky_bird_button,
             self.instructions_button,
             self.settings_button,
             self.quit_button,
@@ -175,6 +186,8 @@ class MenuScreen(BaseScreen):
             result = GAME_STATE_DOOMSDAY
         elif button == self.capybara_button:
             result = GAME_STATE_CAPYBARA_HUNT
+        elif button == self.blinky_bird_button:
+            result = GAME_STATE_BLINKY_BIRD
         elif button == self.settings_button:
             result = GAME_STATE_SETTINGS
         elif button == self.instructions_button:
@@ -275,7 +288,7 @@ class MenuScreen(BaseScreen):
 
         hovering_game_button = False
         hovering_capybara = False
-        for button in [self.arcade_button, self.play_button, self.capybara_button]:
+        for button in [self.arcade_button, self.play_button, self.capybara_button, self.blinky_bird_button]:
             if button.finger_aimed:
                 hovering_game_button = True
                 if button == self.capybara_button:

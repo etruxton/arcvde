@@ -49,7 +49,7 @@ class SoundManager:
             print("Initializing pygame mixer...")
             pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
             pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
-            print(f"Pygame mixer initialized successfully")
+            print("Pygame mixer initialized successfully")
             print(f"Mixer settings: {pygame.mixer.get_init()}")
         except Exception as e:
             print(f"ERROR: Failed to initialize pygame mixer: {e}")

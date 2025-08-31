@@ -10,10 +10,11 @@ A real-time hand gesture recognition game where you use your finger gun to shoot
 
 ## Features
 
-- **Three Game Modes:**
+- **Four Game Modes:**
   - **Target Practice** - Classic target shooting with score tracking
   - **Doomsday** - Battle waves of approaching enemies in a doom-style survival game
   - **Capybara Hunt** - Save adorable capybaras by popping their balloons in this Duck Hunt-inspired mode
+  - **Blinky Bird** - Cyberpunk-themed blink-controlled Flappy Bird clone
 - **Real-time hand tracking** using MediaPipe with enhanced gesture detection
 - **Multi-mode detection system** that works even when pointing directly at the camera
 - **Interactive tutorial** showing how to play
@@ -47,6 +48,14 @@ A wholesome twist on Duck Hunt where you save capybaras instead of hunting them:
 - **Duck Hunt Rules:** 10 targets per round with increasing hit requirements
 - **Animated Sprites:** Capybaras walk around happily after being saved
 
+#### Blinky Bird
+Navigate through a neon cyberpunk cityscape using only your blinks:
+- **Blink-Controlled Gameplay:** Blink to make your chrome cyber-bird flap through obstacles
+- **Cyberpunk Cityscape:** Fly through gaps between towering neon skyscrapers
+- **Adaptive Blink Detection:** Automatic calibration works with or without glasses
+- **Progressive Difficulty:** Skyscraper gaps narrow and move faster as your score increases
+- **Stunning Visuals:** Multi-layered cyberpunk city with animated neon lights and particle effects
+
 ## Installation
 
 ### Prerequisites
@@ -76,6 +85,7 @@ python main.py
 The game will start with a main menu where you can:
 - **DOOMSDAY** - Battle waves of enemies in survival mode
 - **CAPYBARA HUNT** - Save capybaras by popping their balloons
+- **BLINKY BIRD** - Navigate through cyberpunk cityscape with blinks
 - **TARGET PRACTICE** - Classic target shooting game
 - **HOW TO PLAY** - View detailed instructions
 - **SETTINGS** - Configure camera and other options
@@ -85,7 +95,7 @@ The game will start with a main menu where you can:
 
 **In Menu:**
 - Mouse clicks or shoot at buttons with finger gun
-- Keyboard shortcuts: 1 for Doomsday, 2 for Capybara Hunt, 3 for Target Practice
+- Keyboard shortcuts: 1 for Doomsday, 2 for Capybara Hunt, 3 for Blinky Bird, 4 for Target Practice
 
 **In Target Practice:**
 - **Aim**: Make finger gun gesture and move your hand
@@ -105,6 +115,14 @@ The game will start with a main menu where you can:
 - **Shoot**: Flick your thumb down to pop balloons (5 shots per wave)
 - **Objective**: Shoot balloons to save capybaras, avoid shooting capybaras directly
 - **Pause**: Press P to pause and access debug console
+- **Menu**: Press ESC to return to main menu
+
+**In Blinky Bird:**
+- **Fly**: Blink to make your cyber-bird flap and gain altitude
+- **Navigate**: Fly through gaps between neon skyscrapers in the cyberpunk cityscape
+- **Pause**: Press P to pause the game
+- **Restart**: Press R to restart after game over, or blink to restart
+- **Recalibrate**: Press C to recalibrate blink detection
 - **Menu**: Press ESC to return to main menu
 
 ## Settings & Configuration
@@ -151,6 +169,7 @@ All game constants can be modified in `src/utils/constants.py`:
 ## Future Enhancements
 
 Planned improvements to Doomsday include:
+- ~~Stage Transitions~~ ✅ **DONE!**
 - Sound effects and music for both game modes
 - More enemy types and boss battles
 - Power-ups and special abilities (rapid fire, explosive shots)
@@ -160,15 +179,22 @@ Planned improvements to Doomsday include:
 
 Planned improvements to Capybara Hunt include:
 - Enemy that you need to shoot to protect the capybara
-- More silly reactions by the pond buddy
+- ~~Silly reactions by the pond buddy~~ ✅ **DONE!**
 - More animations
 - Difficulty settings
 - More themes and backgrounds
 
+Planned improvements to Blinky Bird include:
+- Sound effects and synthwave music for cyberpunk atmosphere
+- Multiple cyber-bird designs and unlockable skins
+- Power-ups triggered by special blink patterns (double blink for boost)
+- Different cyberpunk environments (rainy nights, neon districts, space stations)
+
 Planned additions to ARCVDE:
+- ~~Capybara Hunt - like duck hunt but you shoot capybaras? or something around them~~ ✅ **DONE! Cabypara Hunt where you shoot balloons carrying capy's**
 - Galaga style game where you control the character with where you point
 - PacMan or Snake style game where you control player with where you point ?
-- Flappy Bird where you control the bird by clapping. Clappy Bird! 👏
+- ~~Flappy Bird where you control the bird by clapping. Clappy Bird! 👏~~ ✅ **DONE! Blinky Bird uses blinks instead**
 - Angry Birds style game where you physically pinch and real back the bird to shoot it at a tower of blocks
 - maybe moreeeee
 
