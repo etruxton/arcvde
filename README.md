@@ -185,7 +185,8 @@ Planned improvements to Capybara Hunt include:
 - More themes and backgrounds
 
 Planned improvements to Blinky Bird include:
-- Sound effects and synthwave music for cyberpunk atmosphere
+- ~~Synthwave music for cyberpunk atmosphere~~ ✅ **DONE!**
+- Sound effects for flaps and collisions
 - Multiple cyber-bird designs and unlockable skins
 - Power-ups triggered by special blink patterns (double blink for boost)
 - Different cyberpunk environments (rainy nights, neon districts, space stations)
@@ -237,5 +238,10 @@ Planned additions to ARCVDE:
 - **Stage 4+ Metal**: "Boss Battle 8 Metal" by nene (third alternating track)
   - Source: https://opengameart.org/content/boss-battle-8-metal
   - License: CC0 (Public Domain)
+
+#### Blinky Bird Music
+- **Background Music**: "Happy/melancholic synth + bells song | Adaptive layers pack" by 3xBlast
+  - Source: https://opengameart.org/content/happymelancholic-synth-bells-song-adaptive-layers-pack
+  - License: CC-BY 3.0
 
 ---

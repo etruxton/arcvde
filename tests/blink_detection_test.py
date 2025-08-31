@@ -15,10 +15,86 @@ import mediapipe as mp
 import numpy as np
 
 
+class FramePreprocessor:
+    """Handles frame preprocessing for better blink detection in various lighting conditions"""
+
+    def __init__(self):
+        # CLAHE for adaptive histogram equalization
+        self.clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+
+        # Cache for performance
+        self.gamma_table_cache = {}
+
+    def preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
+        """
+        Apply preprocessing to improve eye detection in various lighting conditions
+
+        Args:
+            frame: Input BGR frame
+        """
+        # Create a copy to avoid modifying original
+        processed = frame.copy()
+
+        # Step 1: Convert to LAB color space for better lighting control
+        lab = cv2.cvtColor(processed, cv2.COLOR_BGR2LAB)
+        l_channel, a_channel, b_channel = cv2.split(lab)
+
+        # Step 2: Apply adaptive histogram equalization to L channel
+        l_channel = self.clahe.apply(l_channel)
+
+        # Step 3: Merge channels back
+        enhanced_lab = cv2.merge([l_channel, a_channel, b_channel])
+        processed = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+
+        # Step 4: Apply bilateral filter to reduce noise while preserving edges
+        processed = cv2.bilateralFilter(processed, 5, 50, 50)
+
+        # Step 5: Adaptive gamma correction
+        processed = self._apply_adaptive_gamma(processed)
+
+        return processed
+
+    def _apply_adaptive_gamma(self, image: np.ndarray) -> np.ndarray:
+        """Apply gamma correction based on image brightness"""
+        # Calculate mean brightness
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        mean_brightness = np.mean(gray)
+
+        # Determine gamma value
+        if mean_brightness < 80:  # Very dark
+            gamma = 1.8
+        elif mean_brightness < 100:  # Dark
+            gamma = 1.5
+        elif mean_brightness > 170:  # Very bright
+            gamma = 0.6
+        elif mean_brightness > 150:  # Bright
+            gamma = 0.8
+        else:  # Normal
+            gamma = 1.0
+
+        # Use cached gamma table if available
+        gamma_key = round(gamma, 1)
+        if gamma_key not in self.gamma_table_cache:
+            inv_gamma = 1.0 / gamma
+            self.gamma_table_cache[gamma_key] = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype(
+                "uint8"
+            )
+
+        # Apply gamma correction using lookup table
+        return cv2.LUT(image, self.gamma_table_cache[gamma_key])
+
+
 class BlinkDetector:
     """Detects blinking motion by analyzing eye aspect ratios for both eyes closing simultaneously"""
 
-    def __init__(self):
+    def __init__(self, enable_preprocessing=True):
+        # Configuration
+        self.enable_preprocessing = enable_preprocessing
+        self.use_relative_detection = True  # Prefer relative detection
+
+        # Initialize preprocessor
+        self.preprocessor = FramePreprocessor() if enable_preprocessing else None
+
         # MediaPipe setup
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
@@ -38,11 +114,16 @@ class BlinkDetector:
         self.RIGHT_EYE_KEY = [362, 385, 387, 263, 373, 380]  # corners + top/bottom
 
         # Blink detection parameters - tuned for deliberate blinks vs automatic blinks
-        self.ear_threshold = 0.25  # Threshold for detecting closed eyes during blinks
+        self.ear_threshold = 0.25  # Fallback threshold for detecting closed eyes during blinks
         self.blink_frames_min = 2  # Minimum frames for a valid blink
         self.blink_frames_max = 15  # Maximum frames for a valid blink (deliberate blinks are usually quick)
         self.cooldown_time = 0.3  # Seconds between blink detections
         self.ear_history_size = 3  # Frames to keep for smoothing (less smoothing for quick response)
+
+        # Relative blink detection parameters
+        self.relative_threshold = 0.25  # Percentage drop from baseline to detect blink (25%)
+        self.baseline_window = 15  # Frames to calculate running baseline
+        self.min_baseline_frames = 10  # Minimum frames before relative detection kicks in
 
         # Glasses detection and adaptive thresholds
         self.glasses_mode = False
@@ -56,6 +137,10 @@ class BlinkDetector:
         # Tracking state
         self.left_ear_history = deque(maxlen=self.ear_history_size)
         self.right_ear_history = deque(maxlen=self.ear_history_size)
+
+        # Baseline tracking for relative blink detection
+        self.left_ear_baseline_history = deque(maxlen=self.baseline_window)
+        self.right_ear_baseline_history = deque(maxlen=self.baseline_window)
 
         self.both_closed_frames = 0
         self.both_open_frames = 0
@@ -157,6 +242,47 @@ class BlinkDetector:
 
         return False
 
+    def detect_relative_blink(self, left_ear: float, right_ear: float) -> bool:
+        """
+        Detect blinks using relative changes from baseline EAR values.
+        This works better when face is at an angle to the camera.
+
+        Returns True if both eyes show relative drop indicating a blink.
+        """
+        # Need sufficient baseline data
+        if len(self.left_ear_baseline_history) < self.min_baseline_frames:
+            return False
+
+        if len(self.right_ear_baseline_history) < self.min_baseline_frames:
+            return False
+
+        # Calculate current baseline (average of recent open-eye values)
+        # Exclude the lowest values to avoid including blinks in baseline
+        left_baseline_values = sorted(list(self.left_ear_baseline_history))
+        right_baseline_values = sorted(list(self.right_ear_baseline_history))
+
+        # Use top 60% of values for baseline (exclude potential blinks)
+        baseline_start_idx = int(len(left_baseline_values) * 0.4)
+        left_baseline = np.mean(left_baseline_values[baseline_start_idx:])
+        right_baseline = np.mean(right_baseline_values[baseline_start_idx:])
+
+        # Calculate relative drops from baseline
+        left_drop = (left_baseline - left_ear) / left_baseline if left_baseline > 0 else 0
+        right_drop = (right_baseline - right_ear) / right_baseline if right_baseline > 0 else 0
+
+        # Both eyes must show significant relative drop
+        left_blink = left_drop > self.relative_threshold
+        right_blink = right_drop > self.relative_threshold
+
+        # Store debug info
+        self.debug_info["left_baseline"] = left_baseline
+        self.debug_info["right_baseline"] = right_baseline
+        self.debug_info["left_relative_drop"] = left_drop
+        self.debug_info["right_relative_drop"] = right_drop
+        self.debug_info["relative_blink_detected"] = left_blink and right_blink
+
+        return left_blink and right_blink
+
     def detect_blink(self, face_landmarks) -> Tuple[bool, str]:
         """
         Detect blinking motion by analyzing eye aspect ratios for both eyes closing simultaneously.
@@ -193,11 +319,26 @@ class BlinkDetector:
         left_ear_smooth = np.mean(self.left_ear_history) if self.left_ear_history else left_ear
         right_ear_smooth = np.mean(self.right_ear_history) if self.right_ear_history else right_ear
 
-        # Determine eye states using adaptive thresholds
+        # Update baseline history for relative detection (only when eyes are likely open)
+        self.left_ear_baseline_history.append(left_ear_smooth)
+        self.right_ear_baseline_history.append(right_ear_smooth)
+
+        # Try relative blink detection first (better for angled faces)
+        relative_blink_detected = self.detect_relative_blink(left_ear_smooth, right_ear_smooth)
+
+        # Fallback to absolute threshold detection
         left_closed = left_ear_smooth < self.adaptive_threshold_left
         right_closed = right_ear_smooth < self.adaptive_threshold_right
         both_closed = left_closed and right_closed
         both_open = not left_closed and not right_closed
+
+        # Use detection method based on settings
+        if self.use_relative_detection and relative_blink_detected:
+            blink_condition = True
+            detection_method = "relative"
+        else:
+            blink_condition = both_closed
+            detection_method = "absolute"
 
         # Update debug info
         self.debug_info.update(
@@ -208,11 +349,12 @@ class BlinkDetector:
                 "right_closed": right_closed,
                 "both_closed": both_closed,
                 "blink_detected": False,
+                "detection_method": detection_method,
             }
         )
 
-        # Track blink state - detect blinks immediately when both eyes close
-        if both_closed:
+        # Track blink state - detect blinks immediately when condition is met
+        if blink_condition:
             # Check if this is the START of a blink (transition from open to closed)
             if self.both_closed_frames == 0 and current_time - self.last_blink_time > self.cooldown_time:
 
@@ -247,6 +389,8 @@ class BlinkDetector:
         """Reset all tracking state"""
         self.left_ear_history.clear()
         self.right_ear_history.clear()
+        self.left_ear_baseline_history.clear()
+        self.right_ear_baseline_history.clear()
         self.both_closed_frames = 0
         self.both_open_frames = 0
 
@@ -333,16 +477,33 @@ class BlinkDetector:
         debug_text = [
             f"Total Blinks: {self.blink_count}",
             f"Both Eyes Closed Frames: {self.both_closed_frames}",
+            f"Detection Method: {self.debug_info.get('detection_method', 'absolute').upper()}",
             f"Left EAR: {self.debug_info['left_ear']:.3f} (Threshold: {self.debug_info['left_threshold']:.3f})",
             f"Right EAR: {self.debug_info['right_ear']:.3f} (Threshold: {self.debug_info['right_threshold']:.3f})",
             f"Left Eye: {'CLOSED' if self.debug_info['left_closed'] else 'OPEN'}",
             f"Right Eye: {'CLOSED' if self.debug_info['right_closed'] else 'OPEN'}",
             f"Both Eyes: {'CLOSED' if self.debug_info['both_closed'] else 'OPEN'} (Need both for blink!)",
-            f"Glasses Mode: {'YES' if self.debug_info['glasses_mode'] else 'NO'} | Calibrating: {'YES' if self.debug_info['calibrating'] else 'NO'}",
-            f"Last Blink: {self.debug_info['last_blink']}",
         ]
 
-        y_offset = 30
+        # Add relative detection info if available
+        if "left_baseline" in self.debug_info:
+            debug_text.extend(
+                [
+                    f"--- RELATIVE DETECTION ---",
+                    f"Left Baseline: {self.debug_info['left_baseline']:.3f} | Drop: {self.debug_info['left_relative_drop']:.1%}",
+                    f"Right Baseline: {self.debug_info['right_baseline']:.3f} | Drop: {self.debug_info['right_relative_drop']:.1%}",
+                    f"Relative Blink: {'YES' if self.debug_info.get('relative_blink_detected', False) else 'NO'}",
+                ]
+            )
+
+        debug_text.extend(
+            [
+                f"Glasses Mode: {'YES' if self.debug_info['glasses_mode'] else 'NO'} | Calibrating: {'YES' if self.debug_info['calibrating'] else 'NO'}",
+                f"Last Blink: {self.debug_info['last_blink']}",
+            ]
+        )
+
+        y_offset = 100  # Start below the status indicators
         for i, text in enumerate(debug_text):
             if i == 0:  # Total count
                 color = (0, 255, 0)
@@ -350,25 +511,35 @@ class BlinkDetector:
                 color = (255, 0, 255)  # Magenta for both closed
             elif "CLOSED" in text:  # Individual eye closed
                 color = (0, 0, 255)
+            elif "RELATIVE DETECTION" in text:  # Section header
+                color = (255, 255, 0)  # Yellow for section headers
             else:
                 color = (255, 255, 255)
 
-            cv2.putText(image, text, (10, y_offset + i * 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(image, text, (10, y_offset + i * 22), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
         # Draw instructions
         instructions = [
-            "Instructions:",
-            "- Look directly at camera for 2 seconds to calibrate",
-            "- Blink deliberately (close both eyes at the same time)",
-            "- Try quick blinks vs longer blinks to see what works best",
-            "- Glasses wearers: automatic detection & adaptive thresholds",
-            "- Press 'q' to quit, 'r' to reset, 'c' to recalibrate",
+            "Controls:",
+            "q: Quit | r: Reset | c: Recalibrate",
+            "p: Toggle Preprocessing | s: Show Comparison",
+            "m: Toggle Detection Method (Relative/Absolute)",
+            "",
+            "Tips:",
+            "- Look at camera for 2 seconds to calibrate",
+            "- Try looking left/right with relative detection",
         ]
 
-        start_y = h - 160
+        start_y = h - 180
+        start_x = w - 300
         for i, instruction in enumerate(instructions):
-            color = (0, 255, 255) if i == 0 else (200, 200, 200)
-            cv2.putText(image, instruction, (10, start_y + i * 22), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            if instruction == "":  # Skip empty lines
+                continue
+            if instruction in ["Controls:", "Tips:"]:
+                color = (0, 255, 255)  # Cyan for headers
+            else:
+                color = (200, 200, 200)  # Light gray for text
+            cv2.putText(image, instruction, (start_x, start_y + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
 
         return image
 
@@ -395,8 +566,11 @@ class BlinkDetector:
 
 def main():
     """Main function to run blink detection test"""
-    print("Blink Detection Test")
-    print("====================")
+    print("Blink Detection Test with Image Preprocessing")
+    print("==============================================")
+    print("Testing enhanced blink detection with image preprocessing for better reliability.")
+    print("Preprocessing includes: brightness/contrast adjustment, sharpening, and noise reduction.")
+    print("")
     print("Look directly at the camera and try blinking deliberately (both eyes at once)!")
     print("The algorithm detects when both eyes close and open simultaneously.")
     print("This should be more comfortable than winking for extended gameplay.")
@@ -413,14 +587,24 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     cap.set(cv2.CAP_PROP_FPS, 30)
 
-    # Initialize blink detector
-    detector = BlinkDetector()
+    # Initialize blink detector with and without preprocessing for comparison
+    print("Testing with image preprocessing enabled...")
+    detector = BlinkDetector(enable_preprocessing=True)
 
     # Performance tracking
     fps_counter = 0
     fps_start_time = time.time()
 
-    print("Camera opened successfully. Press 'q' to quit, 'r' to reset counts.")
+    print("Camera opened successfully.")
+    print("Controls:")
+    print("- 'q': Quit")
+    print("- 'r': Reset counts")
+    print("- 'p': Toggle preprocessing on/off")
+    print("- 's': Show/hide original vs processed frames")
+    print("- 'm': Toggle detection method (relative/absolute)")
+    print("- 'c': Recalibrate")
+
+    show_comparison = False
 
     while True:
         ret, frame = cap.read()
@@ -431,8 +615,13 @@ def main():
         # Flip frame horizontally for mirror effect
         frame = cv2.flip(frame, 1)
 
+        # Apply preprocessing if enabled
+        processed_frame = frame
+        if detector.enable_preprocessing:
+            processed_frame = detector.preprocessor.preprocess_frame(frame)
+
         # Convert BGR to RGB for MediaPipe
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
         rgb_frame.flags.writeable = False
 
         # Process frame with MediaPipe Face Mesh
@@ -479,8 +668,38 @@ def main():
             fps_start_time = time.time()
             cv2.putText(frame, f"FPS: {fps:.1f}", (frame.shape[1] - 100, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
-        # Display frame
-        cv2.imshow("Blink Detection Test", frame)
+        # Add preprocessing status indicator
+        preprocess_status = "ON" if detector.enable_preprocessing else "OFF"
+        preprocess_color = (0, 255, 0) if detector.enable_preprocessing else (0, 0, 255)
+        cv2.putText(frame, f"Preprocess: {preprocess_status}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, preprocess_color, 2)
+
+        # Add detection method indicator
+        method_status = "RELATIVE" if detector.use_relative_detection else "ABSOLUTE"
+        method_color = (255, 255, 0) if detector.use_relative_detection else (255, 0, 255)
+        cv2.putText(frame, f"Method: {method_status}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, method_color, 2)
+
+        # Display frame(s)
+        if show_comparison and detector.enable_preprocessing:
+            # Show side-by-side comparison of original vs processed
+            # Resize frames to fit side by side
+            h, w = frame.shape[:2]
+            display_width = w // 2
+            display_height = int(h * (display_width / w))
+
+            original_resized = cv2.resize(frame, (display_width, display_height))
+            processed_resized = cv2.resize(processed_frame, (display_width, display_height))
+
+            # Create comparison image
+            comparison = np.hstack([original_resized, processed_resized])
+
+            # Add labels
+            cv2.putText(comparison, "Original", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(comparison, "Processed", (display_width + 10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+            cv2.imshow("Blink Detection Test - Comparison", comparison)
+            cv2.imshow("Blink Detection Test", frame)
+        else:
+            cv2.imshow("Blink Detection Test", frame)
 
         # Handle keyboard input
         key = cv2.waitKey(1) & 0xFF
@@ -493,6 +712,18 @@ def main():
         elif key == ord("c"):
             detector.recalibrate()
             print("Recalibrating thresholds...")
+        elif key == ord("p"):
+            detector.enable_preprocessing = not detector.enable_preprocessing
+            status = "ENABLED" if detector.enable_preprocessing else "DISABLED"
+            print(f"Preprocessing {status}")
+        elif key == ord("s"):
+            show_comparison = not show_comparison
+            print(f"Frame comparison view: {'ON' if show_comparison else 'OFF'}")
+        elif key == ord("m"):
+            detector.use_relative_detection = not detector.use_relative_detection
+            method = "RELATIVE" if detector.use_relative_detection else "ABSOLUTE"
+            print(f"Detection method: {method}")
+            detector.reset_state()  # Reset state when changing methods
 
     # Cleanup
     cap.release()

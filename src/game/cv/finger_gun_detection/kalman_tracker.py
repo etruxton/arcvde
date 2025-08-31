@@ -171,6 +171,7 @@ class HandKalmanTracker:
             return self.predict_landmarks()
 
         self.tracking_confidence = detection_confidence
+        smoothed_landmarks = hand_landmarks  # Start with original
 
         # Update each tracked landmark
         for landmark_id in self.key_landmarks:

@@ -110,6 +110,8 @@ class SoundManager:
             "stage3_static_mist": "stage3_static_mist.wav",
             "stage4_lightning": "stage4_lightning.wav",
             "stage4_thunder": "stage4_thunder.wav",
+            # Blinky Bird background music
+            "blinky_bird": "Happymelancholic synth bells.wav",
         }
 
         # Load each sound

@@ -169,13 +169,16 @@ class GameManager:
             if old_state == GAME_STATE_CAPYBARA_HUNT:
                 sound_manager.stop_ambient(fade_ms=500)  # Gentle fade
 
+            # When leaving Blinky Bird, stop its music
+            if old_state == GAME_STATE_BLINKY_BIRD:
+                sound_manager.stop_ambient(fade_ms=500)  # Gentle fade
+
             # When entering menu, instructions, or basic game modes, start elevator music
             if new_state in [
                 GAME_STATE_MENU,
                 GAME_STATE_INSTRUCTIONS,
                 GAME_STATE_PLAYING,
                 GAME_STATE_SETTINGS,
-                GAME_STATE_BLINKY_BIRD,
             ]:
                 if sound_manager.current_ambient != "elevator":
                     sound_manager.play_ambient("elevator")
@@ -184,6 +187,11 @@ class GameManager:
             elif new_state == GAME_STATE_CAPYBARA_HUNT:
                 if sound_manager.current_ambient != "capybara_hunt":
                     sound_manager.play_ambient("capybara_hunt")
+
+            # When entering Blinky Bird, play its special music
+            elif new_state == GAME_STATE_BLINKY_BIRD:
+                if sound_manager.current_ambient != "blinky_bird":
+                    sound_manager.play_ambient("blinky_bird")
 
             # When entering Doomsday, let the doomsday screen handle its own music
             elif new_state == GAME_STATE_DOOMSDAY:

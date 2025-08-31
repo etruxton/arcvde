@@ -78,6 +78,11 @@ class CreditsScreen(BaseScreen):
             {"type": "space", "height": 10},
             {"type": "text", "text": "Source: opengameart.org/users/nene", "color": GRAY},
             {"type": "text", "text": "All tracks licensed under CC0 (Public Domain)", "color": GRAY},
+            {"type": "space", "height": 20},
+            {"type": "subheading", "text": "Blinky Bird Music", "color": VAPORWAVE_PURPLE},
+            {"type": "text", "text": 'Background Music: "Happy/melancholic synth + bells song" by 3xBlast', "color": WHITE},
+            {"type": "text", "text": "Source: opengameart.org (adaptive layers pack)", "color": GRAY},
+            {"type": "text", "text": "License: CC-BY 3.0", "color": GRAY},
             {"type": "space", "height": 40},
             # Technology Section
             {"type": "heading", "text": "OPEN SOURCE TECHNOLOGY", "color": UI_ACCENT},
