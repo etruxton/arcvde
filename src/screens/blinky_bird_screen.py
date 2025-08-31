@@ -14,7 +14,7 @@ import pygame
 
 # Local application imports
 from game.blinky_bird import BlinkyBirdGame, GameState
-from game.cv.blink_detection import BlinkDetector
+from game.cv.blink_detection import EnhancedBlinkDetector
 from screens.base_screen import BaseScreen
 from utils.camera_manager import CameraManager
 from utils.constants import (
@@ -60,7 +60,7 @@ class BlinkyBirdScreen(BaseScreen):
 
         # Initialize game and blink detector
         self.game = BlinkyBirdGame(SCREEN_WIDTH, SCREEN_HEIGHT)
-        self.blink_detector = BlinkDetector(calibration_time=2.0, sensitivity=1.0)
+        self.blink_detector = EnhancedBlinkDetector(calibration_time=2.0, sensitivity=1.0, enable_preprocessing=False)
 
         # UI state
         self.show_debug_info = False

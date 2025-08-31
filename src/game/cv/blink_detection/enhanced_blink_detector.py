@@ -1,8 +1,21 @@
 """
-Enhanced blink detection using MediaPipe Face Mesh with adaptive thresholds and relative detection.
+Enhanced blink detection using MediaPipe Face Mesh with face region processing.
 
-This module provides improved blink detection that works better at angles and in various
-lighting conditions using preprocessing and relative detection algorithms.
+This module provides improved blink detection with:
+- Face region cropping for better accuracy and performance
+- Coordinate transformation for accurate eye highlighting on original camera view
+- Adaptive thresholds with personal calibration
+- Relative detection for angled faces
+- Optional preprocessing for challenging lighting conditions
+
+The face region processing approach:
+1. Detects face in full frame using MediaPipe Face Detection
+2. Crops face region with padding for focused processing  
+3. Applies preprocessing only to the smaller face region (faster)
+4. Runs blink detection on face region (more accurate)
+5. Transforms landmarks back to full frame coordinates for display
+
+This provides significant performance and accuracy improvements over full-frame processing.
 """
 
 # Standard library imports
@@ -18,13 +31,16 @@ import numpy as np
 
 # Local imports
 from .frame_preprocessor import FramePreprocessor
+from .face_region_detector import FaceRegionDetector
 
 
 class EnhancedBlinkDetector:
     """
-    Enhanced blink detection with relative detection and preprocessing support.
+    Enhanced blink detection with face region processing and adaptive thresholds.
 
     Features:
+    - Face region cropping for improved accuracy and performance  
+    - Coordinate transformation for accurate eye highlighting
     - Auto-calibration for personalized thresholds
     - Glasses detection and compensation
     - Individual eye threshold adaptation
@@ -32,23 +48,36 @@ class EnhancedBlinkDetector:
     - Optional frame preprocessing for challenging lighting
     - Temporal smoothing for stability
     - Quick response optimized for gaming
+    
+    Face Region Processing Benefits:
+    - Faster processing (smaller region to analyze)
+    - Better accuracy (reduces false positives from background)
+    - Improved lighting handling (focused preprocessing)
+    - Maintains display accuracy via coordinate transformation
     """
 
-    def __init__(self, calibration_time: float = 2.0, sensitivity: float = 1.0, enable_preprocessing: bool = False):
+    def __init__(self, calibration_time: float = 1.0, sensitivity: float = 1.0, enable_preprocessing: bool = False, enable_face_cropping: bool = True):
         """
         Initialize enhanced blink detector.
 
         Args:
-            calibration_time: Seconds to spend calibrating (default 2.0)
+            calibration_time: Seconds to spend calibrating (default 1.0)
             sensitivity: Detection sensitivity multiplier (default 1.0, higher = more sensitive)
             enable_preprocessing: Enable frame preprocessing for better detection (default False)
+            enable_face_cropping: Enable face region cropping for improved accuracy (default True)
         """
         # Configuration
         self.enable_preprocessing = enable_preprocessing
+        self.enable_face_cropping = enable_face_cropping
         self.use_relative_detection = True  # Prefer relative detection for angled faces
 
-        # Initialize preprocessor if enabled
-        self.preprocessor = FramePreprocessor() if enable_preprocessing else None
+        # Initialize preprocessor (needed for face cropping or preprocessing)
+        self.preprocessor = FramePreprocessor() if (enable_preprocessing or enable_face_cropping) else None
+        self.face_detector = FaceRegionDetector() if enable_face_cropping else None
+        
+        # Current face region tracking for display purposes
+        self.current_face_bbox = None
+        self.current_face_shape = None
 
         # MediaPipe setup
         self.mp_face_mesh = mp.solutions.face_mesh
@@ -72,7 +101,7 @@ class EnhancedBlinkDetector:
         self.baseline_window = 15  # Frames to calculate running baseline
         self.min_baseline_frames = 10  # Minimum frames before relative detection kicks in
 
-        # Calibration settings
+        # Calibration settings - use frame-based like the working test
         self.max_calibration_frames = int(30 * calibration_time)  # 30 FPS assumption
         self.sensitivity = sensitivity
 
@@ -161,46 +190,46 @@ class EnhancedBlinkDetector:
 
     def calibrate_baseline(self, left_ear: float, right_ear: float) -> bool:
         """
-        Calibrate baseline EAR values and adaptive thresholds.
+        Calibrate baseline EAR values and adaptive thresholds using frame-based calibration.
+        Uses the same logic as the working test file.
 
         Returns True when calibration is complete.
         """
-        self.calibration_frames += 1
+        if self.calibration_frames < self.max_calibration_frames:
+            if self.baseline_ear_left is None:
+                self.baseline_ear_left = left_ear
+                self.baseline_ear_right = right_ear
+            else:
+                # Running average
+                alpha = 0.1
+                self.baseline_ear_left = alpha * left_ear + (1 - alpha) * self.baseline_ear_left
+                self.baseline_ear_right = alpha * right_ear + (1 - alpha) * self.baseline_ear_right
 
-        # Initialize baseline values
-        if self.baseline_ear_left is None:
-            self.baseline_ear_left = left_ear
-            self.baseline_ear_right = right_ear
-        else:
-            # Running average for more stable baseline
-            alpha = 0.1
-            self.baseline_ear_left = alpha * left_ear + (1 - alpha) * self.baseline_ear_left
-            self.baseline_ear_right = alpha * right_ear + (1 - alpha) * self.baseline_ear_right
+            self.calibration_frames += 1
 
-        # Check for glasses (different EAR patterns)
-        if self.calibration_frames > 30:  # After some samples
-            # Glasses typically show lower and more variable EAR values
-            if self.baseline_ear_left < 0.23 or self.baseline_ear_right < 0.23:
-                self.glasses_mode = True
+            if self.calibration_frames >= self.max_calibration_frames:
+                # Set adaptive thresholds based on baseline - same as test file
+                self.adaptive_threshold_left = self.baseline_ear_left * 0.75  # 75% of baseline
+                self.adaptive_threshold_right = self.baseline_ear_right * 0.75
 
-        # Complete calibration
-        if self.calibration_frames >= self.max_calibration_frames:
-            self.is_calibrated = True
+                # Detect glasses mode if baseline EAR is unusually low
+                avg_baseline = (self.baseline_ear_left + self.baseline_ear_right) / 2
+                if avg_baseline < 0.22:
+                    self.glasses_mode = True
+                    # More lenient thresholds for glasses
+                    self.adaptive_threshold_left = self.baseline_ear_left * 0.8
+                    self.adaptive_threshold_right = self.baseline_ear_right * 0.8
 
-            # Set adaptive thresholds based on baseline and sensitivity
-            base_threshold = 0.7 if self.glasses_mode else 0.8
-            self.adaptive_threshold_left = self.baseline_ear_left * base_threshold * self.sensitivity
-            self.adaptive_threshold_right = self.baseline_ear_right * base_threshold * self.sensitivity
+                # Update debug info
+                self.debug_info["glasses_mode"] = self.glasses_mode
+                self.debug_info["calibrating"] = False
+                self.is_calibrated = True
 
-            # Ensure thresholds are reasonable
-            self.adaptive_threshold_left = max(0.15, min(0.35, self.adaptive_threshold_left))
-            self.adaptive_threshold_right = max(0.15, min(0.35, self.adaptive_threshold_right))
-
-            # Update debug info
-            self.debug_info["glasses_mode"] = self.glasses_mode
-            self.debug_info["calibrating"] = False
-
-            return True
+                processing_mode = "face_region" if self.current_face_bbox else "full_frame"
+                print(f"Calibration complete! Processing mode: {processing_mode}")
+                print(f"Baseline - Left: {self.baseline_ear_left:.3f}, Right: {self.baseline_ear_right:.3f}")
+                print(f"Thresholds - Left: {self.adaptive_threshold_left:.3f}, Right: {self.adaptive_threshold_right:.3f}")
+                return True
 
         return False
 
@@ -247,7 +276,12 @@ class EnhancedBlinkDetector:
 
     def process_frame(self, frame: np.ndarray) -> Tuple[bool, str]:
         """
-        Process frame and detect blinks with optional preprocessing.
+        Process frame and detect blinks with optional face region cropping and preprocessing.
+        
+        Face region cropping improves accuracy by:
+        1. Processing only the relevant face area (faster and more focused)
+        2. Reducing false positives from background elements
+        3. Better handling of lighting variations across the frame
 
         Args:
             frame: Input BGR frame from camera
@@ -257,24 +291,67 @@ class EnhancedBlinkDetector:
         """
         self.last_detection_time = time.time()
 
-        # Apply preprocessing if enabled (for detection only, not display)
-        processed_frame = frame
-        if self.enable_preprocessing and self.preprocessor:
-            processed_frame = self.preprocessor.preprocess_frame(frame)
-
-        # Convert BGR to RGB for MediaPipe
-        rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-        rgb_frame.flags.writeable = False
-
-        # Process frame with MediaPipe Face Mesh
-        results = self.face_mesh.process(rgb_frame)
-
-        # Process face landmarks
-        if not results.multi_face_landmarks:
-            self.reset_tracking()
-            return False, "None"
-
-        face_landmarks = results.multi_face_landmarks[0]  # Use first face
+        # Smart Face Region Processing (like the working test)
+        # Try face region first, fall back to full frame if it fails
+        face_region = None
+        face_bbox = None
+        face_landmarks = None
+        processing_mode = "full_frame"
+        
+        if self.enable_face_cropping and self.preprocessor:
+            face_region, face_bbox = self.preprocessor.extract_face_region(frame)
+            
+        if face_region is not None:
+            # Try face region processing first
+            self.current_face_bbox = face_bbox
+            
+            # Apply preprocessing to face region if enabled
+            if self.enable_preprocessing:
+                processed_face = self.preprocessor.preprocess_face_region(face_region)
+            else:
+                processed_face = face_region
+                
+            # Convert face region BGR to RGB for MediaPipe
+            rgb_frame = cv2.cvtColor(processed_face, cv2.COLOR_BGR2RGB)
+            rgb_frame.flags.writeable = False
+            
+            # Try Face Mesh on face region
+            results = self.face_mesh.process(rgb_frame)
+            
+            if results.multi_face_landmarks:
+                face_landmarks = results.multi_face_landmarks[0]
+                processing_mode = "face_region"
+                # Debug: Show success
+                if self.calibration_frames == 0:
+                    print("Face region processing successful!")
+        
+        if face_landmarks is None:
+            # Fallback to full frame processing (like the test)
+            self.current_face_bbox = None
+            
+            # Apply preprocessing to full frame if enabled
+            if self.enable_preprocessing and self.preprocessor:
+                processed_frame = self.preprocessor.preprocess_frame(frame)
+            else:
+                processed_frame = frame
+            
+            # Convert full frame BGR to RGB for MediaPipe
+            rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+            rgb_frame.flags.writeable = False
+            
+            # Process full frame with MediaPipe Face Mesh
+            results = self.face_mesh.process(rgb_frame)
+            
+            if results.multi_face_landmarks:
+                face_landmarks = results.multi_face_landmarks[0]
+                processing_mode = "full_frame"
+            else:
+                self.reset_tracking()
+                return False, "None"
+        
+        # Debug: Print when we first detect face landmarks for calibration
+        if self.calibration_frames == 0:
+            print("Face landmarks detected! Starting calibration...")
 
         # Extract eye landmarks
         left_eye_points = self.extract_eye_landmarks(face_landmarks, self.LEFT_EYE_KEY)
@@ -285,10 +362,13 @@ class EnhancedBlinkDetector:
         right_ear = self.calculate_ear(right_eye_points)
 
         # Calibrate if still in calibration phase
-        if not self.is_calibrated:
-            self.calibrate_baseline(left_ear, right_ear)
-            self.debug_info["calibrating"] = True
+        if self.calibration_frames < self.max_calibration_frames:
+            calibration_complete = self.calibrate_baseline(left_ear, right_ear)
+            self.debug_info["calibrating"] = not calibration_complete
             return False, "Calibrating"
+        else:
+            # Ensure calibrating flag is off after calibration
+            self.debug_info["calibrating"] = False
 
         # Add to history for smoothing
         self.left_ear_history.append(left_ear)
@@ -310,13 +390,16 @@ class EnhancedBlinkDetector:
         right_closed = right_ear_smooth < self.adaptive_threshold_right
         both_closed = left_closed and right_closed
 
-        # Use detection method based on settings
+        # Consistent detection method - stick to one approach to prevent double bouncing
         if self.use_relative_detection and relative_blink_detected:
             blink_condition = True
             detection_method = "relative"
-        else:
-            blink_condition = both_closed
+        elif not self.use_relative_detection and both_closed:
+            blink_condition = True
             detection_method = "absolute"
+        else:
+            blink_condition = False
+            detection_method = "none"
 
         # Update debug info
         self.debug_info.update(
@@ -337,6 +420,11 @@ class EnhancedBlinkDetector:
             self.blink_count += 1
             self.last_blink_time = current_time
             self.debug_info["blink_detected"] = True
+            
+            # Debug: Show detection method and processing mode (less verbose)
+            if self.blink_count <= 5:  # Only show first 5 blinks
+                print(f"BLINK DETECTED #{self.blink_count}! Method: {detection_method}, Processing: {processing_mode}")
+            
             return True, "Blink"
 
         return False, "None"
@@ -348,12 +436,12 @@ class EnhancedBlinkDetector:
         Returns:
             Dictionary with detection status, calibration info, and statistics
         """
-        if not self.is_calibrated:
-            calibration_progress = min(1.0, self.calibration_frames / self.max_calibration_frames)
+        if self.calibration_frames < self.max_calibration_frames:
+            calibration_progress = self.calibration_frames / self.max_calibration_frames
         else:
             calibration_progress = 1.0
 
-        return {
+        status = {
             "calibrated": self.is_calibrated,
             "calibration_progress": calibration_progress,
             "glasses_mode": self.glasses_mode,
@@ -362,8 +450,16 @@ class EnhancedBlinkDetector:
             "adaptive_threshold_right": self.adaptive_threshold_right,
             "detection_method": self.debug_info.get("detection_method", "absolute"),
             "preprocessing_enabled": self.enable_preprocessing,
+            "face_cropping_enabled": self.enable_face_cropping,
             "relative_detection_enabled": self.use_relative_detection,
         }
+        
+        # Add face detection statistics if available
+        if self.face_detector:
+            face_stats = self.face_detector.get_statistics()
+            status["face_detection_stats"] = face_stats
+            
+        return status
 
     def reset_counters(self):
         """Reset blink counters."""
@@ -394,21 +490,147 @@ class EnhancedBlinkDetector:
 
     def get_face_landmarks_for_display(self, frame: np.ndarray):
         """
-        Get face landmarks for display overlay (uses original frame, not preprocessed).
+        Get face landmarks for display overlay with proper coordinate transformation.
+        
+        When face region cropping is enabled, landmarks are detected on the cropped face
+        region but need to be transformed back to full frame coordinates for accurate
+        display overlay on the original camera view.
 
         Args:
             frame: Original BGR frame
 
         Returns:
-            Face landmarks or None if no face detected
+            Face landmarks transformed to full frame coordinates, or None if no face detected
         """
-        # Convert BGR to RGB for MediaPipe (use original frame for display)
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Smart approach: Try face region first, fall back to full frame (independent of detection)
+        if self.enable_face_cropping and self.preprocessor:
+            face_region, face_bbox = self.preprocessor.extract_face_region(frame)
+            
+            if face_region is not None:
+                # Try face region processing for display
+                if self.enable_preprocessing:
+                    processing_frame = self.preprocessor.preprocess_face_region(face_region)
+                else:
+                    processing_frame = face_region
+                    
+                rgb_face = cv2.cvtColor(processing_frame, cv2.COLOR_BGR2RGB)
+                rgb_face.flags.writeable = False
+                results = self.face_mesh.process(rgb_face)
+                
+                if results.multi_face_landmarks:
+                    face_landmarks = results.multi_face_landmarks[0]
+                    
+                    # Transform landmarks from face region coordinates to full frame
+                    if not self.face_detector:
+                        self.face_detector = FaceRegionDetector()
+                    transformed_landmarks = self.face_detector.transform_landmarks_to_full_frame(
+                        face_landmarks, face_bbox, face_region.shape, frame.shape
+                    )
+                    return transformed_landmarks
+        
+        # Fallback to full frame processing for display
+        if self.enable_preprocessing and self.preprocessor:
+            processing_frame = self.preprocessor.preprocess_frame(frame)
+        else:
+            processing_frame = frame
+            
+        rgb_frame = cv2.cvtColor(processing_frame, cv2.COLOR_BGR2RGB)
         rgb_frame.flags.writeable = False
-
-        # Process frame with MediaPipe Face Mesh
         results = self.face_mesh.process(rgb_frame)
-
+        
         if results.multi_face_landmarks:
             return results.multi_face_landmarks[0]
+            
         return None
+    
+    def get_eye_landmarks_for_display(self, face_landmarks, frame_shape):
+        """
+        Extract eye landmark points for display overlay in pixel coordinates.
+        
+        Args:
+            face_landmarks: MediaPipe face landmarks (from get_face_landmarks_for_display)
+            frame_shape: (height, width) of the display frame
+            
+        Returns:
+            Tuple of (left_eye_points, right_eye_points) as lists of (x, y) pixel coordinates
+        """
+        if face_landmarks is None:
+            return [], []
+            
+        h, w = frame_shape[:2]
+            
+        # Convert normalized coordinates to pixel coordinates
+        left_eye_points = []
+        for idx in self.LEFT_EYE_KEY:
+            if idx < len(face_landmarks.landmark):
+                landmark = face_landmarks.landmark[idx]
+                left_eye_points.append((int(landmark.x * w), int(landmark.y * h)))
+        
+        right_eye_points = []
+        for idx in self.RIGHT_EYE_KEY:
+            if idx < len(face_landmarks.landmark):
+                landmark = face_landmarks.landmark[idx]
+                right_eye_points.append((int(landmark.x * w), int(landmark.y * h)))
+        
+        return left_eye_points, right_eye_points
+    
+    def draw_eye_overlay(self, frame, face_landmarks):
+        """
+        Draw eye landmark overlay on frame (for compatibility with existing game code).
+        
+        Args:
+            frame: BGR frame to draw on
+            face_landmarks: MediaPipe face landmarks
+            
+        Returns:
+            Frame with eye overlay drawn
+        """
+        if face_landmarks is None:
+            return frame
+            
+        h, w = frame.shape[:2]
+        debug_info = self.get_debug_info()
+        
+        # Draw eye landmarks
+        for idx in self.LEFT_EYE_KEY:
+            if idx < len(face_landmarks.landmark):
+                landmark = face_landmarks.landmark[idx]
+                x, y = int(landmark.x * w), int(landmark.y * h)
+                color = (0, 255, 0) if not debug_info.get("left_closed", False) else (0, 0, 255)
+                cv2.circle(frame, (x, y), 2, color, -1)
+
+        for idx in self.RIGHT_EYE_KEY:
+            if idx < len(face_landmarks.landmark):
+                landmark = face_landmarks.landmark[idx]
+                x, y = int(landmark.x * w), int(landmark.y * h)
+                color = (0, 255, 0) if not debug_info.get("right_closed", False) else (0, 0, 255)
+                cv2.circle(frame, (x, y), 2, color, -1)
+                
+        return frame
+    
+    def get_debug_info(self) -> dict:
+        """
+        Get current debug information for display.
+        
+        Returns:
+            Dictionary with current EAR values, thresholds, and detection state
+        """
+        return self.debug_info.copy()
+    
+    def get_face_region_info(self) -> dict:
+        """
+        Get current face region information for display purposes.
+        
+        Returns:
+            Dictionary with face region bbox and statistics
+        """
+        info = {
+            "face_bbox": self.current_face_bbox,
+            "face_cropping_enabled": self.enable_face_cropping
+        }
+        
+        if self.face_detector:
+            stats = self.face_detector.get_statistics()
+            info.update(stats)
+            
+        return info

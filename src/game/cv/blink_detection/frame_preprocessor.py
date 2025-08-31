@@ -6,10 +6,11 @@ in various lighting conditions, similar to those used in finger gun detection.
 """
 
 # Standard library imports
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 # Third-party imports
 import cv2
+import mediapipe as mp
 import numpy as np
 
 
@@ -31,6 +32,17 @@ class FramePreprocessor:
 
         # Cache for performance
         self.gamma_table_cache: Dict[float, np.ndarray] = {}
+        
+        # Face detection for region cropping (same as test file)
+        self.mp_face_detection = mp.solutions.face_detection
+        self.face_detection = self.mp_face_detection.FaceDetection(
+            model_selection=0, min_detection_confidence=0.7
+        )
+        
+        # Face region tracking
+        self.last_face_bbox = None
+        self.face_not_found_frames = 0
+        self.max_face_lost_frames = 5
 
     def preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
         """
@@ -114,6 +126,84 @@ class FramePreprocessor:
 
         # Apply gamma correction using lookup table
         return cv2.LUT(image, self.gamma_table_cache[gamma_key])
+
+    def extract_face_region(self, frame: np.ndarray, padding_factor: float = 0.3) -> Tuple[Optional[np.ndarray], Optional[Tuple[int, int, int, int]]]:
+        """
+        Extract face region from frame for focused processing
+        
+        Args:
+            frame: Input BGR frame
+            padding_factor: Factor to expand face bounding box (0.3 = 30% padding)
+            
+        Returns:
+            face_region: Cropped face image (None if no face found)
+            face_bbox: (x, y, width, height) for coordinate transformation (None if no face found)
+        """
+        h, w = frame.shape[:2]
+        
+        # Convert BGR to RGB for MediaPipe
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame.flags.writeable = False
+        
+        # Detect faces
+        results = self.face_detection.process(rgb_frame)
+        
+        if results.detections:
+            # Use first detection
+            detection = results.detections[0]
+            
+            # Get relative bounding box
+            bbox = detection.location_data.relative_bounding_box
+            
+            # Convert to pixel coordinates
+            x = int(bbox.xmin * w)
+            y = int(bbox.ymin * h)
+            width = int(bbox.width * w)
+            height = int(bbox.height * h)
+            
+            # Add padding
+            padding_x = int(width * padding_factor)
+            padding_y = int(height * padding_factor)
+            
+            # Expand bounding box with padding
+            x_padded = max(0, x - padding_x)
+            y_padded = max(0, y - padding_y)
+            width_padded = min(w - x_padded, width + 2 * padding_x)
+            height_padded = min(h - y_padded, height + 2 * padding_y)
+            
+            # Extract face region
+            face_region = frame[y_padded:y_padded + height_padded, x_padded:x_padded + width_padded]
+            
+            # Update tracking
+            self.last_face_bbox = (x_padded, y_padded, width_padded, height_padded)
+            self.face_not_found_frames = 0
+            
+            return face_region, self.last_face_bbox
+        else:
+            # No face detected - use last known position if recent
+            self.face_not_found_frames += 1
+            
+            if self.last_face_bbox and self.face_not_found_frames <= self.max_face_lost_frames:
+                # Use cached face region
+                x, y, width, height = self.last_face_bbox
+                if x + width <= w and y + height <= h:
+                    face_region = frame[y:y + height, x:x + width]
+                    return face_region, self.last_face_bbox
+            
+            # No face found and no recent cache
+            return None, None
+    
+    def preprocess_face_region(self, face_region: np.ndarray) -> np.ndarray:
+        """
+        Apply focused preprocessing to a cropped face region
+        
+        Args:
+            face_region: Cropped face image
+            
+        Returns:
+            Preprocessed face region
+        """
+        return self.preprocess_frame(face_region)
 
     def clear_cache(self):
         """Clear the gamma table cache to free memory."""

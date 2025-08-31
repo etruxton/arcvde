@@ -24,6 +24,17 @@ class FramePreprocessor:
 
         # Cache for performance
         self.gamma_table_cache = {}
+        
+        # Face detection for region cropping
+        self.mp_face_detection = mp.solutions.face_detection
+        self.face_detection = self.mp_face_detection.FaceDetection(
+            model_selection=0, min_detection_confidence=0.7
+        )
+        
+        # Face region tracking
+        self.last_face_bbox = None
+        self.face_not_found_frames = 0
+        self.max_face_lost_frames = 5
 
     def preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
         """
@@ -82,18 +93,105 @@ class FramePreprocessor:
 
         # Apply gamma correction using lookup table
         return cv2.LUT(image, self.gamma_table_cache[gamma_key])
+    
+    def extract_face_region(self, frame: np.ndarray, padding_factor: float = 0.3) -> Tuple[Optional[np.ndarray], Optional[Tuple[int, int, int, int]]]:
+        """
+        Extract face region from frame for focused processing
+        
+        Args:
+            frame: Input BGR frame
+            padding_factor: Factor to expand face bounding box (0.3 = 30% padding)
+            
+        Returns:
+            face_region: Cropped face image (None if no face found)
+            face_bbox: (x, y, width, height) for coordinate transformation (None if no face found)
+        """
+        h, w = frame.shape[:2]
+        
+        # Convert BGR to RGB for MediaPipe
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame.flags.writeable = False
+        
+        # Detect faces
+        results = self.face_detection.process(rgb_frame)
+        
+        if results.detections:
+            # Use first detection
+            detection = results.detections[0]
+            
+            # Get relative bounding box
+            bbox = detection.location_data.relative_bounding_box
+            
+            # Convert to pixel coordinates
+            x = int(bbox.xmin * w)
+            y = int(bbox.ymin * h)
+            width = int(bbox.width * w)
+            height = int(bbox.height * h)
+            
+            # Add padding
+            padding_x = int(width * padding_factor)
+            padding_y = int(height * padding_factor)
+            
+            # Expand bounding box with padding
+            x_padded = max(0, x - padding_x)
+            y_padded = max(0, y - padding_y)
+            width_padded = min(w - x_padded, width + 2 * padding_x)
+            height_padded = min(h - y_padded, height + 2 * padding_y)
+            
+            # Extract face region
+            face_region = frame[y_padded:y_padded + height_padded, x_padded:x_padded + width_padded]
+            
+            # Update tracking
+            self.last_face_bbox = (x_padded, y_padded, width_padded, height_padded)
+            self.face_not_found_frames = 0
+            
+            return face_region, self.last_face_bbox
+        else:
+            # No face detected - use last known position if recent
+            self.face_not_found_frames += 1
+            
+            if self.last_face_bbox and self.face_not_found_frames <= self.max_face_lost_frames:
+                # Use cached face region
+                x, y, width, height = self.last_face_bbox
+                if x + width <= w and y + height <= h:
+                    face_region = frame[y:y + height, x:x + width]
+                    return face_region, self.last_face_bbox
+            
+            # No face found and no recent cache
+            return None, None
+    
+    def preprocess_face_region(self, face_region: np.ndarray) -> np.ndarray:
+        """
+        Apply focused preprocessing to a cropped face region
+        
+        Args:
+            face_region: Cropped face image
+            
+        Returns:
+            Preprocessed face region
+        """
+        return self.preprocess_frame(face_region)
 
 
 class BlinkDetector:
     """Detects blinking motion by analyzing eye aspect ratios for both eyes closing simultaneously"""
 
-    def __init__(self, enable_preprocessing=True):
+    def __init__(self, enable_preprocessing=True, enable_face_cropping=True):
         # Configuration
         self.enable_preprocessing = enable_preprocessing
+        self.enable_face_cropping = enable_face_cropping
         self.use_relative_detection = True  # Prefer relative detection
 
         # Initialize preprocessor
         self.preprocessor = FramePreprocessor() if enable_preprocessing else None
+        
+        # Face region tracking
+        self.current_face_bbox = None
+        self.face_region_stats = {
+            "regions_processed": 0,
+            "full_frame_fallbacks": 0,
+            "avg_region_size": 0
+        }
 
         # MediaPipe setup
         self.mp_face_mesh = mp.solutions.face_mesh
@@ -385,6 +483,45 @@ class BlinkDetector:
 
         return False, "None"
 
+    def transform_landmarks_to_full_frame(self, landmarks, face_bbox: Tuple[int, int, int, int], 
+                                        face_shape: Tuple[int, int], full_frame_shape: Tuple[int, int]):
+        """
+        Transform landmarks from face region coordinates to full frame coordinates
+        
+        Args:
+            landmarks: MediaPipe landmarks from face region processing
+            face_bbox: (x, y, width, height) of face region in full frame
+            face_shape: (height, width) of face region
+            full_frame_shape: (height, width) of full frame
+            
+        Returns:
+            Transformed landmarks for drawing on full frame
+        """
+        # Standard library imports
+        import copy
+        
+        # Create a new landmarks object with transformed coordinates
+        transformed = copy.deepcopy(landmarks)
+        
+        bbox_x, bbox_y, bbox_w, bbox_h = face_bbox
+        face_h, face_w = face_shape[:2]
+        
+        for landmark in transformed.landmark:
+            # Convert from face region normalized coordinates to face region pixels
+            face_pixel_x = landmark.x * face_w
+            face_pixel_y = landmark.y * face_h
+            
+            # Transform to full frame pixel coordinates
+            full_frame_pixel_x = bbox_x + face_pixel_x
+            full_frame_pixel_y = bbox_y + face_pixel_y
+            
+            # Convert back to full frame normalized coordinates
+            full_frame_h, full_frame_w = full_frame_shape[:2]
+            landmark.x = full_frame_pixel_x / full_frame_w
+            landmark.y = full_frame_pixel_y / full_frame_h
+            
+        return transformed
+
     def reset_state(self):
         """Reset all tracking state"""
         self.left_ear_history.clear()
@@ -522,12 +659,19 @@ class BlinkDetector:
         instructions = [
             "Controls:",
             "q: Quit | r: Reset | c: Recalibrate",
-            "p: Toggle Preprocessing | s: Show Comparison",
-            "m: Toggle Detection Method (Relative/Absolute)",
+            "p: Toggle Preprocessing | f: Face Crop",
+            "m: Toggle Method | s: Show Comparison",
+            "v: Show Face Region View",
+            "",
+            "Features Active:",
+            f"Face Region Cropping: {'ON' if self.enable_face_cropping else 'OFF'}",
+            f"Coordinate Transformation: {'ON' if self.current_face_bbox else 'OFF'}",
+            f"Preprocessing: {'ON' if self.enable_preprocessing else 'OFF'}",
             "",
             "Tips:",
             "- Look at camera for 2 seconds to calibrate",
-            "- Try looking left/right with relative detection",
+            "- 'v' shows what detector processes",
+            "- Face crop improves accuracy & performance",
         ]
 
         start_y = h - 180
@@ -596,15 +740,29 @@ def main():
     fps_start_time = time.time()
 
     print("Camera opened successfully.")
-    print("Controls:")
+    print()
+    print("🎮 COMPLETE CONTROLS:")
     print("- 'q': Quit")
-    print("- 'r': Reset counts")
+    print("- 'r': Reset blink counts")
+    print("- 'c': Recalibrate detection")
+    print()
+    print("🔧 PROCESSING OPTIONS:")
     print("- 'p': Toggle preprocessing on/off")
-    print("- 's': Show/hide original vs processed frames")
+    print("- 'f': Toggle face region cropping on/off") 
     print("- 'm': Toggle detection method (relative/absolute)")
-    print("- 'c': Recalibrate")
+    print()
+    print("🖼️  DISPLAY MODES:")
+    print("- 's': Show/hide original vs processed comparison")
+    print("- 'v': Show/hide preprocessed face region view")
+    print()
+    print("✨ FEATURES:")
+    print("- Face region cropping for better performance")
+    print("- Coordinate transformation for accurate eye positioning")
+    print("- Real-time preprocessing preview")
+    print("- Automatic calibration and glasses detection")
 
     show_comparison = False
+    show_face_region = False  # New mode to show preprocessed face region
 
     while True:
         ret, frame = cap.read()
@@ -615,28 +773,76 @@ def main():
         # Flip frame horizontally for mirror effect
         frame = cv2.flip(frame, 1)
 
-        # Apply preprocessing if enabled
+        # Apply face region cropping if enabled
         processed_frame = frame
-        if detector.enable_preprocessing:
-            processed_frame = detector.preprocessor.preprocess_frame(frame)
+        face_region = None
+        face_bbox = None
+        processed_face_for_display = None  # Store for display mode
+        
+        if detector.enable_face_cropping and detector.preprocessor:
+            face_region, face_bbox = detector.preprocessor.extract_face_region(frame)
+            
+        if face_region is not None:
+            # Process face region
+            detector.current_face_bbox = face_bbox
+            detector.face_region_stats["regions_processed"] += 1
+            
+            # Apply preprocessing to face region if enabled
+            if detector.enable_preprocessing:
+                processed_face = detector.preprocessor.preprocess_face_region(face_region)
+            else:
+                processed_face = face_region
+                
+            # Store processed face for display mode
+            processed_face_for_display = processed_face.copy()
+                
+            # Convert face region BGR to RGB for MediaPipe
+            rgb_frame = cv2.cvtColor(processed_face, cv2.COLOR_BGR2RGB)
+            rgb_frame.flags.writeable = False
+            
+            # Process face region with MediaPipe Face Mesh
+            results = detector.face_mesh.process(rgb_frame)
+            
+            # Update region size stats
+            region_pixels = face_region.shape[0] * face_region.shape[1]
+            total_pixels = frame.shape[0] * frame.shape[1]
+            detector.face_region_stats["avg_region_size"] = region_pixels / total_pixels
+            
+        else:
+            # Fallback to full frame processing
+            detector.face_region_stats["full_frame_fallbacks"] += 1
+            detector.current_face_bbox = None
+            
+            # Apply preprocessing to full frame if enabled
+            if detector.enable_preprocessing:
+                processed_frame = detector.preprocessor.preprocess_frame(frame)
+            
+            # Convert full frame BGR to RGB for MediaPipe
+            rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+            rgb_frame.flags.writeable = False
+            
+            # Process full frame with MediaPipe Face Mesh
+            results = detector.face_mesh.process(rgb_frame)
 
-        # Convert BGR to RGB for MediaPipe
-        rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-        rgb_frame.flags.writeable = False
-
-        # Process frame with MediaPipe Face Mesh
-        results = detector.face_mesh.process(rgb_frame)
-
-        # Convert back to BGR for OpenCV
+        # Keep original frame for display  
         rgb_frame.flags.writeable = True
-        frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
+        display_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR) if face_region is None else frame
 
         # Process face landmarks
         face_landmarks = None
+        transformed_landmarks = None
         if results.multi_face_landmarks:
             face_landmarks = results.multi_face_landmarks[0]  # Use first face
+            
+            # Transform landmarks from face region coordinates to full frame coordinates if needed
+            if detector.current_face_bbox and face_region is not None:
+                transformed_landmarks = detector.transform_landmarks_to_full_frame(
+                    face_landmarks, detector.current_face_bbox, face_region.shape, frame.shape
+                )
+            else:
+                transformed_landmarks = face_landmarks
 
-            # Detect blink
+            # Detect blink (use original face landmarks for detection)
             blink_detected, blink_type = detector.detect_blink(face_landmarks)
 
             if blink_detected:
@@ -657,8 +863,9 @@ def main():
                     3,
                 )
 
-        # Draw debug information
-        frame = detector.draw_debug_info(frame, face_landmarks)
+        # Draw debug information using transformed landmarks for proper positioning
+        landmarks_for_drawing = transformed_landmarks if transformed_landmarks else face_landmarks
+        frame = detector.draw_debug_info(frame, landmarks_for_drawing)
 
         # Calculate and display FPS
         fps_counter += 1
@@ -677,6 +884,26 @@ def main():
         method_status = "RELATIVE" if detector.use_relative_detection else "ABSOLUTE"
         method_color = (255, 255, 0) if detector.use_relative_detection else (255, 0, 255)
         cv2.putText(frame, f"Method: {method_status}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, method_color, 2)
+        
+        # Add face cropping indicator and statistics
+        crop_status = "ON" if detector.enable_face_cropping else "OFF"
+        crop_color = (0, 255, 255) if detector.enable_face_cropping else (128, 128, 128)
+        cv2.putText(frame, f"Face Crop: {crop_status}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, crop_color, 2)
+        
+        # Show face region bounding box if active
+        if detector.current_face_bbox:
+            x, y, w, h = detector.current_face_bbox
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)  # Cyan box
+            cv2.putText(frame, "Face Region", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+            
+        # Show face region statistics
+        if detector.face_region_stats["regions_processed"] > 0:
+            total_frames = detector.face_region_stats["regions_processed"] + detector.face_region_stats["full_frame_fallbacks"]
+            region_percentage = (detector.face_region_stats["regions_processed"] / total_frames) * 100
+            avg_size_percentage = detector.face_region_stats["avg_region_size"] * 100
+            
+            cv2.putText(frame, f"Region: {region_percentage:.0f}% ({avg_size_percentage:.0f}% of frame)", 
+                       (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
         # Display frame(s)
         if show_comparison and detector.enable_preprocessing:
@@ -700,6 +927,28 @@ def main():
             cv2.imshow("Blink Detection Test", frame)
         else:
             cv2.imshow("Blink Detection Test", frame)
+            
+        # Show processed face region if enabled and available
+        if show_face_region and processed_face_for_display is not None:
+            # Resize face region for better visibility (scale up to minimum 300px width)
+            face_h, face_w = processed_face_for_display.shape[:2]
+            if face_w < 300:
+                scale_factor = 300 / face_w
+                new_width = int(face_w * scale_factor)
+                new_height = int(face_h * scale_factor)
+                face_display = cv2.resize(processed_face_for_display, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+            else:
+                face_display = processed_face_for_display
+                
+            # Add title to face region
+            cv2.putText(face_display, "Preprocessed Face Region", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            cv2.imshow("Face Region - Preprocessed", face_display)
+        elif not show_face_region:
+            # Close face region window if mode is disabled
+            try:
+                cv2.destroyWindow("Face Region - Preprocessed")
+            except:
+                pass  # Window might not exist
 
         # Handle keyboard input
         key = cv2.waitKey(1) & 0xFF
@@ -724,6 +973,20 @@ def main():
             method = "RELATIVE" if detector.use_relative_detection else "ABSOLUTE"
             print(f"Detection method: {method}")
             detector.reset_state()  # Reset state when changing methods
+        elif key == ord("f"):
+            detector.enable_face_cropping = not detector.enable_face_cropping
+            status = "ENABLED" if detector.enable_face_cropping else "DISABLED"
+            print(f"Face cropping {status}")
+            # Reset stats when toggling
+            detector.face_region_stats = {
+                "regions_processed": 0,
+                "full_frame_fallbacks": 0,
+                "avg_region_size": 0
+            }
+        elif key == ord("v"):
+            show_face_region = not show_face_region
+            status = "ON" if show_face_region else "OFF"
+            print(f"Face region view: {status}")
 
     # Cleanup
     cap.release()
