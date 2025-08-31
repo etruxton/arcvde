@@ -49,8 +49,8 @@ class SkyscraperGap:
         self.bottom_y = self.gap_center + gap_size // 2
         self.bottom_height = screen_height - self.bottom_y
 
-        # Movement
-        self.speed = 2
+        # Movement (from reference Flappy Bird)
+        self.speed = 4.3  # 128 pixels/sec at 30fps, will be set by PipeManager
 
         # Scoring
         self.scored = False
@@ -231,17 +231,17 @@ class PipeManager:
         self.screen_height = screen_height
         self.pipes: List[SkyscraperGap] = []
 
-        # Spawning configuration
-        self.spawn_distance = 320  # Keep good spacing between obstacles
-        self.next_spawn_x = screen_width + 50  # Start closer to screen
+        # Spawning configuration (consistent natural spacing)
+        self.spawn_distance = 300  # Natural spacing - not too close, not too far
+        self.next_spawn_x = screen_width + 50
         self.last_pipe_spawn_x = screen_width + 50
 
-        # Difficulty scaling
-        self.base_gap_size = 250
-        self.min_gap_size = 150
-        self.gap_reduction_per_score = 2
-        self.max_speed = 5  # Increased max speed (was 4)
-        self.base_speed = 3  # Faster base speed (was 2)
+        # Difficulty scaling (larger gap for easier gameplay)
+        self.base_gap_size = 225  # Larger than reference for easier flying
+        self.min_gap_size = 150  # Keep consistent
+        self.gap_reduction_per_score = 0  # No difficulty scaling
+        self.max_speed = 4.3  # 128 pixels/sec at 30fps ≈ 4.3 pixels/frame  
+        self.base_speed = 4.3  # Constant speed like reference
 
     def update(self, dt: float, score: int):
         """
@@ -282,8 +282,14 @@ class PipeManager:
         # Calculate difficulty-scaled parameters
         gap_size = max(self.min_gap_size, self.base_gap_size - (score * self.gap_reduction_per_score))
 
-        # Create new skyscraper gap - first one spawns closer for quicker action
-        spawn_x = self.screen_width if len(self.pipes) == 0 else self.screen_width + 10
+        # Create new skyscraper gap with consistent spacing
+        if len(self.pipes) == 0:
+            # First pipe starts closer for immediate action
+            spawn_x = self.screen_width * 0.8
+        else:
+            # Subsequent pipes spawn at consistent distance from the rightmost pipe
+            rightmost_pipe_x = max(pipe.x for pipe in self.pipes)
+            spawn_x = rightmost_pipe_x + self.spawn_distance
         skyscraper_gap = SkyscraperGap(spawn_x, self.screen_height, gap_size)
 
         # Scale speed with score (but cap it)

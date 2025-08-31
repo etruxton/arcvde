@@ -30,14 +30,14 @@ class Bird:
             x: Starting x position
             y: Starting y position
         """
-        # Position and physics
+        # Position and physics (reference values with even stronger flapping)
         self.x = x
         self.y = y
         self.velocity_y = 0
-        self.gravity = 0.6
-        self.flap_strength = -10  # Increased from -8 for better bounce
-        self.max_fall_speed = 10
-        self.max_rise_speed = -12  # Slightly reduced max rise speed too
+        self.gravity = 1.0  # playerAccY from reference
+        self.flap_strength = -13.0  # Even stronger for higher jumps!
+        self.max_fall_speed = 10  # playerMaxVelY from reference
+        self.max_rise_speed = -20  # Increased to accommodate dynamic boost
 
         # Visual properties
         self.radius = 20
@@ -55,6 +55,12 @@ class Bird:
         self.blink_animation_time = 0
         self.blink_duration = 0.2  # Quick blink
 
+        # Rapid blink boost system (for fatigue reduction)
+        self.last_flap_time = 0
+        self.rapid_blink_count = 0
+        self.rapid_blink_window = 0.5  # 0.5 seconds to count as rapid blinking
+        self.max_rapid_blinks = 4  # Max boost after 4 rapid blinks
+
         # State
         self.is_alive = True
 
@@ -69,9 +75,37 @@ class Bird:
         self.glow_color = (0, 255, 255)  # Cyan glow effect
 
     def flap(self):
-        """Make the bird flap (wink detected)."""
+        """Make the bird flap (wink detected) with dynamic height boost."""
         if self.is_alive:
-            self.velocity_y = self.flap_strength
+            import time
+            current_time = time.time()
+            
+            # Check if this is a rapid blink (within the time window)
+            if current_time - self.last_flap_time < self.rapid_blink_window:
+                self.rapid_blink_count = min(max(1, self.rapid_blink_count + 1), self.max_rapid_blinks)
+            else:
+                # Reset rapid blink counter if too much time passed
+                self.rapid_blink_count = 1
+            
+            # Ensure rapid_blink_count is always valid
+            self.rapid_blink_count = max(1, min(self.max_rapid_blinks, self.rapid_blink_count))
+            
+            # Calculate dynamic flap strength based on rapid blink count
+            base_strength = self.flap_strength  # -13.0
+            if self.rapid_blink_count >= 2:
+                # Progressive boost: 15% per rapid blink after the first
+                boost_multiplier = 1 + ((self.rapid_blink_count - 1) * 0.15)
+                dynamic_flap_strength = base_strength * boost_multiplier
+                # Cap the boost to prevent crazy heights and ensure valid values
+                dynamic_flap_strength = max(dynamic_flap_strength, -20.0)
+                dynamic_flap_strength = min(dynamic_flap_strength, base_strength)  # Ensure it's more negative than base
+            else:
+                dynamic_flap_strength = base_strength
+            
+            # Ensure velocity is within safe bounds
+            self.velocity_y = max(-20.0, min(10.0, dynamic_flap_strength))
+            self.last_flap_time = current_time
+            
             self.is_flapping = True
             self.flap_animation_time = 0
             # Also make the bird blink when player blinks!
@@ -218,8 +252,8 @@ class Bird:
                 speed = abs(self.velocity_y)
                 if self.is_flapping and speed < 3:  # Boost size/alpha when flapping with low velocity
                     speed = 8  # Use a nice speed value for flapping particles
-                particle_size = max(1, int(speed * 0.3))
-                alpha = max(20, int(speed * 15))
+                particle_size = max(1, min(10, int(speed * 0.3)))  # Cap particle size
+                alpha = max(20, min(255, int(speed * 15)))  # Cap alpha to valid range
 
                 # Color varies between cyan and magenta
                 if i % 2 == 0:
@@ -448,6 +482,8 @@ class Bird:
         self.flap_animation_time = 0
         self.is_blinking = False
         self.blink_animation_time = 0
+        self.last_flap_time = 0
+        self.rapid_blink_count = 0
 
     def kill(self):
         """Mark the bird as dead."""
