@@ -1,7 +1,7 @@
 # Development dependencies for linting, formatting, and security scanning
 
 # Code formatting and linting
-black==24.3.0
+black==24.10.0
 flake8==7.3.0
 isort==5.13.2
 
@@ -11,8 +11,8 @@ safety==3.6.0
 pip-audit==2.9.0
 
 # Dependency management
-pip-tools==7.3.0
-pip-licenses==4.3.4
+pip-tools==7.5.0
+pip-licenses==4.5.1
 
 # Pre-commit hooks
 pre-commit==3.8.0
