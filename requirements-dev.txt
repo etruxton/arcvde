@@ -12,7 +12,7 @@ pip-audit==2.9.0
 
 # Dependency management
 pip-tools==7.3.0
-pip-licenses==4.3.4
+pip-licenses==4.5.1
 
 # Pre-commit hooks
 pre-commit==3.8.0
