@@ -32,7 +32,14 @@ Future: will have different games with different hand controls.
 #### Target Practice
 Classic shooting range experience where targets spawn randomly on screen. Test your accuracy and speed as you shoot down targets before they disappear.
 
-![Target Practice Demo](assets/demo_gifs/target-practice-gif.gif)
+![Target Practice Demo](assets/demo_gifs/target-practice-gif-800.gif)
+
+**Controls:**
+- **Aim**: Make finger gun gesture and move your hand
+- **Shoot**: Flick your thumb down (requires thumb reset between shots)
+- **Pause**: Press P or SPACE
+- **Reset**: Press R to restart
+- **Menu**: Press ESC to return to main menu
 
 #### Doomsday
 Face waves of approaching enemies in an apocalyptic survival game:
@@ -42,6 +49,16 @@ Face waves of approaching enemies in an apocalyptic survival game:
 - **Combo System:** Chain kills for bonus points
 - **Health System:** Survive enemy attacks and heal between waves
 
+![Doomsday Demo](assets/demo_gifs/doomsday-gif-800-2.gif)
+
+![Doomsday Demo](assets/demo_gifs/doomsday-gif-800-1.gif)
+
+**Controls:**
+- **Aim**: Make finger gun gesture and move your hand
+- **Shoot**: Flick your thumb down (requires thumb reset between shots)
+- **Pause**: Press P to pause and access debug console
+- **Menu**: Press ESC to return to main menu
+
 #### Capybara Hunt
 A wholesome twist on Duck Hunt where you save capybaras instead of hunting them:
 - **Balloon Rescue Mechanic:** Shoot balloons to safely drop capybaras to the ground
@@ -50,6 +67,15 @@ A wholesome twist on Duck Hunt where you save capybaras instead of hunting them:
 - **Duck Hunt Rules:** 10 targets per round with increasing hit requirements
 - **Animated Sprites:** Capybaras walk around happily after being saved
 
+![Capybara Hunt Demo](assets/demo_gifs/capybara-hunt-800.gif)
+
+**Controls:**
+- **Aim**: Make finger gun gesture and move your hand
+- **Shoot**: Flick your thumb down to pop balloons (5 shots per wave)
+- **Objective**: Shoot balloons to save capybaras, avoid shooting capybaras directly
+- **Pause**: Press P to pause and access debug console
+- **Menu**: Press ESC to return to main menu
+
 #### Blinky Bird
 Navigate through a neon cyberpunk cityscape using only your blinks:
 - **Blink-Controlled Gameplay:** Blink to make your chrome cyber-bird flap through obstacles
@@ -57,6 +83,16 @@ Navigate through a neon cyberpunk cityscape using only your blinks:
 - **Adaptive Blink Detection:** Automatic calibration works with or without glasses
 - **Progressive Difficulty:** Skyscraper gaps narrow and move faster as your score increases
 - **Stunning Visuals:** Multi-layered cyberpunk city with animated neon lights and particle effects
+
+![Blinky Bird Demo](assets/demo_gifs/blinky-bird-800.gif)
+
+**Controls:**
+- **Fly**: Blink to make your cyber-bird flap and gain altitude
+- **Navigate**: Fly through gaps between neon skyscrapers in the cyberpunk cityscape
+- **Pause**: Press P to pause the game
+- **Restart**: Press R to restart after game over, or blink to restart
+- **Recalibrate**: Press C to recalibrate blink detection
+- **Menu**: Press ESC to return to main menu
 
 ## Installation
 
@@ -93,39 +129,9 @@ The game will start with a main menu where you can:
 - **SETTINGS** - Configure camera and other options
 - **QUIT** - Exit the game
 
-### Game Controls
-
-**In Menu:**
-- Mouse clicks or shoot at buttons with finger gun
-- Keyboard shortcuts: 1 for Doomsday, 2 for Capybara Hunt, 3 for Blinky Bird, 4 for Target Practice
-
-**In Target Practice:**
-- **Aim**: Make finger gun gesture and move your hand
-- **Shoot**: Flick your thumb down (requires thumb reset between shots)
-- **Pause**: Press P or SPACE
-- **Reset**: Press R to restart
-- **Menu**: Press ESC to return to main menu
-
-**In Doomsday:**
-- **Aim**: Make finger gun gesture and move your hand
-- **Shoot**: Flick your thumb down (requires thumb reset between shots)
-- **Pause**: Press P to pause and access debug console
-- **Menu**: Press ESC to return to main menu
-
-**In Capybara Hunt:**
-- **Aim**: Make finger gun gesture and move your hand
-- **Shoot**: Flick your thumb down to pop balloons (5 shots per wave)
-- **Objective**: Shoot balloons to save capybaras, avoid shooting capybaras directly
-- **Pause**: Press P to pause and access debug console
-- **Menu**: Press ESC to return to main menu
-
-**In Blinky Bird:**
-- **Fly**: Blink to make your cyber-bird flap and gain altitude
-- **Navigate**: Fly through gaps between neon skyscrapers in the cyberpunk cityscape
-- **Pause**: Press P to pause the game
-- **Restart**: Press R to restart after game over, or blink to restart
-- **Recalibrate**: Press C to recalibrate blink detection
-- **Menu**: Press ESC to return to main menu
+### Menu Controls
+- **Navigate**: Mouse clicks or shoot at buttons with finger gun
+- **Keyboard shortcuts**: 1 for Doomsday, 2 for Capybara Hunt, 3 for Blinky Bird, 4 for Target Practice
 
 ## Settings & Configuration
 
