@@ -71,8 +71,7 @@ class StageAudio:
         if hasattr(self.sound_manager, "play_stage_transition"):
             self.sound_manager.play_stage_transition(new_theme)
 
-        # Start new stage music
-        self.start_stage_music(new_theme)
+        # Don't start music yet - wait for transition to complete
 
     def play_stage_effect(self, effect_name: str, **kwargs) -> None:
         """Play a stage-specific sound effect"""
