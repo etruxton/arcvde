@@ -98,6 +98,10 @@ class BlinkyBirdScreen(BaseScreen):
             elif event.key == pygame.K_c:
                 # Recalibrate blink detector
                 self.blink_detector.recalibrate()
+                # Reset game and teleport bird to middle of screen (y-axis)
+                self.game.reset_game()
+                self.game.bird.y = SCREEN_HEIGHT // 2
+                self.paused = False
             elif event.key == pygame.K_SPACE:
                 if self.paused:
                     # Unpause with spacebar
@@ -267,17 +271,17 @@ class BlinkyBirdScreen(BaseScreen):
     def _draw_ready_screen(self, game_info: dict):
         """Draw ready to play screen."""
         title = self.large_font.render("READY TO PLAY!", True, VAPORWAVE_CYAN)
-        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 100))
+        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 50))
         self.screen.blit(title, title_rect)
 
         instruction = self.medium_font.render("Blink to start flying!", True, UI_TEXT)
-        instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, 150))
+        instruction_rect = instruction.get_rect(center=(SCREEN_WIDTH // 2, 100))
         self.screen.blit(instruction, instruction_rect)
 
         # Show high score if available
         if self.game.high_score > 0:
             high_score_text = self.medium_font.render(f"High Score: {self.game.high_score}", True, UI_ACCENT)
-            high_score_rect = high_score_text.get_rect(center=(SCREEN_WIDTH // 2, 200))
+            high_score_rect = high_score_text.get_rect(center=(SCREEN_WIDTH // 2, 150))
             self.screen.blit(high_score_text, high_score_rect)
 
         # Controls help

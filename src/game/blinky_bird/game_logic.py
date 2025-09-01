@@ -153,11 +153,17 @@ class BlinkyBirdGame:
             # During calibration, keep bird completely still
             self.bird.update(dt, apply_physics=False)
 
-        elif self.state in [GameState.READY, GameState.GAME_OVER]:
+        elif self.state == GameState.READY:
+            # Keep bird centered and still until first blink
+            self.bird.update(dt, apply_physics=False)
+            self.bird.y = self.screen_height // 2
+            self.bird.velocity_y = 0
+
+        elif self.state == GameState.GAME_OVER:
             # Bird physics still active but no pipes
             self.bird.update(dt, apply_physics=True)
 
-            # Keep bird from falling through ground in ready state
+            # Keep bird from falling through ground in game over state
             ground_y = self.background.get_ground_y()
             if self.bird.y + self.bird.radius > ground_y:
                 self.bird.y = ground_y - self.bird.radius

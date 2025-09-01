@@ -111,14 +111,27 @@ class Skyscraper:
                         pygame.draw.rect(glow_surface, (*color[:3], 30), (0, 0, window_width + 6, window_height + 6))
                         surface.blit(glow_surface, (window_x - 3, window_y - 3))
 
-        # Building outline with neon accent
-        pygame.draw.rect(surface, self.neon_color, building_rect, 1)
-
-        # Neon building edge lights
-        for i in range(0, int(self.height), 50):
-            light_y = self.y - i
-            pygame.draw.circle(surface, self.neon_color, (int(self.x), int(light_y)), 2)
-            pygame.draw.circle(surface, self.neon_color, (int(self.x + self.width), int(light_y)), 2)
+        # Clean neon building outline - draw each side separately for precision
+        pygame.draw.line(
+            surface, self.neon_color, (int(self.x), int(self.y - self.height)), (int(self.x), int(self.y)), 1
+        )  # Left
+        pygame.draw.line(
+            surface,
+            self.neon_color,
+            (int(self.x + self.width), int(self.y - self.height)),
+            (int(self.x + self.width), int(self.y)),
+            1,
+        )  # Right
+        pygame.draw.line(
+            surface,
+            self.neon_color,
+            (int(self.x), int(self.y - self.height)),
+            (int(self.x + self.width), int(self.y - self.height)),
+            1,
+        )  # Top
+        pygame.draw.line(
+            surface, self.neon_color, (int(self.x), int(self.y)), (int(self.x + self.width), int(self.y)), 1
+        )  # Bottom
 
 
 class CyberGround:

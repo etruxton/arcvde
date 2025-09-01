@@ -77,19 +77,21 @@ class Bird:
     def flap(self):
         """Make the bird flap (wink detected) with dynamic height boost."""
         if self.is_alive:
+            # Standard library imports
             import time
+
             current_time = time.time()
-            
+
             # Check if this is a rapid blink (within the time window)
             if current_time - self.last_flap_time < self.rapid_blink_window:
                 self.rapid_blink_count = min(max(1, self.rapid_blink_count + 1), self.max_rapid_blinks)
             else:
                 # Reset rapid blink counter if too much time passed
                 self.rapid_blink_count = 1
-            
+
             # Ensure rapid_blink_count is always valid
             self.rapid_blink_count = max(1, min(self.max_rapid_blinks, self.rapid_blink_count))
-            
+
             # Calculate dynamic flap strength based on rapid blink count
             base_strength = self.flap_strength  # -13.0
             if self.rapid_blink_count >= 2:
@@ -101,11 +103,11 @@ class Bird:
                 dynamic_flap_strength = min(dynamic_flap_strength, base_strength)  # Ensure it's more negative than base
             else:
                 dynamic_flap_strength = base_strength
-            
+
             # Ensure velocity is within safe bounds
             self.velocity_y = max(-20.0, min(10.0, dynamic_flap_strength))
             self.last_flap_time = current_time
-            
+
             self.is_flapping = True
             self.flap_animation_time = 0
             # Also make the bird blink when player blinks!

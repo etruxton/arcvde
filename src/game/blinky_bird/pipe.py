@@ -240,7 +240,7 @@ class PipeManager:
         self.base_gap_size = 225  # Larger than reference for easier flying
         self.min_gap_size = 150  # Keep consistent
         self.gap_reduction_per_score = 0  # No difficulty scaling
-        self.max_speed = 4.3  # 128 pixels/sec at 30fps ≈ 4.3 pixels/frame  
+        self.max_speed = 4.3  # 128 pixels/sec at 30fps ≈ 4.3 pixels/frame
         self.base_speed = 4.3  # Constant speed like reference
 
     def update(self, dt: float, score: int):
