@@ -32,6 +32,8 @@ Future: will have different games with different hand controls.
 #### Target Practice
 Classic shooting range experience where targets spawn randomly on screen. Test your accuracy and speed as you shoot down targets before they disappear.
 
+![Target Practice Demo](assets/demo_gifs/target_practice_gif.gif)
+
 #### Doomsday
 Face waves of approaching enemies in an apocalyptic survival game:
 - **4 Enemy Types:** Zombies, Demons, Skulls, and Giants
