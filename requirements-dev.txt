@@ -11,7 +11,7 @@ safety==3.6.0
 pip-audit==2.9.0
 
 # Dependency management
-pip-tools==7.3.0
+pip-tools==7.5.0
 pip-licenses==4.3.4
 
 # Pre-commit hooks
